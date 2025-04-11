@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/table";
 import { rankItem } from "@tanstack/match-sorter-utils";
 import { Spinner } from "./spinner";
+import { cn } from "@/lib/utils";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -185,9 +186,4 @@ export function DataTable<TData, TValue>({
       </div>
     </div>
   );
-}
-
-// Helper function since we're missing the cn utility from the main file
-function cn(...classes: (string | boolean | undefined)[]) {
-  return classes.filter(Boolean).join(" ");
 }

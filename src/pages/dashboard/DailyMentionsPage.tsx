@@ -4,10 +4,25 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { PlusCircle, Trash2, Copy, ChevronDown, ChevronUp, FileText, RefreshCcw } from 'lucide-react';
+import { Send, Download, Eye, Image, Palette, PlusCircle, Trash2, Copy, RefreshCcw, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { format } from 'date-fns';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
 import {
   DailyMediaReport,
   MentionSection,
@@ -23,6 +38,9 @@ const DailyMentionsPage = () => {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [expandedMentions, setExpandedMentions] = useState<Record<string, boolean>>({});
   const [showPreview, setShowPreview] = useState(false);
+  const [headerColor, setHeaderColor] = useState("#0066cc"); // Default blue color for headers
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Toggle section expansion
@@ -255,15 +273,49 @@ const DailyMentionsPage = () => {
     }));
   };
 
-  // Generate report
-  const generateReport = () => {
-    // Here you would typically send the data to an API or generate a PDF
-    console.log('Generated report:', report);
+  // Handle logo file selection
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setLogoFile(file);
+      
+      // Create a preview URL
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Send report
+  const sendReport = () => {
+    // This would typically involve sending the data to an API or email service
+    console.log('Sending report:', report);
     toast({
-      title: "Report Generated",
-      description: "Your daily media highlights report has been generated successfully.",
+      title: "Report Sent",
+      description: "Your daily media highlights report has been sent successfully.",
     });
+  };
+
+  // Download report
+  const downloadReport = () => {
+    // This would typically generate a PDF or other file format
+    console.log('Downloading report:', report);
+    toast({
+      title: "Report Downloaded",
+      description: "Your daily media highlights report has been downloaded.",
+    });
+  };
+
+  // Generate preview
+  const generatePreview = () => {
+    console.log('Generating preview for report:', report);
     setShowPreview(true);
+    toast({
+      title: "Preview Generated",
+      description: "Your daily media highlights report preview is ready.",
+    });
   };
 
   // Reset form
@@ -273,6 +325,9 @@ const DailyMentionsPage = () => {
       setExpandedSections({});
       setExpandedMentions({});
       setShowPreview(false);
+      setHeaderColor("#0066cc");
+      setLogoFile(null);
+      setLogoPreview(null);
       toast({
         title: "Form Reset",
         description: "The form has been reset to its initial state.",
@@ -294,11 +349,27 @@ const DailyMentionsPage = () => {
             Reset
           </Button>
           <Button 
-            onClick={generateReport}
+            onClick={generatePreview}
+            variant="outline"
             className="flex items-center gap-1"
           >
-            <FileText className="h-4 w-4" />
-            Generate Report
+            <Eye className="h-4 w-4" />
+            Preview
+          </Button>
+          <Button 
+            onClick={sendReport}
+            variant="outline"
+            className="flex items-center gap-1"
+          >
+            <Send className="h-4 w-4" />
+            Send
+          </Button>
+          <Button 
+            onClick={downloadReport}
+            className="flex items-center gap-1"
+          >
+            <Download className="h-4 w-4" />
+            Download
           </Button>
         </div>
       </div>
@@ -307,7 +378,7 @@ const DailyMentionsPage = () => {
         {/* Report Header Information */}
         <Card className="p-4">
           <h2 className="text-lg font-medium mb-4">Report Information</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="report-date">Report Date</Label>
               <Input
@@ -346,6 +417,47 @@ const DailyMentionsPage = () => {
                 Add Publication
               </Button>
             </div>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="logo-upload">Company Logo</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="logo-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoChange}
+                    className="flex-1"
+                  />
+                  {logoPreview && (
+                    <div className="h-10 w-10 rounded-full border border-gray-200 overflow-hidden">
+                      <img 
+                        src={logoPreview} 
+                        alt="Logo Preview" 
+                        className="h-full w-full object-contain"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="header-color">Header Color</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="header-color"
+                    type="color"
+                    value={headerColor}
+                    onChange={(e) => setHeaderColor(e.target.value)}
+                    className="w-16 h-10 p-1"
+                  />
+                  <Input 
+                    value={headerColor}
+                    onChange={(e) => setHeaderColor(e.target.value)}
+                    placeholder="#0066cc"
+                    className="flex-1"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </Card>
 
@@ -367,7 +479,7 @@ const DailyMentionsPage = () => {
                   size="sm"
                   onClick={() => toggleSection(section.id)}
                 >
-                  {expandedSections[section.id] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  {expandedSections[section.id] ? "Collapse" : "Expand"}
                 </Button>
                 <Button
                   variant="outline"
@@ -408,7 +520,7 @@ const DailyMentionsPage = () => {
                           size="sm"
                           onClick={() => toggleMention(mention.id)}
                         >
-                          {expandedMentions[mention.id] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          {expandedMentions[mention.id] ? "Collapse" : "Expand"}
                         </Button>
                         <Button
                           variant="ghost"
@@ -563,12 +675,86 @@ const DailyMentionsPage = () => {
         </Card>
       </div>
 
-      {/* Preview Section - would be implemented with actual styling */}
+      {/* Preview Section */}
       {showPreview && (
         <Card className="mt-6 p-4">
           <h2 className="text-lg font-medium mb-4">Preview</h2>
           <div className="border rounded p-4 bg-white">
-            <p className="text-sm text-gray-500">Preview would be implemented here with actual layout matching the template.</p>
+            <div className="max-w-4xl mx-auto border border-gray-300">
+              {/* Header */}
+              <div className="flex items-center justify-between" style={{ backgroundColor: headerColor }}>
+                <h1 className="text-white text-2xl font-bold p-4">DAILY MEDIA HIGHLIGHTS</h1>
+                {logoPreview && (
+                  <div className="bg-white rounded-full h-20 w-20 flex items-center justify-center p-2 mr-4">
+                    <img src={logoPreview} alt="Company Logo" className="max-h-full max-w-full" />
+                  </div>
+                )}
+              </div>
+              
+              {/* Date and intro */}
+              <div className="p-4 bg-white">
+                <p className="font-semibold">{format(new Date(report.date), 'MMM d, yyyy')}</p>
+                <p className="text-sm mt-2">
+                  This daily digest provides a summary of discovered news material, and other
+                  resources related to your search terms, with a focus on coverage featured in
+                  National/Regional Print Publications and Online media. Alert covers online media for
+                  keywords from the first edition on the day of the media alert(weekly).
+                </p>
+              </div>
+              
+              {/* Sections */}
+              {report.sections.map((section, index) => (
+                <div key={section.id} className="mt-2">
+                  {/* Section Header */}
+                  <div style={{ backgroundColor: headerColor }} className="p-2">
+                    <h2 className="text-white font-bold">{section.title || 'SECTION TITLE'}</h2>
+                  </div>
+                  
+                  {/* Section Content */}
+                  <div className="p-4 bg-white">
+                    {section.mentions.map((mention, mIndex) => (
+                      <div key={mention.id} className="mb-4">
+                        <p className="font-bold">{mention.title || 'News headline'}: - </p>
+                        <p className="text-sm">{mention.content || 'News content will appear here...'}</p>
+                        
+                        {mention.links.some(link => link.url) && (
+                          <p className="text-sm mt-1">
+                            {mention.links.map((link, lIndex) => 
+                              link.url ? (
+                                <span key={lIndex}>
+                                  <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">
+                                    {link.url.split('/')[2] || link.url}
+                                  </a>
+                                  {lIndex < mention.links.length - 1 ? ' / ' : ''}
+                                </span>
+                              ) : null
+                            )}
+                          </p>
+                        )}
+                        
+                        <p className="text-sm mt-1">
+                          <span className="font-semibold">Sentiment:</span> {mention.sentiment || 'N/A'}<br />
+                          <span className="font-semibold">Reporter:</span> {mention.reporter || 'Not specified'}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              
+              {/* Expecting publications */}
+              {report.expectingPublications && report.expectingPublications.length > 0 && (
+                <div className="p-4 bg-gray-100">
+                  <p className="font-semibold">Expecting: {report.expectingPublications.join(', ')}</p>
+                </div>
+              )}
+              
+              {/* Footer */}
+              <div className="p-4 bg-white text-xs text-center">
+                <p>{report.footerNote || 'P+ Measurement Services Daily Media Briefs cover all relevant news reports, features and photo stories in major Nigerian newspapers, magazines, online news sites & blogs.'}</p>
+                <p className="mt-1 text-gray-500">(Clippings of specific stories/reports are available on request)</p>
+              </div>
+            </div>
           </div>
         </Card>
       )}

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -30,6 +31,10 @@ interface Editorial {
   circulation?: number;
   audienceReach?: number;
   pageSize?: string;
+  status?: string;
+  analystNote?: string;
+  supervisorNote?: string;
+  adminNote?: string;
 }
 
 // Mock data for editorials
@@ -57,7 +62,8 @@ const mockEditorials: Editorial[] = [
     advertSpend: 150000,
     circulation: 50000,
     audienceReach: 120000,
-    pageSize: 'Half Page'
+    pageSize: 'Half Page',
+    status: 'Approved'
   },
   {
     id: 2,
@@ -82,7 +88,8 @@ const mockEditorials: Editorial[] = [
     advertSpend: 80000,
     circulation: 60000,
     audienceReach: 150000,
-    pageSize: 'Quarter Page'
+    pageSize: 'Quarter Page',
+    status: 'Approved'
   },
   {
     id: 3,
@@ -107,7 +114,8 @@ const mockEditorials: Editorial[] = [
     advertSpend: 120000,
     circulation: 70000,
     audienceReach: 180000,
-    pageSize: 'Full Page'
+    pageSize: 'Full Page',
+    status: 'Pending'
   },
   {
     id: 4,
@@ -131,7 +139,8 @@ const mockEditorials: Editorial[] = [
     sentiment: 'Positive',
     mediaSentimentIndex: 1,
     advertSpend: 90000,
-    audienceReach: 200000
+    audienceReach: 200000,
+    status: 'Rejected'
   },
   {
     id: 5,
@@ -156,7 +165,8 @@ const mockEditorials: Editorial[] = [
     advertSpend: 100000,
     circulation: 80000,
     audienceReach: 220000,
-    pageSize: 'Half Page'
+    pageSize: 'Half Page',
+    status: 'Approved'
   }
 ];
 
@@ -181,26 +191,15 @@ const EditorialPage = () => {
     }
   }, [location.state]);
 
+  // Reordered columns according to the requirements
   const columns = [
-    {
-      accessorKey: 'id',
-      header: 'ID',
-    },
-    {
-      accessorKey: 'date',
-      header: 'Date',
-    },
-    {
-      accessorKey: 'title',
-      header: 'Title',
-    },
     {
       accessorKey: 'brand',
       header: 'Brand',
     },
     {
-      accessorKey: 'publication',
-      header: 'Publication',
+      accessorKey: 'title',
+      header: 'Title',
     },
     {
       accessorKey: 'mediaType',
@@ -209,6 +208,36 @@ const EditorialPage = () => {
     {
       accessorKey: 'sentiment',
       header: 'Sentiment',
+    },
+    {
+      accessorKey: 'date',
+      header: 'Date',
+    },
+    {
+      accessorKey: 'status',
+      header: 'Status',
+      cell: ({ row }: any) => {
+        const status = row.getValue('status') || 'Pending';
+        let statusColor = '';
+        
+        switch(status) {
+          case 'Approved':
+            statusColor = 'bg-green-100 text-green-800';
+            break;
+          case 'Rejected':
+            statusColor = 'bg-red-100 text-red-800';
+            break;
+          case 'Pending':
+          default:
+            statusColor = 'bg-yellow-100 text-yellow-800';
+        }
+        
+        return (
+          <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColor}`}>
+            {status}
+          </div>
+        );
+      },
     },
     {
       id: 'actions',
