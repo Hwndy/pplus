@@ -1,10 +1,10 @@
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Plus, ExternalLink, Filter, X, CalendarIcon, Calendar as CalendarIcon2 } from 'lucide-react';
+import { Plus, ExternalLink, Filter, X, CalendarIcon, Calendar as CalendarIcon2, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { DailyMediaReport, MentionSection, createMockReport } from '@/types/dailyMentions';
 import { format } from 'date-fns';
@@ -27,17 +27,64 @@ const DailyMentionsViewPage = () => {
   const [report, setReport] = useState<DailyMediaReport | null>(null);
   const navigate = useNavigate();
 
+  // Session storage key for filters
+  const filterSessionKey = 'daily_mentions_view_filters';
+
+  // Initialize filter states from session storage or defaults
+  const getInitialFilters = () => {
+    try {
+      const savedFilters = sessionStorage.getItem(filterSessionKey);
+      if (savedFilters) {
+        const parsedFilters = JSON.parse(savedFilters);
+        // Convert date string back to Date object if it exists
+        if (parsedFilters.dateFilter) {
+          parsedFilters.dateFilter = new Date(parsedFilters.dateFilter);
+        }
+        return parsedFilters;
+      }
+    } catch (error) {
+      console.error('Error loading saved filters:', error);
+    }
+    return {
+      showFilters: false,
+      dateFilter: undefined,
+      publicationFilter: "all",
+      companyFilter: "all"
+    };
+  };
+
   // Filter states
-  const [showFilters, setShowFilters] = useState(false);
-  const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
-  const [publicationFilter, setPublicationFilter] = useState<string>("all");
-  const [companyFilter, setCompanyFilter] = useState<string>("all");
+  const initialFilters = getInitialFilters();
+  const [showFilters, setShowFilters] = useState(initialFilters.showFilters);
+  const [dateFilter, setDateFilter] = useState<Date | undefined>(initialFilters.dateFilter);
+  const [publicationFilter, setPublicationFilter] = useState<string>(initialFilters.publicationFilter);
+  const [companyFilter, setCompanyFilter] = useState<string>(initialFilters.companyFilter);
+
+  // Save filters to session storage whenever they change
+  const saveFiltersToSessionStorage = useCallback(() => {
+    try {
+      const filtersToSave = {
+        showFilters,
+        dateFilter,
+        publicationFilter,
+        companyFilter
+      };
+      sessionStorage.setItem(filterSessionKey, JSON.stringify(filtersToSave));
+    } catch (error) {
+      console.error('Error saving filters to session storage:', error);
+    }
+  }, [showFilters, dateFilter, publicationFilter, companyFilter]);
 
   useEffect(() => {
     // In a real app, this would fetch from an API
     // For now, we'll use our mock data
     setReport(createMockReport());
   }, []);
+
+  // Save filters to session storage whenever they change
+  useEffect(() => {
+    saveFiltersToSessionStorage();
+  }, [showFilters, dateFilter, publicationFilter, companyFilter, saveFiltersToSessionStorage]);
 
   const handleCreateNew = () => {
     navigate('/dashboard/daily-mentions/create');
@@ -76,22 +123,35 @@ const DailyMentionsViewPage = () => {
 
     return sectionsCopy.filter((section) => {
       // Filter by company/brand (section title)
-      if (companyFilter !== "all" && !section.title.includes(companyFilter)) {
+      if (companyFilter !== "all" && !section.title.toLowerCase().includes(companyFilter.toLowerCase())) {
         return false;
       }
 
       // Filter mentions within each section
       const filteredMentions = section.mentions.filter(mention => {
         // Filter by publication
-        if (publicationFilter !== "all" && mention.publication !== publicationFilter) {
+        if (publicationFilter !== "all" &&
+            (!mention.publication ||
+             !mention.publication.toLowerCase().includes(publicationFilter.toLowerCase()))) {
           return false;
         }
 
         // Filter by date
         if (dateFilter && mention.publicationDate) {
-          // Simple date check - this could be improved with proper date parsing
-          const filterDate = format(dateFilter, 'do MMMM');
-          if (!mention.publicationDate.includes(filterDate)) {
+          // Try different date formats for more flexible matching
+          const filterDateFormats = [
+            format(dateFilter, 'do MMMM'),
+            format(dateFilter, 'd MMMM'),
+            format(dateFilter, 'MMMM d'),
+            format(dateFilter, 'MMM d'),
+            format(dateFilter, 'd MMM'),
+            format(dateFilter, 'yyyy-MM-dd')
+          ];
+
+          const matchesAnyFormat = filterDateFormats.some(dateFormat =>
+            mention.publicationDate.toLowerCase().includes(dateFormat.toLowerCase()));
+
+          if (!matchesAnyFormat) {
             return false;
           }
         }
@@ -140,14 +200,14 @@ const DailyMentionsViewPage = () => {
   });
 
   return (
-    <div className="p-6 max-w-screen-2xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-6 w-full">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <h1 className="text-2xl font-bold">Daily Media Highlights</h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 w-full md:w-auto">
           <Button
             onClick={() => setShowFilters(!showFilters)}
             variant={showFilters ? "secondary" : "outline"}
-            className="flex items-center gap-1 w-full md:w-auto relative"
+            className="flex items-center gap-1 relative flex-1 md:flex-auto"
           >
             <Filter className="h-4 w-4" />
             {showFilters ? 'Hide Filters' : 'Show Filters'}
@@ -160,7 +220,7 @@ const DailyMentionsViewPage = () => {
               </Badge>
             )}
           </Button>
-          <Button onClick={handleCreateNew} className="flex items-center gap-1">
+          <Button onClick={handleCreateNew} className="flex items-center gap-1 flex-1 md:flex-auto">
             <Plus className="h-4 w-4" />
             Create New Report
           </Button>
@@ -169,9 +229,9 @@ const DailyMentionsViewPage = () => {
 
       {/* Filter Section */}
       {showFilters && (
-        <Card className="p-4 mb-6 w-full">
+        <Card className="p-4 mb-6 w-full shadow-md">
           <h2 className="text-lg font-medium mb-4">Filter Options</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
             {/* Date Filter */}
             <div>
               <Label htmlFor="date-filter">Filter by Date</Label>
@@ -190,7 +250,13 @@ const DailyMentionsViewPage = () => {
                   <Calendar
                     mode="single"
                     selected={dateFilter}
-                    onSelect={(date) => date ? setDateFilter(date) : setDateFilter(undefined)}
+                    onSelect={(date) => {
+                      if (date) {
+                        setDateFilter(date);
+                      } else {
+                        setDateFilter(undefined);
+                      }
+                    }}
                     initialFocus
                   />
                 </PopoverContent>
@@ -289,7 +355,7 @@ const DailyMentionsViewPage = () => {
         </Card>
       )}
 
-      <Card className="mb-6">
+      <Card className="mb-6 shadow-md">
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-xl font-semibold">
             Media Highlights Report
@@ -322,7 +388,7 @@ const DailyMentionsViewPage = () => {
 
               <div className="space-y-4">
                 {section.mentions.map((mention) => (
-                  <Card key={mention.id} className="p-4 border-l-4 border-l-indigo-500">
+                  <Card key={mention.id} className="p-4 border-l-4 border-l-indigo-500 hover:shadow-md transition-shadow duration-200">
                     <div className="flex justify-between items-start mb-2">
                       <h3 className="font-medium">{mention.title}</h3>
                       <Badge className={getSentimentColor(mention.sentiment)}>
@@ -330,9 +396,9 @@ const DailyMentionsViewPage = () => {
                       </Badge>
                     </div>
 
-                    <p className="text-gray-700 mb-3 text-sm">{mention.content}</p>
+                    <p className="text-gray-700 mb-3 text-sm whitespace-pre-line">{mention.content}</p>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-gray-500">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-gray-500 mt-2">
                       {mention.reporter && (
                         <div className="flex items-center gap-1">
                           <span className="font-medium">Reporter:</span> {mention.reporter}
@@ -353,7 +419,7 @@ const DailyMentionsViewPage = () => {
                     </div>
 
                     {mention.links && mention.links.length > 0 && (
-                      <div className="mt-3 flex flex-wrap gap-2">
+                      <div className="mt-3 flex flex-wrap gap-2 border-t pt-2">
                         {mention.links.map((link, idx) => (
                           <a
                             key={idx}
@@ -377,6 +443,27 @@ const DailyMentionsViewPage = () => {
           {report.footerNote && (
             <div className="mt-8 text-xs text-gray-500 italic border-t pt-4">
               {report.footerNote}
+            </div>
+          )}
+
+          {filteredSections.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <FileText className="h-12 w-12 text-gray-300 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-1">No mentions found</h3>
+              <p className="text-sm text-gray-500 max-w-md">
+                No mentions match your current filter criteria. Try adjusting your filters or create a new report.
+              </p>
+              <Button
+                variant="outline"
+                className="mt-4"
+                onClick={() => {
+                  setDateFilter(undefined);
+                  setPublicationFilter('all');
+                  setCompanyFilter('all');
+                }}
+              >
+                Clear All Filters
+              </Button>
             </div>
           )}
         </CardContent>

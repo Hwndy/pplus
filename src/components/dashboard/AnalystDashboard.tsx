@@ -201,7 +201,7 @@ export function AnalystDashboard() {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link to="/dashboard/daily-mentions" className="w-full cursor-pointer">
+                <Link to="/dashboard/daily-mentions/create" className="w-full cursor-pointer">
                   <FileText className="mr-2 h-4 w-4" />
                   New Daily Mention
                 </Link>

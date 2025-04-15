@@ -135,6 +135,9 @@ const Dashboard = () => {
 
         {/* Daily Mentions routes - accessible to admin, analyst, and supervisor */}
         <Route path="daily-mentions" element={
+          ['admin', 'analyst', 'supervisor'].includes(user.role) ? <DailyMentionsViewPage /> : <Navigate to="/dashboard" replace />
+        } />
+        <Route path="daily-mentions/create" element={
           ['admin', 'analyst', 'supervisor'].includes(user.role) ? <DailyMentionsPage /> : <Navigate to="/dashboard" replace />
         } />
         <Route path="daily-mentions/view/:id" element={
