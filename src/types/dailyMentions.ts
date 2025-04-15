@@ -1,6 +1,8 @@
 
 export type SentimentType = 'Positive' | 'Neutral' | 'Negative' | 'N/A';
 
+export type SectionType = 'COMPETITORS' | 'INDUSTRY' | 'SUBSIDIARIES' | 'PHOTO' | 'ADVERT' | 'PASSIVE' | 'OTHER';
+
 export interface NewsLink {
   url: string;
   label?: string;
@@ -22,6 +24,7 @@ export interface MediaMention {
 export interface MentionSection {
   id: string;
   title: string;
+  type: SectionType;
   mentions: MediaMention[];
 }
 
@@ -43,16 +46,21 @@ export const createEmptyMention = (): MediaMention => ({
   links: [{ url: '' }],
 });
 
-export const createEmptySection = (): MentionSection => ({
+export const createEmptySection = (type: SectionType = 'COMPETITORS'): MentionSection => ({
   id: `section-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
   title: '',
+  type,
   mentions: [createEmptyMention()],
 });
 
 export const createEmptyReport = (): DailyMediaReport => ({
   id: `report-${Date.now()}`,
   date: new Date().toISOString().split('T')[0],
-  sections: [createEmptySection()],
+  sections: [
+    createEmptySection('COMPETITORS'),
+    createEmptySection('INDUSTRY'),
+    createEmptySection('SUBSIDIARIES')
+  ],
   expectingPublications: [],
 });
 
@@ -65,6 +73,7 @@ export const createMockReport = (): DailyMediaReport => {
       {
         id: 'section-1',
         title: 'STANBIC IBTC',
+        type: 'SUBSIDIARIES',
         mentions: [
           {
             id: 'mention-1',
@@ -95,6 +104,7 @@ export const createMockReport = (): DailyMediaReport => {
       {
         id: 'section-2',
         title: 'STANDARD BANK AFRICA',
+        type: 'SUBSIDIARIES',
         mentions: [
           {
             id: 'mention-3',
@@ -113,6 +123,7 @@ export const createMockReport = (): DailyMediaReport => {
       {
         id: 'section-3',
         title: 'COMPETITOR ACTIVITIES',
+        type: 'COMPETITORS',
         mentions: [
           {
             id: 'mention-4',

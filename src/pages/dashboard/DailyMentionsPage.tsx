@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
-import { Send, Download, Eye, PlusCircle, Trash2, Copy, RefreshCcw, Filter, X, CalendarIcon } from 'lucide-react';
+import { Send, Download, Eye, PlusCircle, Trash2, Copy, RefreshCcw, Filter, X, CalendarIcon, FileUp, Link } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Select,
@@ -27,6 +27,7 @@ import {
   MentionSection,
   MediaMention,
   SentimentType,
+  SectionType,
   createEmptyMention,
   createEmptySection,
   createEmptyReport
@@ -198,8 +199,8 @@ const DailyMentionsPage = () => {
   };
 
   // Add a new section
-  const addSection = () => {
-    const newSection = createEmptySection();
+  const addSection = (type: SectionType = 'OTHER') => {
+    const newSection = createEmptySection(type);
     setReport(prev => ({
       ...prev,
       sections: [...prev.sections, newSection]
@@ -481,7 +482,7 @@ const DailyMentionsPage = () => {
     <div className="p-6 max-w-screen-2xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Daily Media Highlights</h1>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap justify-end">
           <Button
             onClick={() => setShowFilters(!showFilters)}
             variant={showFilters ? "secondary" : "outline"}
@@ -498,6 +499,28 @@ const DailyMentionsPage = () => {
               </Badge>
             )}
           </Button>
+          <Button
+            variant="outline"
+            className="flex items-center gap-1"
+            onClick={() => document.getElementById('batch-upload')?.click()}
+          >
+            <FileUp className="h-4 w-4" />
+            Batch Upload
+          </Button>
+          <input
+            type="file"
+            id="batch-upload"
+            accept=".xlsx,.xls"
+            className="hidden"
+            onChange={(e) => {
+              if (e.target.files && e.target.files[0]) {
+                toast({
+                  title: "Excel Upload",
+                  description: `File '${e.target.files[0].name}' selected. This feature is not yet implemented.`,
+                });
+              }
+            }}
+          />
           <Button
             onClick={resetForm}
             variant="outline"
@@ -744,30 +767,37 @@ const DailyMentionsPage = () => {
         {/* Sections - Use filteredSections instead of report.sections */}
         {filteredSections.map((section) => (
           <Card key={section.id} className="p-4">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex-1">
-                <Input
-                  value={section.title}
-                  onChange={(e) => updateSectionTitle(section.id, e.target.value)}
-                  placeholder="Section Title (e.g., STANDARD BANK AFRICA)"
-                  className="font-medium text-lg"
-                />
+            <div className="mb-4">
+              <div className="flex items-center justify-between" style={{ backgroundColor: headerColor }}>
+                <div className="flex-1 p-2">
+                  <Input
+                    value={section.title}
+                    onChange={(e) => updateSectionTitle(section.id, e.target.value)}
+                    placeholder={`${section.type} (e.g., STANBIC IBTC SUBSIDIARIES)`}
+                    className="font-medium text-lg text-white bg-transparent border-none focus:ring-0 focus:border-none"
+                  />
+                </div>
+                <div className="flex gap-2 p-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-white hover:text-white hover:bg-blue-700"
+                    onClick={() => toggleSection(section.id)}
+                  >
+                    {expandedSections[section.id] ? "Collapse" : "Expand"}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-white hover:text-white hover:bg-blue-700"
+                    onClick={() => removeSection(section.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => toggleSection(section.id)}
-                >
-                  {expandedSections[section.id] ? "Collapse" : "Expand"}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => removeSection(section.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+              <div className="mt-2 text-sm text-gray-500">
+                Section Type: {section.type}
               </div>
             </div>
 
@@ -830,6 +860,9 @@ const DailyMentionsPage = () => {
                             placeholder="News content..."
                             rows={4}
                           />
+                          <div className="text-xs text-gray-500 mt-1">
+                            Format content as shown in the template: Start with headline, followed by content, then add sentiment and reporter at the end.
+                          </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -869,7 +902,7 @@ const DailyMentionsPage = () => {
                               id={`page-${mention.id}`}
                               value={mention.publicationPage || ''}
                               onChange={(e) => updateMention(section.id, mention.id, 'publicationPage', e.target.value)}
-                              placeholder="Page Number"
+                              placeholder="Page Number (e.g., Page 39)"
                             />
                           </div>
                           <div>
@@ -890,7 +923,7 @@ const DailyMentionsPage = () => {
                               <Input
                                 value={link.url}
                                 onChange={(e) => updateLink(section.id, mention.id, linkIndex, e.target.value)}
-                                placeholder="URL (e.g., https://example.com)"
+                                placeholder="URL (e.g., Punchng.com)"
                               />
                               <Button
                                 variant="ghost"
@@ -909,7 +942,7 @@ const DailyMentionsPage = () => {
                             onClick={() => addLink(section.id, mention.id)}
                             className="mt-2"
                           >
-                            <PlusCircle className="h-4 w-4 mr-2" />
+                            <Link className="h-4 w-4 mr-2" />
                             Add Link
                           </Button>
                         </div>
@@ -931,13 +964,65 @@ const DailyMentionsPage = () => {
           </Card>
         ))}
 
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <Button
+            variant="outline"
+            onClick={() => addSection('COMPETITORS')}
+            className="w-full"
+          >
+            <PlusCircle className="h-4 w-4 mr-2" />
+            Add Competitors Section
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => addSection('INDUSTRY')}
+            className="w-full"
+          >
+            <PlusCircle className="h-4 w-4 mr-2" />
+            Add Industry Section
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => addSection('SUBSIDIARIES')}
+            className="w-full"
+          >
+            <PlusCircle className="h-4 w-4 mr-2" />
+            Add Subsidiaries Section
+          </Button>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Button
+            variant="outline"
+            onClick={() => addSection('PHOTO')}
+            className="w-full"
+          >
+            <PlusCircle className="h-4 w-4 mr-2" />
+            Add Photo Section
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => addSection('ADVERT')}
+            className="w-full"
+          >
+            <PlusCircle className="h-4 w-4 mr-2" />
+            Add Advert Section
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => addSection('PASSIVE')}
+            className="w-full"
+          >
+            <PlusCircle className="h-4 w-4 mr-2" />
+            Add Passive Section
+          </Button>
+        </div>
         <Button
           variant="outline"
-          onClick={addSection}
-          className="w-full"
+          onClick={() => addSection('OTHER')}
+          className="w-full mt-4"
         >
           <PlusCircle className="h-4 w-4 mr-2" />
-          Add New Section
+          Add Other Section
         </Button>
 
         {/* Footer Note */}
@@ -987,7 +1072,7 @@ const DailyMentionsPage = () => {
                 <div key={section.id} className="mt-2">
                   {/* Section Header */}
                   <div style={{ backgroundColor: headerColor }} className="p-2">
-                    <h2 className="text-white font-bold">{section.title || 'SECTION TITLE'}</h2>
+                    <h2 className="text-white font-bold">{section.title || section.type}</h2>
                   </div>
 
                   {/* Section Content */}
@@ -1003,7 +1088,7 @@ const DailyMentionsPage = () => {
                               link.url ? (
                                 <span key={lIndex}>
                                   <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">
-                                    {link.url.split('/')[2] || link.url}
+                                    {link.url}
                                   </a>
                                   {lIndex < mention.links.length - 1 ? ' / ' : ''}
                                 </span>
@@ -1015,6 +1100,8 @@ const DailyMentionsPage = () => {
                         <p className="text-sm mt-1">
                           <span className="font-semibold">Sentiment:</span> {mention.sentiment || 'N/A'}<br />
                           <span className="font-semibold">Reporter:</span> {mention.reporter || 'Not specified'}
+                          {mention.publicationPage && <><br /><span className="font-semibold">Page:</span> {mention.publicationPage}</>}
+                          {mention.publicationDate && <><br /><span className="font-semibold">Date:</span> {mention.publicationDate}</>}
                         </p>
                       </div>
                     ))}
