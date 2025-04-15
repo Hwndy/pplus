@@ -31,6 +31,7 @@ import PublicationsPage from './dashboard/PublicationsPage';
 import PlacementPage from './dashboard/PlacementPage';
 import EditorialPage from './dashboard/EditorialPage';
 import CreateEditorialPage from './dashboard/CreateEditorialPage';
+import EditorialBatchUploadPage from './dashboard/EditorialBatchUploadPage';
 import DailyMentionsPage from './dashboard/DailyMentionsPage';
 import DailyMentionsViewPage from './dashboard/DailyMentionsViewPage';
 
@@ -107,6 +108,9 @@ const Dashboard = () => {
         <Route path="editorial/create" element={
           ['admin', 'analyst'].includes(user.role) ? <CreateEditorialPage /> : <Navigate to="/dashboard" replace />
         } />
+        <Route path="editorial/batch-upload" element={
+          ['admin', 'analyst'].includes(user.role) ? <EditorialBatchUploadPage /> : <Navigate to="/dashboard" replace />
+        } />
 
         <Route path="channels" element={
           user.role === 'admin' ? <div className="p-6"><h1 className="text-2xl font-bold">Channels</h1></div> : <Navigate to="/dashboard" replace />
@@ -152,13 +156,13 @@ const Dashboard = () => {
 
         {/* Supervisor routes */}
         <Route path="review" element={
-          user.role === 'supervisor' ? <ReviewPage /> : <Navigate to="/dashboard" replace />
+          ['admin', 'supervisor'].includes(user.role) ? <ReviewPage /> : <Navigate to="/dashboard" replace />
         } />
         <Route path="content-review" element={
-          user.role === 'supervisor' ? <ContentReviewListPage /> : <Navigate to="/dashboard" replace />
+          ['admin', 'supervisor'].includes(user.role) ? <ContentReviewListPage /> : <Navigate to="/dashboard" replace />
         } />
         <Route path="content-review/:contentType/:id" element={
-          user.role === 'supervisor' ? <ContentReviewPage /> : <Navigate to="/dashboard" replace />
+          ['admin', 'supervisor'].includes(user.role) ? <ContentReviewPage /> : <Navigate to="/dashboard" replace />
         } />
 
         {/* Analyst routes */}

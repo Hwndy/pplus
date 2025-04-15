@@ -1,12 +1,25 @@
 
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { DataCard } from '@/components/ui/DataCard';
 import { Stat } from '@/components/ui/Stat';
 import { DataTable } from '@/components/ui/DataTable';
-import { dashboardSummary, users, dataParameters, clients } from '@/utils/mockData';
-import { Users, Settings, BarChart, AlertTriangle } from 'lucide-react';
+import { dashboardSummary, users, dataParameters, clients, allDataEntries } from '@/utils/mockData';
+import {
+  Users, Settings, BarChart, AlertTriangle, CheckCircle, XCircle,
+  FileText, Newspaper, Target, Share2, LineChart, Zap, CheckSquare,
+  FileInput, ChevronDown, ClipboardList, Eye, AlertCircle
+} from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { ColumnDef } from '@tanstack/react-table';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
@@ -49,13 +62,13 @@ const userColumns: ColumnDef<any>[] = [
 ];
 
 export function AdminDashboard() {
-  const [selectedSection, setSelectedSection] = useState<'overview' | 'users' | 'parameters'>('overview');
-  
+  const [selectedSection, setSelectedSection] = useState<'overview' | 'users' | 'parameters' | 'content-review' | 'data-entry'>('overview');
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-        <div className="flex space-x-2">
+        <div className="flex flex-wrap gap-2">
           <button
             className={`px-4 py-2 rounded-md transition-colors ${
               selectedSection === 'overview'
@@ -85,6 +98,26 @@ export function AdminDashboard() {
             onClick={() => setSelectedSection('parameters')}
           >
             Parameters
+          </button>
+          <button
+            className={`px-4 py-2 rounded-md transition-colors ${
+              selectedSection === 'content-review'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground'
+            }`}
+            onClick={() => setSelectedSection('content-review')}
+          >
+            Content Review
+          </button>
+          <button
+            className={`px-4 py-2 rounded-md transition-colors ${
+              selectedSection === 'data-entry'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground'
+            }`}
+            onClick={() => setSelectedSection('data-entry')}
+          >
+            Data Entry
           </button>
         </div>
       </div>
@@ -120,6 +153,48 @@ export function AdminDashboard() {
                 subtitle="All systems operational"
                 trend={0}
               />
+            </DataCard>
+          </div>
+
+          <h2 className="text-xl font-semibold mt-8">Content Management</h2>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+            <DataCard title="Pending Review" variant="glass" icon={<AlertCircle size={24} />}>
+              <Stat
+                label="Content Pending Review"
+                value={allDataEntries.filter(e => e.status === 'pending').length}
+                subtitle="Awaiting approval"
+              />
+            </DataCard>
+            <DataCard title="Approved Content" variant="glass" icon={<CheckCircle size={24} />}>
+              <Stat
+                label="Content Approved"
+                value={allDataEntries.filter(e => e.status === 'approved').length}
+                subtitle="Successfully processed"
+              />
+            </DataCard>
+            <DataCard title="Rejected Content" variant="glass" icon={<XCircle size={24} />}>
+              <Stat
+                label="Content Rejected"
+                value={allDataEntries.filter(e => e.status === 'rejected').length}
+                subtitle="Require attention"
+              />
+            </DataCard>
+
+            <DataCard title="Quick Actions" variant="glass" icon={<Zap size={24} />}>
+              <div className="p-4 flex flex-col gap-2">
+                <Button asChild variant="outline" className="w-full">
+                  <Link to="/dashboard/content-review">
+                    <Eye className="mr-2 h-4 w-4" />
+                    Review Content
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" className="w-full">
+                  <Link to="/dashboard/editorial/create">
+                    <Newspaper className="mr-2 h-4 w-4" />
+                    Create Content
+                  </Link>
+                </Button>
+              </div>
             </DataCard>
           </div>
 
@@ -216,6 +291,169 @@ export function AdminDashboard() {
               ]}
               data={dataParameters}
             />
+          </DataCard>
+        </div>
+      )}
+
+      {/* Content Review Section - Supervisor Functionality */}
+      {selectedSection === 'content-review' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <DataCard title="Pending Review" variant="glass" icon={<AlertTriangle size={24} />}>
+              <Stat
+                label="Content Pending Review"
+                value={allDataEntries.filter(e => e.status === 'pending').length}
+                subtitle="Awaiting approval"
+              />
+            </DataCard>
+            <DataCard title="Approved Content" variant="glass" icon={<CheckSquare size={24} />}>
+              <Stat
+                label="Content Approved"
+                value={allDataEntries.filter(e => e.status === 'approved').length}
+                subtitle="Successfully processed"
+              />
+            </DataCard>
+            <DataCard title="Rejected Content" variant="glass" icon={<AlertTriangle size={24} />}>
+              <Stat
+                label="Content Rejected"
+                value={allDataEntries.filter(e => e.status === 'rejected').length}
+                subtitle="Sent back for revision"
+              />
+            </DataCard>
+          </div>
+
+          <DataCard
+            title="Content Awaiting Review"
+            description="Review and approve content submitted by analysts"
+            variant="glass"
+          >
+            <div className="p-4">
+              <div className="flex flex-col gap-4">
+                <Button asChild className="w-full md:w-auto">
+                  <Link to="/dashboard/content-review">
+                    <Eye className="mr-2 h-4 w-4" />
+                    View All Content for Review
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </DataCard>
+        </div>
+      )}
+
+      {/* Data Entry Section - Analyst Functionality */}
+      {selectedSection === 'data-entry' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+            <DataCard title="Pending Review" variant="glass" icon={<AlertCircle size={24} />}>
+              <Stat
+                label="Entries Pending Review"
+                value={allDataEntries.filter(e => e.status === 'pending').length}
+                subtitle="Awaiting approval"
+              />
+            </DataCard>
+            <DataCard title="Approved Entries" variant="glass" icon={<CheckCircle size={24} />}>
+              <Stat
+                label="Entries Approved"
+                value={allDataEntries.filter(e => e.status === 'approved').length}
+                subtitle="Successfully validated"
+              />
+            </DataCard>
+            <DataCard title="Rejected Entries" variant="glass" icon={<XCircle size={24} />}>
+              <Stat
+                label="Entries Rejected"
+                value={allDataEntries.filter(e => e.status === 'rejected').length}
+                subtitle="Require attention"
+              />
+            </DataCard>
+
+            <DataCard title="Quick Actions" variant="glass" icon={<Zap size={24} />}>
+              <div className="p-4 flex flex-col gap-2">
+                <Button asChild variant="outline" className="w-full">
+                  <Link to="/dashboard/daily-mentions">
+                    <FileText className="mr-2 h-4 w-4" />
+                    Daily Mentions
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" className="w-full">
+                  <Link to="/dashboard/editorial">
+                    <Newspaper className="mr-2 h-4 w-4" />
+                    Editorial
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" className="w-full">
+                  <Link to="/dashboard/swot-mentions">
+                    <Target className="mr-2 h-4 w-4" />
+                    SWOT Mentions
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" className="w-full">
+                  <Link to="/dashboard/social-media-mentions">
+                    <Share2 className="mr-2 h-4 w-4" />
+                    Social Media
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" className="w-full">
+                  <Link to="/dashboard/outcome-insights">
+                    <LineChart className="mr-2 h-4 w-4" />
+                    Outcome & Insights
+                  </Link>
+                </Button>
+              </div>
+            </DataCard>
+          </div>
+
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-semibold">Create New Content</h2>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button>
+                  <FileInput className="mr-2 h-4 w-4" />
+                  Create New <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <Link to="/dashboard/editorial/create" className="w-full cursor-pointer">
+                    <Newspaper className="mr-2 h-4 w-4" />
+                    New Editorial
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/dashboard/daily-mentions" className="w-full cursor-pointer">
+                    <FileText className="mr-2 h-4 w-4" />
+                    New Daily Mention
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/dashboard/swot-mentions" className="w-full cursor-pointer">
+                    <Target className="mr-2 h-4 w-4" />
+                    New SWOT Mention
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/dashboard/outcome-insights" className="w-full cursor-pointer">
+                    <LineChart className="mr-2 h-4 w-4" />
+                    New Outcome & Insight
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          <DataCard
+            title="Recent Submissions"
+            description="View and manage recently submitted data entries"
+            variant="glass"
+          >
+            <div className="p-4">
+              <Button asChild className="w-full md:w-auto">
+                <Link to="/dashboard/submissions">
+                  <ClipboardList className="mr-2 h-4 w-4" />
+                  View All Submissions
+                </Link>
+              </Button>
+            </div>
           </DataCard>
         </div>
       )}

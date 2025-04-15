@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -112,7 +112,8 @@ const CreateEditorialPage = () => {
   // For demo purposes, we'll use a hardcoded role
   const userRole = 'admin'; // Options: 'analyst', 'supervisor', 'admin'
 
-  const initialFormData: Editorial = location.state?.editorialData || {
+  // Default initial form data
+  const defaultFormData: Editorial = {
     id: Date.now(),
     date: new Date().toISOString().split('T')[0],
     company: '',
@@ -143,12 +144,105 @@ const CreateEditorialPage = () => {
     adminNote: '',
   };
 
+  // Generate a unique session key for this form
+  const getSessionKey = () => {
+    // If editing, use the editorial ID to ensure we don't mix up different editorials
+    if (location.state?.editorialData) {
+      return `editorial_form_${location.state.editorialData.id}`;
+    }
+    // For new editorials, use a consistent key
+    return 'editorial_form_new';
+  };
+
+  const sessionKey = getSessionKey();
+
+  // Initialize form data from location state, session storage, or default
+  const getInitialFormData = (): Editorial => {
+    // If we're in edit mode, use the provided editorial data
+    if (location.state?.editorialData) {
+      return location.state.editorialData;
+    }
+
+    // Try to get data from session storage
+    const savedData = sessionStorage.getItem(sessionKey);
+    if (savedData) {
+      try {
+        const parsedData = JSON.parse(savedData);
+        // If we have saved editorials, return them
+        if (parsedData.editorials && parsedData.editorials.length > 0) {
+          return parsedData.editorials[0];
+        }
+      } catch (error) {
+        console.error('Error parsing saved editorial data:', error);
+      }
+    }
+
+    // Fall back to default data
+    return defaultFormData;
+  };
+
+  const initialFormData = getInitialFormData();
+
+  // Initialize state
   const [editorials, setEditorials] = useState<Editorial[]>([initialFormData]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [dates, setDates] = useState<(Date | undefined)[]>(
     [initialFormData.date ? new Date(initialFormData.date) : new Date()]
   );
+
+  // Load saved data from session storage
+  useEffect(() => {
+    const savedData = sessionStorage.getItem(sessionKey);
+    if (savedData && !location.state?.editorialData) {
+      try {
+        const parsedData = JSON.parse(savedData);
+        if (parsedData.editorials && parsedData.editorials.length > 0) {
+          setEditorials(parsedData.editorials);
+
+          // Reconstruct dates array from editorials
+          const newDates = parsedData.editorials.map((editorial: Editorial) =>
+            editorial.date ? new Date(editorial.date) : undefined
+          );
+          setDates(newDates);
+
+          // Set active index (default to 0 if not saved)
+          if (parsedData.activeIndex !== undefined) {
+            setActiveIndex(parsedData.activeIndex);
+          }
+
+          toast({
+            title: "Data Restored",
+            description: "Your previously entered data has been restored."
+          });
+        }
+      } catch (error) {
+        console.error('Error loading saved editorial data:', error);
+      }
+    }
+  }, [sessionKey, location.state, toast]);
+
+  // Save data to session storage whenever it changes
+  useEffect(() => {
+    // Save current state to session storage
+    const saveToSessionStorage = () => {
+      const dataToSave = {
+        editorials,
+        activeIndex,
+        lastUpdated: new Date().toISOString()
+      };
+      sessionStorage.setItem(sessionKey, JSON.stringify(dataToSave));
+    };
+
+    // Save data when it changes
+    saveToSessionStorage();
+
+    // Also set up an interval to save periodically (every 10 seconds)
+    const saveInterval = setInterval(saveToSessionStorage, 10000);
+
+    // Clean up interval on unmount
+    return () => clearInterval(saveInterval);
+  }, [editorials, activeIndex, sessionKey]);
 
   // Handle changes to form inputs for the active editorial
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -262,6 +356,10 @@ const CreateEditorialPage = () => {
       return;
     }
 
+    // Clear session storage after successful submission
+    // This prevents old data from being loaded if the user creates a new editorial later
+    sessionStorage.removeItem(sessionKey);
+
     navigate('/dashboard/editorial', {
       state: {
         savedEditorials: editorials,
@@ -279,7 +377,20 @@ const CreateEditorialPage = () => {
 
   // Cancel and go back
   const handleCancel = () => {
-    navigate('/dashboard/editorial');
+    // Check if there are unsaved changes by comparing with the initial data
+    const hasChanges = JSON.stringify(editorials) !== JSON.stringify([initialFormData]);
+
+    if (hasChanges) {
+      // Show confirmation dialog
+      if (window.confirm('You have unsaved changes. Are you sure you want to leave?')) {
+        // User confirmed, navigate away
+        navigate('/dashboard/editorial');
+      }
+      // If user cancels, stay on the page
+    } else {
+      // No changes, navigate away directly
+      navigate('/dashboard/editorial');
+    }
   };
 
   // Determine if a field should be read-only based on user role

@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -33,7 +33,24 @@ import {
 } from '@/types/dailyMentions';
 
 const DailyMentionsPage = () => {
-  const [report, setReport] = useState<DailyMediaReport>(createEmptyReport());
+  // Session storage key for daily mentions form
+  const sessionKey = 'daily_mentions_form_data';
+
+  // Initialize state with data from session storage or create empty report
+  const getInitialReport = (): DailyMediaReport => {
+    try {
+      const savedData = sessionStorage.getItem(sessionKey);
+      if (savedData) {
+        const parsedData = JSON.parse(savedData);
+        return parsedData.report;
+      }
+    } catch (error) {
+      console.error('Error loading saved daily mentions data:', error);
+    }
+    return createEmptyReport();
+  };
+
+  const [report, setReport] = useState<DailyMediaReport>(getInitialReport());
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [expandedMentions, setExpandedMentions] = useState<Record<string, boolean>>({});
   const [showPreview, setShowPreview] = useState(false);
@@ -42,6 +59,59 @@ const DailyMentionsPage = () => {
   const [, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const { toast } = useToast();
+
+  // Load expanded sections and mentions from session storage
+  useEffect(() => {
+    try {
+      const savedData = sessionStorage.getItem(sessionKey);
+      if (savedData) {
+        const parsedData = JSON.parse(savedData);
+        if (parsedData.expandedSections) {
+          setExpandedSections(parsedData.expandedSections);
+        }
+        if (parsedData.expandedMentions) {
+          setExpandedMentions(parsedData.expandedMentions);
+        }
+        if (parsedData.headerColor) {
+          setHeaderColor(parsedData.headerColor);
+        }
+        if (parsedData.logoPreview) {
+          setLogoPreview(parsedData.logoPreview);
+        }
+
+        toast({
+          title: "Data Restored",
+          description: "Your previously entered data has been restored."
+        });
+      }
+    } catch (error) {
+      console.error('Error loading saved daily mentions data:', error);
+    }
+  }, [toast]);
+
+  // Save data to session storage whenever it changes
+  useEffect(() => {
+    const saveToSessionStorage = () => {
+      const dataToSave = {
+        report,
+        expandedSections,
+        expandedMentions,
+        headerColor,
+        logoPreview,
+        lastUpdated: new Date().toISOString()
+      };
+      sessionStorage.setItem(sessionKey, JSON.stringify(dataToSave));
+    };
+
+    // Save data when it changes
+    saveToSessionStorage();
+
+    // Also set up an interval to save periodically (every 10 seconds)
+    const saveInterval = setInterval(saveToSessionStorage, 10000);
+
+    // Clean up interval on unmount
+    return () => clearInterval(saveInterval);
+  }, [report, expandedSections, expandedMentions, headerColor, logoPreview]);
 
   // Filter states
   const [showFilters, setShowFilters] = useState(false);
@@ -360,6 +430,10 @@ const DailyMentionsPage = () => {
   const sendReport = () => {
     // This would typically involve sending the data to an API or email service
     console.log('Sending report:', report);
+
+    // Clear session storage after successful submission
+    sessionStorage.removeItem(sessionKey);
+
     toast({
       title: "Report Sent",
       description: "Your daily media highlights report has been sent successfully.",

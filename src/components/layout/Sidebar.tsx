@@ -38,6 +38,8 @@ import {
   Menu,
   ArrowLeft,
   ArrowRight,
+  Shield,
+  PenTool,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -170,9 +172,41 @@ export function Sidebar({ className, isOpen = true, onClose }: SidebarProps) {
   // Define the navigation items based on user role
   let navigation = navigationItems;
 
-  // For admin users, use the admin items and report modules
+  // For admin users, include all functionality (admin, supervisor, and analyst)
   if (user.role === 'admin') {
-    navigation = [...adminItems, ...reportModules];
+    // Group navigation items by role
+    const adminItems: NavItem[] = [
+      { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+      { name: 'Users', href: '/dashboard/users', icon: Users },
+      { name: 'Companies', href: '/dashboard/companies', icon: Building2 },
+      { name: 'Publications', href: '/dashboard/publications', icon: BookOpenText },
+      { name: 'Parameters', href: '/dashboard/parameters', icon: Settings },
+      { name: 'Reports', href: '/dashboard/reports', icon: FileText },
+      { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart },
+    ];
+
+    const supervisorItems: NavItem[] = [
+      { name: 'Content Review', href: '/dashboard/content-review', icon: ClipboardCheck },
+      { name: 'Review Entries', href: '/dashboard/review', icon: CheckSquare },
+    ];
+
+    const analystItems: NavItem[] = [
+      { name: 'Editorial', href: '/dashboard/editorial', icon: Newspaper },
+      { name: 'Daily Mentions', href: '/dashboard/daily-mentions', icon: FileText },
+      { name: 'SWOT Mentions', href: '/dashboard/swot-mentions', icon: Target },
+      { name: 'Social Media Mentions', href: '/dashboard/social-media-mentions', icon: Share2 },
+      { name: 'Outcome & Insights', href: '/dashboard/outcome-insights', icon: LineChart },
+    ];
+
+    // Combine all items in the desired order
+    const adminFullItems: NavItem[] = [
+      ...adminItems,
+      { name: 'Supervisor Features', href: '', icon: Shield, disabled: true },
+      ...supervisorItems,
+      { name: 'Analyst Features', href: '', icon: PenTool, disabled: true },
+      ...analystItems,
+    ];
+    navigation = adminFullItems;
   }
   // For supervisor users, use the supervisor-specific items
   else if (user.role === 'supervisor') {

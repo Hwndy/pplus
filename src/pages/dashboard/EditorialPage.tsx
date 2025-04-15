@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Pencil, Trash2, FileSpreadsheet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/DataTable';
 import { toast } from 'sonner';
@@ -174,13 +174,13 @@ const EditorialPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [editorials, setEditorials] = useState<Editorial[]>(mockEditorials);
-  
+
   useEffect(() => {
     if (location.state?.savedEditorials) {
       if (location.state.isEditMode) {
-        const updatedEditorials = editorials.map(editorial => 
-          editorial.id === location.state.savedEditorials[0].id 
-            ? location.state.savedEditorials[0] 
+        const updatedEditorials = editorials.map(editorial =>
+          editorial.id === location.state.savedEditorials[0].id
+            ? location.state.savedEditorials[0]
             : editorial
         );
         setEditorials(updatedEditorials);
@@ -219,7 +219,7 @@ const EditorialPage = () => {
       cell: ({ row }: any) => {
         const status = row.getValue('status') || 'Pending';
         let statusColor = '';
-        
+
         switch(status) {
           case 'Approved':
             statusColor = 'bg-green-100 text-green-800';
@@ -231,7 +231,7 @@ const EditorialPage = () => {
           default:
             statusColor = 'bg-yellow-100 text-yellow-800';
         }
-        
+
         return (
           <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColor}`}>
             {status}
@@ -244,19 +244,19 @@ const EditorialPage = () => {
       header: 'Actions',
       cell: ({ row }: any) => {
         const editorial = row.original;
-        
+
         return (
           <div className="flex space-x-2">
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               size="icon"
               onClick={() => handleEdit(editorial)}
             >
               <Pencil className="h-4 w-4" />
             </Button>
-            
-            <Button 
-              variant="ghost" 
+
+            <Button
+              variant="ghost"
               size="icon"
               onClick={() => handleDelete(editorial.id)}
             >
@@ -274,8 +274,8 @@ const EditorialPage = () => {
   };
 
   const handleEdit = (editorial: Editorial) => {
-    navigate('/dashboard/editorial/create', { 
-      state: { editorialData: editorial } 
+    navigate('/dashboard/editorial/create', {
+      state: { editorialData: editorial }
     });
   };
 
@@ -283,23 +283,38 @@ const EditorialPage = () => {
     navigate('/dashboard/editorial/create');
   };
 
+  // Navigate to batch upload page
+  const handleBatchUpload = () => {
+    navigate('/dashboard/editorial/batch-upload');
+  };
+
   return (
     <div className="h-full flex flex-col overflow-auto">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Editorial</h1>
-        <Button 
-          onClick={handleCreate}
-          className="bg-indigo-950"
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Create Editorial
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={handleBatchUpload}
+          >
+            <FileSpreadsheet className="mr-2 h-4 w-4" />
+            Batch Upload
+          </Button>
+
+          <Button
+            onClick={handleCreate}
+            className="bg-indigo-950"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Create Editorial
+          </Button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-auto">
-        <DataTable 
-          columns={columns} 
-          data={editorials} 
+        <DataTable
+          columns={columns}
+          data={editorials}
         />
       </div>
     </div>
