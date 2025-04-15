@@ -1,5 +1,5 @@
 
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import { createContext, useState, useContext, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -64,7 +64,7 @@ const DEMO_USERS: User[] = [
 ];
 
 // Create a provider component
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
@@ -88,14 +88,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     checkAuth();
   }, []);
 
-  // Login function
-  const login = async (email: string, password: string) => {
+  // Login function - memoized to prevent unnecessary re-renders
+  const login = useCallback(async (email: string, password: string) => {
     setIsLoading(true);
     try {
       // For demo, we'll authenticate against our sample users
       // In a real app, this would be an API call
       const foundUser = DEMO_USERS.find(u => u.email.toLowerCase() === email.toLowerCase());
-      
+
       if (foundUser && password === 'password') { // Simple password check for demo
         setUser(foundUser);
         localStorage.setItem('user', JSON.stringify(foundUser));
@@ -110,18 +110,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [navigate]);
 
-  // Logout function
-  const logout = () => {
+  // Logout function - memoized to prevent unnecessary re-renders
+  const logout = useCallback(() => {
     setUser(null);
     localStorage.removeItem('user');
     toast.info('You have been logged out');
     navigate('/');
-  };
+  }, [navigate]);
+
+  // Memoize the context value to prevent unnecessary re-renders
+  const contextValue = useMemo(() => ({
+    user,
+    isAuthenticated: !!user,
+    isLoading,
+    login,
+    logout
+  }), [user, isLoading, login, logout]);
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, logout }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
