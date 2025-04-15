@@ -5,24 +5,30 @@ import { Stat } from '@/components/ui/Stat';
 import { DataTable } from '@/components/ui/DataTable';
 import { allDataEntries, clients, dataParameters, mediaChannels } from '@/utils/mockData';
 import { ColumnDef } from '@tanstack/react-table';
-import { FileInput, Save, SendHorizontal, CheckCircle, XCircle, AlertCircle, FileText, Newspaper } from 'lucide-react';
+import { FileInput, Save, SendHorizontal, CheckCircle, XCircle, AlertCircle, FileText, Newspaper, Zap, Target, Share2, LineChart, ChevronDown, ClipboardList } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
 } from '@/components/ui/dialog';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -64,7 +70,7 @@ export function AnalystDashboard() {
   const [mySubmissions, setMySubmissions] = useState(
     allDataEntries.filter(entry => entry.analystId === '3')
   );
-  
+
   // New entry form state
   const [newEntry, setNewEntry] = useState({
     clientId: '',
@@ -103,14 +109,14 @@ export function AnalystDashboard() {
     // In a real app, we'd make an API call here
     // For demo, we'll just update the local state
     setMySubmissions([entry, ...mySubmissions]);
-    
-    toast.success(asDraft 
-      ? 'Entry saved as draft' 
+
+    toast.success(asDraft
+      ? 'Entry saved as draft'
       : 'Entry submitted successfully for review'
     );
-    
+
     setShowEntryDialog(false);
-    
+
     // Reset form
     setNewEntry({
       clientId: '',
@@ -180,16 +186,50 @@ export function AnalystDashboard() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Analyst Dashboard</h1>
         <div className="flex gap-2">
-          <Button asChild>
-            <Link to="/dashboard/daily-mentions/create">
-              <FileInput className="mr-2 h-4 w-4" />
-              New Data Entry
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button>
+                <FileInput className="mr-2 h-4 w-4" />
+                Create New <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link to="/dashboard/editorial/create" className="w-full cursor-pointer">
+                  <Newspaper className="mr-2 h-4 w-4" />
+                  New Editorial
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/dashboard/daily-mentions" className="w-full cursor-pointer">
+                  <FileText className="mr-2 h-4 w-4" />
+                  New Daily Mention
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/dashboard/swot-mentions" className="w-full cursor-pointer">
+                  <Target className="mr-2 h-4 w-4" />
+                  New SWOT Mention
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/dashboard/outcome-insights" className="w-full cursor-pointer">
+                  <LineChart className="mr-2 h-4 w-4" />
+                  New Outcome & Insight
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button asChild variant="outline">
+            <Link to="/dashboard/submissions">
+              <ClipboardList className="mr-2 h-4 w-4" />
+              My Submissions
             </Link>
           </Button>
         </div>
       </div>
-      
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <DataCard title="Pending Review" variant="glass" icon={<AlertCircle size={24} />}>
           <Stat
             label="Entries Pending Review"
@@ -211,33 +251,45 @@ export function AnalystDashboard() {
             subtitle="Require attention"
           />
         </DataCard>
-        
-        {/* New cards for Daily Mentions and Editorial links */}
-        <DataCard title="Daily Mentions" variant="glass" icon={<FileText size={24} />}>
-          <div className="p-4 flex flex-col items-center">
-            <Button asChild variant="outline" className="w-full mt-2">
+
+        <DataCard title="Quick Actions" variant="glass" icon={<Zap size={24} />}>
+          <div className="p-4 flex flex-col gap-2">
+            <Button asChild variant="outline" className="w-full">
               <Link to="/dashboard/daily-mentions">
                 <FileText className="mr-2 h-4 w-4" />
-                View Reports
+                Daily Mentions
               </Link>
             </Button>
-          </div>
-        </DataCard>
-        
-        <DataCard title="Editorial" variant="glass" icon={<Newspaper size={24} />}>
-          <div className="p-4 flex flex-col items-center">
-            <Button asChild variant="outline" className="w-full mt-2">
+            <Button asChild variant="outline" className="w-full">
               <Link to="/dashboard/editorial">
                 <Newspaper className="mr-2 h-4 w-4" />
-                View Editorials
+                Editorial
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="w-full">
+              <Link to="/dashboard/swot-mentions">
+                <Target className="mr-2 h-4 w-4" />
+                SWOT Mentions
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="w-full">
+              <Link to="/dashboard/social-media-mentions">
+                <Share2 className="mr-2 h-4 w-4" />
+                Social Media
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="w-full">
+              <Link to="/dashboard/outcome-insights">
+                <LineChart className="mr-2 h-4 w-4" />
+                Outcome & Insights
               </Link>
             </Button>
           </div>
         </DataCard>
       </div>
 
-      <DataCard 
-        title="My Submissions" 
+      <DataCard
+        title="My Submissions"
         description="View and manage your submitted data entries"
         variant="glass"
       >
@@ -273,7 +325,7 @@ export function AnalystDashboard() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="parameter">Parameter</Label>
               <Select onValueChange={(value) => handleInputChange('parameterId', value)}>
@@ -289,7 +341,7 @@ export function AnalystDashboard() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="channel">Media Channel</Label>
               <Select onValueChange={(value) => handleInputChange('channelId', value)}>
@@ -305,7 +357,7 @@ export function AnalystDashboard() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="date">Date</Label>
@@ -316,7 +368,7 @@ export function AnalystDashboard() {
                   onChange={(e) => handleInputChange('date', e.target.value)}
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="value">Value</Label>
                 <Input

@@ -5,7 +5,7 @@ import { Stat } from '@/components/ui/Stat';
 import { DataTable } from '@/components/ui/DataTable';
 import { allDataEntries, clients, dataParameters, mediaChannels, users } from '@/utils/mockData';
 import { ColumnDef } from '@tanstack/react-table';
-import { BarChart, CheckSquare, AlertTriangle } from 'lucide-react';
+import { BarChart, CheckSquare, AlertTriangle, Eye } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -37,7 +37,10 @@ export function SupervisorDashboard() {
   const [pendingEntries, setPendingEntries] = useState(
     allDataEntries.filter(e => e.status === 'pending')
   );
+  const [approvedToday, setApprovedToday] = useState(5); // Mock data
+  const [rejectedToday, setRejectedToday] = useState(2); // Mock data
   const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [currentEntry, setCurrentEntry] = useState<any>(null);
 
@@ -67,6 +70,7 @@ export function SupervisorDashboard() {
     // In a real app, we'd make an API call here
     // For demo, we'll just update the local state
     setPendingEntries(pendingEntries.filter(e => e.id !== entry.id));
+    setApprovedToday(approvedToday + 1); // Increment approved count
   };
 
   // Handle reject dialog
@@ -74,6 +78,12 @@ export function SupervisorDashboard() {
     setCurrentEntry(entry);
     setRejectReason('');
     setShowRejectDialog(true);
+  };
+
+  // Handle details dialog
+  const openDetailsDialog = (entry: any) => {
+    setCurrentEntry(entry);
+    setShowDetailsDialog(true);
   };
 
   // Submit rejection
@@ -87,6 +97,7 @@ export function SupervisorDashboard() {
     // In a real app, we'd make an API call here
     // For demo, we'll just update the local state
     setPendingEntries(pendingEntries.filter(e => e.id !== currentEntry.id));
+    setRejectedToday(rejectedToday + 1); // Increment rejected count
     setShowRejectDialog(false);
   };
 
@@ -130,10 +141,30 @@ export function SupervisorDashboard() {
       header: 'Actions',
       cell: ({ row }) => (
         <div className="flex space-x-2">
-          <Button size="sm" onClick={() => handleApprove(row.original)}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => openDetailsDialog(row.original)}
+          >
+            <Eye className="mr-2 h-4 w-4" />
+            View Details
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="text-green-600 border-green-600 hover:bg-green-100 hover:text-green-700"
+            onClick={() => handleApprove(row.original)}
+          >
+            <CheckSquare className="mr-2 h-4 w-4" />
             Approve
           </Button>
-          <Button size="sm" variant="destructive" onClick={() => openRejectDialog(row.original)}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="text-red-600 border-red-600 hover:bg-red-100 hover:text-red-700"
+            onClick={() => openRejectDialog(row.original)}
+          >
+            <AlertTriangle className="mr-2 h-4 w-4" />
             Reject
           </Button>
         </div>
@@ -144,38 +175,34 @@ export function SupervisorDashboard() {
   return (
     <div className="space-y-6 animate-fade-in">
       <h1 className="text-2xl font-bold">Supervisor Dashboard</h1>
-      
+
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <DataCard title="Pending Entries" variant="glass" icon={<AlertTriangle size={24} />}>
           <Stat
             label="Entries Pending Review"
             value={pendingEntries.length}
-            subtitle="Submitted by analysts"
+            subtitle="Awaiting your approval"
           />
         </DataCard>
         <DataCard title="Approved Today" variant="glass" icon={<CheckSquare size={24} />}>
           <Stat
             label="Entries Approved Today"
-            value={5}
-            subtitle="Processed entries"
-            trend={20}
-            trendLabel="vs. yesterday"
+            value={approvedToday}
+            subtitle="Successfully processed"
           />
         </DataCard>
-        <DataCard title="Data Volume" variant="glass" icon={<BarChart size={24} />}>
+        <DataCard title="Rejected Today" variant="glass" icon={<AlertTriangle size={24} />}>
           <Stat
-            label="Total Data Points"
-            value={allDataEntries.length}
-            subtitle="Across all clients"
-            trend={8}
-            trendLabel="vs. last week"
+            label="Entries Rejected Today"
+            value={rejectedToday}
+            subtitle="Sent back for revision"
           />
         </DataCard>
       </div>
 
-      <DataCard 
-        title="Pending Data Review" 
-        description="Review and approve/reject data entries submitted by analysts"
+      <DataCard
+        title="Entries Awaiting Your Review"
+        description="Approve or reject data entries submitted by analysts"
         variant="glass"
       >
         <DataTable
@@ -191,24 +218,42 @@ export function SupervisorDashboard() {
           <DialogHeader>
             <DialogTitle>Reject Data Entry</DialogTitle>
             <DialogDescription>
-              Please provide a reason for rejecting this entry. This feedback will be sent to the analyst.
+              Please provide detailed feedback for the analyst on why this entry is being rejected and what needs to be corrected.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Client</p>
-              <p className="text-sm">{currentEntry ? getClientName(currentEntry.clientId) : ''}</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Client</p>
+                <p className="text-sm">{currentEntry ? getClientName(currentEntry.clientId) : ''}</p>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Parameter</p>
+                <p className="text-sm">{currentEntry ? getParameterName(currentEntry.parameterId) : ''}</p>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Channel</p>
+                <p className="text-sm">{currentEntry ? getChannelName(currentEntry.channelId) : ''}</p>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Value</p>
+                <p className="text-sm">{currentEntry?.value}</p>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Submitted By</p>
+                <p className="text-sm">{currentEntry ? getAnalystName(currentEntry.analystId) : ''}</p>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Date</p>
+                <p className="text-sm">{currentEntry?.date}</p>
+              </div>
             </div>
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Parameter</p>
-              <p className="text-sm">{currentEntry ? getParameterName(currentEntry.parameterId) : ''}</p>
-            </div>
-            <div className="space-y-2">
+            <div className="space-y-2 pt-2">
               <p className="text-sm font-medium">Rejection Reason</p>
               <Textarea
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
-                placeholder="Explain why this entry is being rejected..."
+                placeholder="Explain why this entry is being rejected and what corrections are needed..."
                 className="min-h-32"
               />
             </div>
@@ -220,6 +265,101 @@ export function SupervisorDashboard() {
             <Button variant="destructive" onClick={submitRejection}>
               Reject Entry
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Details Dialog */}
+      <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Entry Details</DialogTitle>
+            <DialogDescription>
+              Detailed information about this data entry
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {currentEntry && (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Client</p>
+                    <p className="text-sm font-semibold">{getClientName(currentEntry.clientId)}</p>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Parameter</p>
+                    <p className="text-sm font-semibold">{getParameterName(currentEntry.parameterId)}</p>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Channel</p>
+                    <p className="text-sm font-semibold">{getChannelName(currentEntry.channelId)}</p>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Value</p>
+                    <p className="text-sm font-semibold">{currentEntry.value}</p>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Date</p>
+                    <p className="text-sm font-semibold">{currentEntry.date}</p>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Status</p>
+                    <StatusBadge status={currentEntry.status} />
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-2">
+                  <p className="text-sm font-medium">Submitted By</p>
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
+                      {getAnalystName(currentEntry.analystId).charAt(0)}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold">{getAnalystName(currentEntry.analystId)}</p>
+                      <p className="text-xs text-muted-foreground">Analyst</p>
+                    </div>
+                  </div>
+                </div>
+
+                {currentEntry.comments && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Comments</p>
+                    <div className="p-3 bg-muted rounded-md">
+                      <p className="text-sm">{currentEntry.comments}</p>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+          <DialogFooter className="flex justify-between">
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowDetailsDialog(false)}>
+                Close
+              </Button>
+              <Button
+                variant="outline"
+                className="text-green-600 border-green-600 hover:bg-green-100 hover:text-green-700"
+                onClick={() => {
+                  setShowDetailsDialog(false);
+                  handleApprove(currentEntry);
+                }}
+              >
+                <CheckSquare className="mr-2 h-4 w-4" />
+                Approve
+              </Button>
+              <Button
+                variant="outline"
+                className="text-red-600 border-red-600 hover:bg-red-100 hover:text-red-700"
+                onClick={() => {
+                  setShowDetailsDialog(false);
+                  openRejectDialog(currentEntry);
+                }}
+              >
+                <AlertTriangle className="mr-2 h-4 w-4" />
+                Reject
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

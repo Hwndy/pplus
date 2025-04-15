@@ -14,6 +14,8 @@ import ReportsPage from './dashboard/ReportsPage';
 import AnalyticsPage from './dashboard/AnalyticsPage';
 import AuditPage from './dashboard/AuditPage';
 import ReviewPage from './dashboard/ReviewPage';
+import ContentReviewListPage from './dashboard/ContentReviewListPage';
+import ContentReviewPage from './dashboard/ContentReviewPage';
 import DataEntryPage from './dashboard/DataEntryPage';
 import SubmissionsPage from './dashboard/SubmissionsPage';
 import MediaReportsPage from './dashboard/MediaReportsPage';
@@ -23,6 +25,7 @@ import SwotAnalysisEntryPage from './dashboard/SwotAnalysisEntryPage';
 // import SwotMentionsPage from './dashboard/SwotMentionsPage';
 import { SwotMentionsPage } from './dashboard/SwotMentionsPage';
 import OutcomeInsightsPage from './dashboard/OutcomeInsightsPage';
+import SocialMediaMentionsPage from './dashboard/SocialMediaMentionsPage';
 import CompaniesPage from './dashboard/CompaniesPage';
 import PublicationsPage from './dashboard/PublicationsPage';
 import PlacementPage from './dashboard/PlacementPage';
@@ -68,7 +71,7 @@ const Dashboard = () => {
         <Route path="swot/create" element={
           ['admin', 'analyst'].includes(user.role) ? <SwotAnalysisEntryPage /> : <Navigate to="/dashboard" replace />
         } />
-        
+
         {/* Admin routes */}
         <Route path="users" element={
           user.role === 'admin' ? <UsersPage /> : <Navigate to="/dashboard" replace />
@@ -85,7 +88,7 @@ const Dashboard = () => {
         <Route path="audit" element={
           user.role === 'admin' ? <AuditPage /> : <Navigate to="/dashboard" replace />
         } />
-        
+
         {/* Additional admin routes based on the sidebar */}
         <Route path="companies" element={
           user.role === 'admin' ? <CompaniesPage /> : <Navigate to="/dashboard" replace />
@@ -96,15 +99,15 @@ const Dashboard = () => {
         <Route path="placement" element={
           user.role === 'admin' ? <PlacementPage /> : <Navigate to="/dashboard" replace />
         } />
-        
-        {/* Editorial routes - accessible to admin and analyst */}
+
+        {/* Editorial routes - accessible to admin, analyst, and supervisor */}
         <Route path="editorial" element={
-          ['admin', 'analyst'].includes(user.role) ? <EditorialPage /> : <Navigate to="/dashboard" replace />
+          ['admin', 'analyst', 'supervisor'].includes(user.role) ? <EditorialPage /> : <Navigate to="/dashboard" replace />
         } />
         <Route path="editorial/create" element={
           ['admin', 'analyst'].includes(user.role) ? <CreateEditorialPage /> : <Navigate to="/dashboard" replace />
         } />
-        
+
         <Route path="channels" element={
           user.role === 'admin' ? <div className="p-6"><h1 className="text-2xl font-bold">Channels</h1></div> : <Navigate to="/dashboard" replace />
         } />
@@ -114,7 +117,7 @@ const Dashboard = () => {
         <Route path="activities" element={
           user.role === 'admin' ? <div className="p-6"><h1 className="text-2xl font-bold">Activities</h1></div> : <Navigate to="/dashboard" replace />
         } />
-        
+
         {/* Report module routes */}
         <Route path="print-editorial" element={
           user.role === 'admin' ? <div className="p-6"><h1 className="text-2xl font-bold">Print Editorial</h1></div> : <Navigate to="/dashboard" replace />
@@ -125,38 +128,44 @@ const Dashboard = () => {
         <Route path="print-advert" element={
           user.role === 'admin' ? <div className="p-6"><h1 className="text-2xl font-bold">Print Advert</h1></div> : <Navigate to="/dashboard" replace />
         } />
-        
-        {/* Daily Mentions routes - accessible to admin and analyst */}
+
+        {/* Daily Mentions routes - accessible to admin, analyst, and supervisor */}
         <Route path="daily-mentions" element={
-          ['admin', 'analyst'].includes(user.role) ? <DailyMentionsViewPage /> : <Navigate to="/dashboard" replace />
+          ['admin', 'analyst', 'supervisor'].includes(user.role) ? <DailyMentionsPage /> : <Navigate to="/dashboard" replace />
         } />
-        <Route path="daily-mentions/create" element={
-          ['admin', 'analyst'].includes(user.role) ? <DailyMentionsPage /> : <Navigate to="/dashboard" replace />
+        <Route path="daily-mentions/view/:id" element={
+          ['admin', 'analyst', 'supervisor'].includes(user.role) ? <DailyMentionsViewPage /> : <Navigate to="/dashboard" replace />
         } />
-        
+
+        {/* SWOT Mentions routes - accessible to admin, analyst, and supervisor */}
         <Route path="swot-mentions" element={
-          ['admin', 'analyst'].includes(user.role) ? <SwotMentionsPage /> : <Navigate to="/dashboard" replace />
+          ['admin', 'analyst', 'supervisor'].includes(user.role) ? <SwotMentionsPage /> : <Navigate to="/dashboard" replace />
         } />
         <Route path="social-media-mentions" element={
-          user.role === 'admin' ? <div className="p-6"><h1 className="text-2xl font-bold">Social Media Mentions</h1></div> : <Navigate to="/dashboard" replace />
+          ['admin', 'analyst', 'supervisor'].includes(user.role) ? <SocialMediaMentionsPage /> : <Navigate to="/dashboard" replace />
         } />
+
+        {/* Outcome & Insights routes - accessible to admin, analyst, and supervisor */}
         <Route path="outcome-insights" element={
-          user.role === 'admin' ? <OutcomeInsightsPage /> : <Navigate to="/dashboard" replace />
+          ['admin', 'analyst', 'supervisor'].includes(user.role) ? <OutcomeInsightsPage /> : <Navigate to="/dashboard" replace />
         } />
-        
+
         {/* Supervisor routes */}
         <Route path="review" element={
           user.role === 'supervisor' ? <ReviewPage /> : <Navigate to="/dashboard" replace />
         } />
-        
-        {/* Analyst routes */}
-        <Route path="data-entry" element={
-          user.role === 'analyst' ? <DataEntryPage /> : <Navigate to="/dashboard" replace />
+        <Route path="content-review" element={
+          user.role === 'supervisor' ? <ContentReviewListPage /> : <Navigate to="/dashboard" replace />
         } />
+        <Route path="content-review/:contentType/:id" element={
+          user.role === 'supervisor' ? <ContentReviewPage /> : <Navigate to="/dashboard" replace />
+        } />
+
+        {/* Analyst routes */}
         <Route path="submissions" element={
           user.role === 'analyst' ? <SubmissionsPage /> : <Navigate to="/dashboard" replace />
         } />
-        
+
         {/* Client routes */}
         <Route path="media-reports" element={
           user.role === 'client' ? <MediaReportsPage /> : <Navigate to="/dashboard" replace />
@@ -164,7 +173,7 @@ const Dashboard = () => {
         <Route path="performance" element={
           user.role === 'client' ? <PerformancePage /> : <Navigate to="/dashboard" replace />
         } />
-        
+
         {/* Fallback - redirect to the main dashboard */}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

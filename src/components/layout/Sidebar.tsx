@@ -32,6 +32,7 @@ import {
   Globe,
   FileText as FileIcon,
   ClipboardList,
+  ClipboardCheck,
   History,
   ChevronLeft,
   Menu,
@@ -62,33 +63,33 @@ const adminItems: NavItem[] = [
 ];
 
 const reportModules: NavItem[] = [
-  { 
-    name: 'Daily Mentions', 
-    href: '/dashboard/daily-mentions', 
+  {
+    name: 'Daily Mentions',
+    href: '/dashboard/daily-mentions',
     icon: FileText,
     hasSubmenu: true
   },
-  { 
-    name: 'SWOT Mentions', 
-    href: '/dashboard/swot-mentions', 
+  {
+    name: 'SWOT Mentions',
+    href: '/dashboard/swot-mentions',
     icon: Target,
     hasSubmenu: true
   },
-  { 
-    name: 'Social Media Mentions', 
-    href: '/dashboard/social-media-mentions', 
+  {
+    name: 'Social Media Mentions',
+    href: '/dashboard/social-media-mentions',
     icon: Share2,
     hasSubmenu: true
   },
-  { 
-    name: 'Outcome & Insights', 
-    href: '/dashboard/outcome-insights', 
+  {
+    name: 'Outcome & Insights',
+    href: '/dashboard/outcome-insights',
     icon: LineChart,
     hasSubmenu: true
   },
-  { 
-    name: 'Audit Log', 
-    href: '/dashboard/audit-log', 
+  {
+    name: 'Audit Log',
+    href: '/dashboard/audit-log',
     icon: ClipboardList,
     hasSubmenu: true
   },
@@ -101,21 +102,21 @@ const navigationItems: NavItem[] = [
   { name: 'PR Drivers', href: '/dashboard/pr-drivers', icon: BarChart3 },
   { name: 'Brand Media Analysis', href: '/dashboard/brand-media', icon: PieChart },
   { name: 'Publication Analysis', href: '/dashboard/publication', icon: Newspaper },
-  { 
-    name: 'Social Media Analysis', 
-    href: '/dashboard/social-media', 
+  {
+    name: 'Social Media Analysis',
+    href: '/dashboard/social-media',
     icon: Share2,
     hasSubmenu: true
   },
-  { 
-    name: 'Competitive Analysis', 
-    href: '/dashboard/competitive', 
+  {
+    name: 'Competitive Analysis',
+    href: '/dashboard/competitive',
     icon: BarChart,
     hasSubmenu: true
   },
-  { 
-    name: 'Competitive PR Drivers', 
-    href: '/dashboard/competitive-pr', 
+  {
+    name: 'Competitive PR Drivers',
+    href: '/dashboard/competitive-pr',
     icon: Target,
     hasSubmenu: true
   },
@@ -129,6 +130,19 @@ const adminRoutes: NavItem[] = [
   { name: 'Reports', href: '/dashboard/reports', icon: FileText },
   { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart },
   { name: 'Audit Logs', href: '/dashboard/audit-logs', icon: ArrowRightLeft },
+];
+
+// Supervisor-specific navigation items
+const supervisorItems: NavItem[] = [
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Review Entries', href: '/dashboard/review', icon: CheckSquare },
+  { name: 'Content Review', href: '/dashboard/content-review', icon: ClipboardCheck },
+  { name: 'Editorial', href: '/dashboard/editorial', icon: Newspaper },
+  { name: 'Daily Mentions', href: '/dashboard/daily-mentions', icon: FileText },
+  { name: 'SWOT Mentions', href: '/dashboard/swot-mentions', icon: Target },
+  { name: 'Outcome & Insights', href: '/dashboard/outcome-insights', icon: LineChart },
+  { name: 'Reports', href: '/dashboard/reports', icon: FileText },
+  { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart },
 ];
 
 interface SidebarProps {
@@ -155,18 +169,27 @@ export function Sidebar({ className, isOpen = true, onClose }: SidebarProps) {
 
   // Define the navigation items based on user role
   let navigation = navigationItems;
-  
+
   // For admin users, use the admin items and report modules
   if (user.role === 'admin') {
     navigation = [...adminItems, ...reportModules];
   }
-  // For analyst users, include editorial and daily mentions access
+  // For supervisor users, use the supervisor-specific items
+  else if (user.role === 'supervisor') {
+    navigation = supervisorItems;
+  }
+  // For analyst users, include only essential pages
   else if (user.role === 'analyst') {
     const analystItems = [
+      { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
       { name: 'Editorial', href: '/dashboard/editorial', icon: Newspaper },
-      { name: 'Daily Mentions', href: '/dashboard/daily-mentions', icon: FileText }
+      { name: 'Daily Mentions', href: '/dashboard/daily-mentions', icon: FileText },
+      { name: 'SWOT Mentions', href: '/dashboard/swot-mentions', icon: Target },
+      { name: 'Social Media Mentions', href: '/dashboard/social-media-mentions', icon: Share2 },
+      { name: 'Outcome & Insights', href: '/dashboard/outcome-insights', icon: LineChart },
+      { name: 'Submissions', href: '/dashboard/submissions', icon: ClipboardList }
     ];
-    navigation = [...navigationItems, ...analystItems];
+    navigation = analystItems;
   }
 
   return (
@@ -189,7 +212,7 @@ export function Sidebar({ className, isOpen = true, onClose }: SidebarProps) {
             {navigation.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.href;
-              
+
               return (
                 <Tooltip key={item.name}>
                   <TooltipTrigger asChild>
@@ -198,8 +221,8 @@ export function Sidebar({ className, isOpen = true, onClose }: SidebarProps) {
                       className={cn(
                         "flex items-center rounded-md py-2 text-sm font-medium transition-all duration-300",
                         isCollapsed ? "justify-center !px-0" : "px-3 gap-3", // Center icon and remove padding
-                        isActive 
-                          ? "bg-indigo-950 text-white" 
+                        isActive
+                          ? "bg-indigo-950 text-white"
                           : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
                       )}
                       onClick={isMobile ? onClose : undefined}
@@ -210,16 +233,16 @@ export function Sidebar({ className, isOpen = true, onClose }: SidebarProps) {
                       )} />
                       <span className={isCollapsed ? "hidden" : "block"}>{item.name}</span>
                       {item.hasSubmenu && !isCollapsed && (
-                        <svg 
-                          xmlns="http://www.w3.org/2000/svg" 
-                          width="16" 
-                          height="16" 
-                          viewBox="0 0 24 24" 
-                          fill="none" 
-                          stroke="currentColor" 
-                          strokeWidth="2" 
-                          strokeLinecap="round" 
-                          strokeLinejoin="round" 
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
                           className="ml-auto"
                         >
                           <polyline points="9 18 15 12 9 6"></polyline>

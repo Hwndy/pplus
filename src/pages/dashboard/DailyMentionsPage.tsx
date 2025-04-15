@@ -1,12 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Send, Download, Eye, Image, Palette, PlusCircle, Trash2, Copy, RefreshCcw, FileText } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { Send, Download, Eye, PlusCircle, Trash2, Copy, RefreshCcw, Filter, X, CalendarIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Select,
@@ -22,7 +21,7 @@ import {
 } from '@/components/ui/popover';
 import { format } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
-import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 import {
   DailyMediaReport,
   MentionSection,
@@ -39,9 +38,78 @@ const DailyMentionsPage = () => {
   const [expandedMentions, setExpandedMentions] = useState<Record<string, boolean>>({});
   const [showPreview, setShowPreview] = useState(false);
   const [headerColor, setHeaderColor] = useState("#0066cc"); // Default blue color for headers
-  const [logoFile, setLogoFile] = useState<File | null>(null);
+  // We need to keep setLogoFile for the handleLogoChange function
+  const [, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const { toast } = useToast();
+
+  // Filter states
+  const [showFilters, setShowFilters] = useState(false);
+  const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
+  const [publicationFilter, setPublicationFilter] = useState<string>("");
+  const [companyFilter, setCompanyFilter] = useState<string>("");
+
+  // Extract unique publications and companies/brands from the report
+  const uniquePublications = useMemo(() => {
+    const publications = new Set<string>();
+    report.sections.forEach(section => {
+      section.mentions.forEach(mention => {
+        if (mention.publication) {
+          publications.add(mention.publication);
+        }
+      });
+    });
+    return Array.from(publications).sort();
+  }, [report.sections]);
+
+  const uniqueCompanies = useMemo(() => {
+    return Array.from(new Set(report.sections.map(section => section.title))).filter(Boolean).sort();
+  }, [report.sections]);
+
+  // Apply filters to get filtered sections
+  const filteredSections = useMemo(() => {
+    if (!dateFilter && !publicationFilter && !companyFilter) {
+      return report.sections; // No filters applied, return all sections
+    }
+
+    // Create a deep copy of sections to avoid mutating the original data
+    const sectionsCopy = JSON.parse(JSON.stringify(report.sections)) as MentionSection[];
+
+    return sectionsCopy.filter((section) => {
+      // Filter by company/brand (section title)
+      if (companyFilter && !section.title.includes(companyFilter)) {
+        return false;
+      }
+
+      // Filter mentions within each section
+      const filteredMentions = section.mentions.filter(mention => {
+        // Filter by publication
+        if (publicationFilter && mention.publication !== publicationFilter) {
+          return false;
+        }
+
+        // Filter by date
+        if (dateFilter && mention.publicationDate) {
+          // Simple date check - this could be improved with proper date parsing
+          if (!mention.publicationDate.includes(format(dateFilter, 'PPP'))) {
+            return false;
+          }
+        }
+
+        return true;
+      });
+
+      // If we're filtering by publication or date and no mentions match, hide the section
+      if ((publicationFilter || dateFilter) && filteredMentions.length === 0) {
+        return false;
+      }
+
+      // Update the section with filtered mentions
+      section.mentions = filteredMentions;
+      return true;
+    });
+  }, [report.sections, companyFilter, publicationFilter, dateFilter]);
+
 
   // Toggle section expansion
   const toggleSection = (sectionId: string) => {
@@ -95,16 +163,16 @@ const DailyMentionsPage = () => {
   const cloneMention = (sectionId: string, mentionId: string) => {
     const sectionIndex = report.sections.findIndex(s => s.id === sectionId);
     if (sectionIndex === -1) return;
-    
+
     const mentionIndex = report.sections[sectionIndex].mentions.findIndex(m => m.id === mentionId);
     if (mentionIndex === -1) return;
-    
+
     const mentionToClone = { ...report.sections[sectionIndex].mentions[mentionIndex] };
     const newMention: MediaMention = {
       ...mentionToClone,
       id: `mention-${Date.now()}-${Math.floor(Math.random() * 1000)}`
     };
-    
+
     setReport(prev => ({
       ...prev,
       sections: prev.sections.map((section, idx) =>
@@ -113,7 +181,7 @@ const DailyMentionsPage = () => {
           : section
       )
     }));
-    
+
     // Auto-expand the cloned mention
     setExpandedMentions(prev => ({
       ...prev,
@@ -170,9 +238,9 @@ const DailyMentionsPage = () => {
               ...section,
               mentions: section.mentions.map(mention =>
                 mention.id === mentionId
-                  ? { 
-                      ...mention, 
-                      links: mention.links.filter((_, idx) => idx !== linkIndex) 
+                  ? {
+                      ...mention,
+                      links: mention.links.filter((_, idx) => idx !== linkIndex)
                     }
                   : mention
               )
@@ -199,7 +267,7 @@ const DailyMentionsPage = () => {
     sectionId: string,
     mentionId: string,
     field: keyof MediaMention,
-    value: string | SentimentType | any
+    value: string | SentimentType | boolean | string[]
   ) => {
     setReport(prev => ({
       ...prev,
@@ -278,7 +346,7 @@ const DailyMentionsPage = () => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setLogoFile(file);
-      
+
       // Create a preview URL
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -340,7 +408,23 @@ const DailyMentionsPage = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Daily Media Highlights</h1>
         <div className="flex gap-2">
-          <Button 
+          <Button
+            onClick={() => setShowFilters(!showFilters)}
+            variant={showFilters ? "secondary" : "outline"}
+            className="flex items-center gap-1 w-full md:w-auto relative"
+          >
+            <Filter className="h-4 w-4" />
+            {showFilters ? 'Hide Filters' : 'Show Filters'}
+            {!showFilters && (dateFilter || publicationFilter || companyFilter) && (
+              <Badge
+                variant="secondary"
+                className="ml-1 text-xs absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 rounded-full"
+              >
+                {[dateFilter, publicationFilter, companyFilter].filter(Boolean).length}
+              </Badge>
+            )}
+          </Button>
+          <Button
             onClick={resetForm}
             variant="outline"
             className="flex items-center gap-1"
@@ -348,7 +432,7 @@ const DailyMentionsPage = () => {
             <RefreshCcw className="h-4 w-4" />
             Reset
           </Button>
-          <Button 
+          <Button
             onClick={generatePreview}
             variant="outline"
             className="flex items-center gap-1"
@@ -356,7 +440,7 @@ const DailyMentionsPage = () => {
             <Eye className="h-4 w-4" />
             Preview
           </Button>
-          <Button 
+          <Button
             onClick={sendReport}
             variant="outline"
             className="flex items-center gap-1"
@@ -364,7 +448,7 @@ const DailyMentionsPage = () => {
             <Send className="h-4 w-4" />
             Send
           </Button>
-          <Button 
+          <Button
             onClick={downloadReport}
             className="flex items-center gap-1"
           >
@@ -373,6 +457,128 @@ const DailyMentionsPage = () => {
           </Button>
         </div>
       </div>
+
+      {/* Filter Section */}
+      {showFilters && (
+        <Card className="p-4 mb-6 w-full">
+          <h2 className="text-lg font-medium mb-4">Filter Options</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
+            {/* Date Filter */}
+            <div>
+              <Label htmlFor="date-filter">Filter by Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    id="date-filter"
+                    variant="outline"
+                    className="w-full justify-start text-left font-normal mt-1"
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateFilter ? format(dateFilter, 'PPP') : <span>Select date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={dateFilter}
+                    onSelect={setDateFilter}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+              {dateFilter && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setDateFilter(undefined)}
+                  className="mt-1"
+                >
+                  <X className="h-3 w-3 mr-1" /> Clear
+                </Button>
+              )}
+            </div>
+
+            {/* Publication Filter */}
+            <div>
+              <Label htmlFor="publication-filter">Filter by Publication</Label>
+              <Select
+                value={publicationFilter}
+                onValueChange={setPublicationFilter}
+              >
+                <SelectTrigger id="publication-filter" className="mt-1 w-full">
+                  <SelectValue placeholder="Select publication" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Publications</SelectItem>
+                  {uniquePublications.map(publication => (
+                    <SelectItem key={publication} value={publication}>
+                      {publication}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Company/Brand Filter */}
+            <div>
+              <Label htmlFor="company-filter">Filter by Company/Brand</Label>
+              <Select
+                value={companyFilter}
+                onValueChange={setCompanyFilter}
+              >
+                <SelectTrigger id="company-filter" className="mt-1 w-full">
+                  <SelectValue placeholder="Select company/brand" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Companies/Brands</SelectItem>
+                  {uniqueCompanies.map(company => (
+                    <SelectItem key={company} value={company}>
+                      {company}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Active Filters */}
+          {(dateFilter || publicationFilter || companyFilter) && (
+            <div className="flex flex-wrap gap-2 mt-4 w-full">
+              <span className="text-sm font-medium">Active Filters:</span>
+              {dateFilter && (
+                <Badge variant="secondary" className="flex items-center gap-1">
+                  Date: {format(dateFilter, 'MMM d, yyyy')}
+                  <X className="h-3 w-3 ml-1 cursor-pointer" onClick={() => setDateFilter(undefined)} />
+                </Badge>
+              )}
+              {publicationFilter && (
+                <Badge variant="secondary" className="flex items-center gap-1">
+                  Publication: {publicationFilter}
+                  <X className="h-3 w-3 ml-1 cursor-pointer" onClick={() => setPublicationFilter('')} />
+                </Badge>
+              )}
+              {companyFilter && (
+                <Badge variant="secondary" className="flex items-center gap-1">
+                  Company/Brand: {companyFilter}
+                  <X className="h-3 w-3 ml-1 cursor-pointer" onClick={() => setCompanyFilter('')} />
+                </Badge>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setDateFilter(undefined);
+                  setPublicationFilter('');
+                  setCompanyFilter('');
+                }}
+                className="ml-auto"
+              >
+                Clear All Filters
+              </Button>
+            </div>
+          )}
+        </Card>
+      )}
 
       <div className="grid gap-6">
         {/* Report Header Information */}
@@ -430,9 +636,9 @@ const DailyMentionsPage = () => {
                   />
                   {logoPreview && (
                     <div className="h-10 w-10 rounded-full border border-gray-200 overflow-hidden">
-                      <img 
-                        src={logoPreview} 
-                        alt="Logo Preview" 
+                      <img
+                        src={logoPreview}
+                        alt="Logo Preview"
                         className="h-full w-full object-contain"
                       />
                     </div>
@@ -449,7 +655,7 @@ const DailyMentionsPage = () => {
                     onChange={(e) => setHeaderColor(e.target.value)}
                     className="w-16 h-10 p-1"
                   />
-                  <Input 
+                  <Input
                     value={headerColor}
                     onChange={(e) => setHeaderColor(e.target.value)}
                     placeholder="#0066cc"
@@ -461,8 +667,8 @@ const DailyMentionsPage = () => {
           </div>
         </Card>
 
-        {/* Sections */}
-        {report.sections.map((section, sectionIndex) => (
+        {/* Sections - Use filteredSections instead of report.sections */}
+        {filteredSections.map((section) => (
           <Card key={section.id} className="p-4">
             <div className="flex items-center justify-between mb-4">
               <div className="flex-1">
@@ -493,7 +699,7 @@ const DailyMentionsPage = () => {
 
             {(expandedSections[section.id] || section.mentions.length === 0) && (
               <div className="space-y-4">
-                {section.mentions.map((mention, mentionIndex) => (
+                {section.mentions.map((mention) => (
                   <Card key={mention.id} className="p-3 border border-gray-200">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex-1">
@@ -690,7 +896,7 @@ const DailyMentionsPage = () => {
                   </div>
                 )}
               </div>
-              
+
               {/* Date and intro */}
               <div className="p-4 bg-white">
                 <p className="font-semibold">{format(new Date(report.date), 'MMM d, yyyy')}</p>
@@ -701,25 +907,25 @@ const DailyMentionsPage = () => {
                   keywords from the first edition on the day of the media alert(weekly).
                 </p>
               </div>
-              
+
               {/* Sections */}
-              {report.sections.map((section, index) => (
+              {report.sections.map((section) => (
                 <div key={section.id} className="mt-2">
                   {/* Section Header */}
                   <div style={{ backgroundColor: headerColor }} className="p-2">
                     <h2 className="text-white font-bold">{section.title || 'SECTION TITLE'}</h2>
                   </div>
-                  
+
                   {/* Section Content */}
                   <div className="p-4 bg-white">
-                    {section.mentions.map((mention, mIndex) => (
+                    {section.mentions.map((mention) => (
                       <div key={mention.id} className="mb-4">
                         <p className="font-bold">{mention.title || 'News headline'}: - </p>
                         <p className="text-sm">{mention.content || 'News content will appear here...'}</p>
-                        
+
                         {mention.links.some(link => link.url) && (
                           <p className="text-sm mt-1">
-                            {mention.links.map((link, lIndex) => 
+                            {mention.links.map((link, lIndex) =>
                               link.url ? (
                                 <span key={lIndex}>
                                   <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">
@@ -731,7 +937,7 @@ const DailyMentionsPage = () => {
                             )}
                           </p>
                         )}
-                        
+
                         <p className="text-sm mt-1">
                           <span className="font-semibold">Sentiment:</span> {mention.sentiment || 'N/A'}<br />
                           <span className="font-semibold">Reporter:</span> {mention.reporter || 'Not specified'}
@@ -741,14 +947,14 @@ const DailyMentionsPage = () => {
                   </div>
                 </div>
               ))}
-              
+
               {/* Expecting publications */}
               {report.expectingPublications && report.expectingPublications.length > 0 && (
                 <div className="p-4 bg-gray-100">
                   <p className="font-semibold">Expecting: {report.expectingPublications.join(', ')}</p>
                 </div>
               )}
-              
+
               {/* Footer */}
               <div className="p-4 bg-white text-xs text-center">
                 <p>{report.footerNote || 'P+ Measurement Services Daily Media Briefs cover all relevant news reports, features and photo stories in major Nigerian newspapers, magazines, online news sites & blogs.'}</p>

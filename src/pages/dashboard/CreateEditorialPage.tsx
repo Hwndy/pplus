@@ -107,11 +107,11 @@ const CreateEditorialPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isEditMode = !!location.state?.editorialData;
-  
+
   // Detect user role - this would normally come from authentication
   // For demo purposes, we'll use a hardcoded role
   const userRole = 'admin'; // Options: 'analyst', 'supervisor', 'admin'
-  
+
   const initialFormData: Editorial = location.state?.editorialData || {
     id: Date.now(),
     date: new Date().toISOString().split('T')[0],
@@ -142,26 +142,26 @@ const CreateEditorialPage = () => {
     supervisorNote: '',
     adminNote: '',
   };
-  
+
   const [editorials, setEditorials] = useState<Editorial[]>([initialFormData]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [dates, setDates] = useState<(Date | undefined)[]>(
     [initialFormData.date ? new Date(initialFormData.date) : new Date()]
   );
-  
+
   // Handle changes to form inputs for the active editorial
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    
+
     const updatedEditorials = [...editorials];
     updatedEditorials[activeIndex] = {
       ...updatedEditorials[activeIndex],
       [name]: value
     };
-    
+
     setEditorials(updatedEditorials);
-    
+
     // Clear error when field is modified
     if (errors[name]) {
       setErrors({
@@ -170,7 +170,7 @@ const CreateEditorialPage = () => {
       });
     }
   };
-  
+
   // Handle select changes for the active editorial
   const handleSelectChange = (name: string, value: string) => {
     const updatedEditorials = [...editorials];
@@ -178,9 +178,9 @@ const CreateEditorialPage = () => {
       ...updatedEditorials[activeIndex],
       [name]: value
     };
-    
+
     setEditorials(updatedEditorials);
-    
+
     // Clear error when field is modified
     if (errors[name]) {
       setErrors({
@@ -189,24 +189,24 @@ const CreateEditorialPage = () => {
       });
     }
   };
-  
+
   // Handle date change for the active editorial
   const handleDateChange = (selectedDate: Date | undefined) => {
     if (selectedDate) {
       const updatedDates = [...dates];
       updatedDates[activeIndex] = selectedDate;
       setDates(updatedDates);
-      
+
       const updatedEditorials = [...editorials];
       updatedEditorials[activeIndex] = {
         ...updatedEditorials[activeIndex],
         date: selectedDate.toISOString().split('T')[0]
       };
-      
+
       setEditorials(updatedEditorials);
     }
   };
-  
+
   // Add a new editorial
   const addEditorial = () => {
     const newId = Date.now();
@@ -214,45 +214,45 @@ const CreateEditorialPage = () => {
     setDates([...dates, new Date()]);
     setActiveIndex(editorials.length);
   };
-  
+
   // Clone the current editorial
   const cloneEditorial = () => {
     const currentEditorial = editorials[activeIndex];
     const clonedEditorial = { ...currentEditorial, id: Date.now() };
-    
+
     setEditorials([...editorials, clonedEditorial]);
     setDates([...dates, dates[activeIndex] ? new Date(dates[activeIndex]!) : new Date()]);
     setActiveIndex(editorials.length);
   };
-  
+
   // Switch to a different editorial
   const switchEditorial = (index: number) => {
     setActiveIndex(index);
   };
-  
+
   // Form validation
   const validateForm = () => {
     let hasErrors = false;
     const newErrors: Record<string, string> = {};
-    
+
     // Required fields
     const requiredFields = ['title', 'brand', 'publication', 'date'];
-    
+
     requiredFields.forEach(field => {
       if (!editorials[activeIndex][field as keyof Editorial]) {
         newErrors[field] = `${field.charAt(0).toUpperCase() + field.slice(1)} is required`;
         hasErrors = true;
       }
     });
-    
+
     setErrors(newErrors);
     return !hasErrors;
   };
-  
+
   // Handle form submission
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       toast({
         title: "Validation Error",
@@ -261,22 +261,22 @@ const CreateEditorialPage = () => {
       });
       return;
     }
-    
-    navigate('/dashboard/editorial', { 
-      state: { 
+
+    navigate('/dashboard/editorial', {
+      state: {
         savedEditorials: editorials,
-        isEditMode 
-      } 
+        isEditMode
+      }
     });
-    
+
     toast({
       title: isEditMode ? "Editorial Updated" : "Editorial Created",
-      description: isEditMode 
-        ? "The editorial has been updated successfully." 
+      description: isEditMode
+        ? "The editorial has been updated successfully."
         : `${editorials.length} editorial(s) have been created successfully.`
     });
   };
-  
+
   // Cancel and go back
   const handleCancel = () => {
     navigate('/dashboard/editorial');
@@ -297,13 +297,13 @@ const CreateEditorialPage = () => {
   };
 
   return (
-    <div className="p-6 max-w-screen-lg mx-auto">
+    <div className="p-6 w-full">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">
           {isEditMode ? 'Edit Editorial' : 'Create Editorial'}
         </h1>
         <div className="flex space-x-2">
-          <Button 
+          <Button
             onClick={cloneEditorial}
             variant="outline"
             className="flex items-center gap-1"
@@ -311,7 +311,7 @@ const CreateEditorialPage = () => {
             <Copy className="h-4 w-4" />
             Clone
           </Button>
-          <Button 
+          <Button
             onClick={addEditorial}
             variant="outline"
             className="flex items-center gap-1"
@@ -321,7 +321,7 @@ const CreateEditorialPage = () => {
           </Button>
         </div>
       </div>
-      
+
       {/* Editorial tabs */}
       {editorials.length > 1 && (
         <div className="flex overflow-x-auto space-x-2 mb-4 pb-2">
@@ -337,16 +337,16 @@ const CreateEditorialPage = () => {
           ))}
         </div>
       )}
-      
-      <form onSubmit={handleSubmit}>
-        <Card>
-          <CardContent className="p-6">
+
+      <form onSubmit={handleSubmit} className="w-full">
+        <Card className="w-full">
+          <CardContent className="p-6 w-full">
             {/* First row - Company, Date, Media Type, Status */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
               <div>
                 <Label htmlFor="company">Search for a company</Label>
-                <Select 
-                  value={editorials[activeIndex].company} 
+                <Select
+                  value={editorials[activeIndex].company}
                   onValueChange={(value) => handleSelectChange('company', value)}
                 >
                   <SelectTrigger>
@@ -361,7 +361,7 @@ const CreateEditorialPage = () => {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div>
                 <Label htmlFor="date">mm/dd/yyyy</Label>
                 <Popover>
@@ -388,11 +388,11 @@ const CreateEditorialPage = () => {
                   </PopoverContent>
                 </Popover>
               </div>
-              
+
               <div>
                 <Label htmlFor="mediaType">Media Type</Label>
-                <Select 
-                  value={editorials[activeIndex].mediaType} 
+                <Select
+                  value={editorials[activeIndex].mediaType}
                   onValueChange={(value) => handleSelectChange('mediaType', value)}
                 >
                   <SelectTrigger>
@@ -407,11 +407,11 @@ const CreateEditorialPage = () => {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div>
                 <Label htmlFor="status">Status</Label>
-                <Select 
-                  value={editorials[activeIndex].status} 
+                <Select
+                  value={editorials[activeIndex].status}
                   onValueChange={(value) => handleSelectChange('status', value)}
                 >
                   <SelectTrigger>
@@ -427,15 +427,15 @@ const CreateEditorialPage = () => {
                 </Select>
               </div>
             </div>
-            
+
             {/* Second row - Horizontally scrollable fields with visible scrollbar */}
             <div className="mb-6 relative">
               <div className="overflow-x-auto pb-4 custom-scrollbar">
                 <div className="flex gap-4 min-w-max">
                   <div className="min-w-[150px]">
                     <Label htmlFor="activity">Action</Label>
-                    <Select 
-                      value={editorials[activeIndex].activity} 
+                    <Select
+                      value={editorials[activeIndex].activity}
                       onValueChange={(value) => handleSelectChange('activity', value)}
                     >
                       <SelectTrigger>
@@ -450,11 +450,11 @@ const CreateEditorialPage = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <div className="min-w-[150px]">
                     <Label htmlFor="publication">Publication</Label>
-                    <Select 
-                      value={editorials[activeIndex].publication} 
+                    <Select
+                      value={editorials[activeIndex].publication}
                       onValueChange={(value) => handleSelectChange('publication', value)}
                     >
                       <SelectTrigger>
@@ -470,11 +470,11 @@ const CreateEditorialPage = () => {
                     </Select>
                     {errors.publication && <p className="text-red-500 text-sm">{errors.publication}</p>}
                   </div>
-                  
+
                   <div className="min-w-[150px]">
                     <Label htmlFor="nature">Nature</Label>
-                    <Select 
-                      value={editorials[activeIndex].placement} 
+                    <Select
+                      value={editorials[activeIndex].placement}
                       onValueChange={(value) => handleSelectChange('placement', value)}
                     >
                       <SelectTrigger>
@@ -489,7 +489,7 @@ const CreateEditorialPage = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <div className="min-w-[220px]">
                     <Label htmlFor="title">Title<span className="text-red-500">*</span></Label>
                     <Input
@@ -501,7 +501,7 @@ const CreateEditorialPage = () => {
                     />
                     {errors.title && <p className="text-red-500 text-sm">{errors.title}</p>}
                   </div>
-                  
+
                   <div className="min-w-[100px]">
                     <Label htmlFor="page">Page<span className="text-red-500">*</span></Label>
                     <Input
@@ -512,11 +512,11 @@ const CreateEditorialPage = () => {
                       onChange={handleChange}
                     />
                   </div>
-                  
+
                   <div className="min-w-[150px]">
                     <Label htmlFor="reporter">Reporters<span className="text-red-500">*</span></Label>
-                    <Select 
-                      value={editorials[activeIndex].reporter} 
+                    <Select
+                      value={editorials[activeIndex].reporter}
                       onValueChange={(value) => handleSelectChange('reporter', value)}
                     >
                       <SelectTrigger>
@@ -531,11 +531,11 @@ const CreateEditorialPage = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <div className="min-w-[200px]">
                     <Label htmlFor="spokesperson">Spokesperson<span className="text-red-500">*</span></Label>
-                    <Select 
-                      value={editorials[activeIndex].spokesperson} 
+                    <Select
+                      value={editorials[activeIndex].spokesperson}
                       onValueChange={(value) => handleSelectChange('spokesperson', value)}
                     >
                       <SelectTrigger>
@@ -550,10 +550,10 @@ const CreateEditorialPage = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <div className="min-w-[150px]">
                     <Label htmlFor="spokespersonPosition">Spokesperson Position</Label>
-                    <Select 
+                    <Select
                       value={editorials[activeIndex].subSector} // Reusing subSector field for spokesperson position
                       onValueChange={(value) => handleSelectChange('subSector', value)}
                     >
@@ -569,10 +569,10 @@ const CreateEditorialPage = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <div className="min-w-[150px]">
                     <Label htmlFor="spokespersonCompany">Spokesperson Company</Label>
-                    <Select 
+                    <Select
                       value={editorials[activeIndex].brand} // Reusing brand field for spokesperson company
                       onValueChange={(value) => handleSelectChange('brand', value)}
                     >
@@ -589,11 +589,11 @@ const CreateEditorialPage = () => {
                     </Select>
                     {errors.brand && <p className="text-red-500 text-sm">{errors.brand}</p>}
                   </div>
-                  
+
                   <div className="min-w-[150px]">
                     <Label htmlFor="sentiment">Sentiment</Label>
-                    <Select 
-                      value={editorials[activeIndex].sentiment} 
+                    <Select
+                      value={editorials[activeIndex].sentiment}
                       onValueChange={(value) => handleSelectChange('sentiment', value)}
                     >
                       <SelectTrigger>
@@ -608,11 +608,11 @@ const CreateEditorialPage = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <div className="min-w-[100px]">
                     <Label htmlFor="industry">Industry</Label>
-                    <Select 
-                      value={editorials[activeIndex].industry} 
+                    <Select
+                      value={editorials[activeIndex].industry}
                       onValueChange={(value) => handleSelectChange('industry', value)}
                     >
                       <SelectTrigger>
@@ -627,11 +627,11 @@ const CreateEditorialPage = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <div className="min-w-[150px]">
                     <Label htmlFor="country">Country</Label>
-                    <Select 
-                      value={editorials[activeIndex].country} 
+                    <Select
+                      value={editorials[activeIndex].country}
                       onValueChange={(value) => handleSelectChange('country', value)}
                     >
                       <SelectTrigger>
@@ -646,7 +646,7 @@ const CreateEditorialPage = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <div className="min-w-[120px]">
                     <Label htmlFor="language">Language</Label>
                     <Input
@@ -656,7 +656,7 @@ const CreateEditorialPage = () => {
                       onChange={handleChange}
                     />
                   </div>
-                  
+
                   <div className="min-w-[150px]">
                     <Label htmlFor="mediaSentimentIndex">Media Sentiment Index</Label>
                     <Input
@@ -669,7 +669,7 @@ const CreateEditorialPage = () => {
                       onChange={handleChange}
                     />
                   </div>
-                  
+
                   <div className="min-w-[120px]">
                     <Label htmlFor="advertSpend">Advert Spend</Label>
                     <Input
@@ -680,7 +680,7 @@ const CreateEditorialPage = () => {
                       onChange={handleChange}
                     />
                   </div>
-                  
+
                   <div className="min-w-[120px]">
                     <Label htmlFor="circulation">Circulation</Label>
                     <Input
@@ -691,7 +691,7 @@ const CreateEditorialPage = () => {
                       onChange={handleChange}
                     />
                   </div>
-                  
+
                   <div className="min-w-[120px]">
                     <Label htmlFor="audienceReach">Audience Reach</Label>
                     <Input
@@ -702,7 +702,7 @@ const CreateEditorialPage = () => {
                       onChange={handleChange}
                     />
                   </div>
-                  
+
                   <div className="min-w-[120px]">
                     <Label htmlFor="pageSize">Page Size</Label>
                     <Input
@@ -712,7 +712,7 @@ const CreateEditorialPage = () => {
                       onChange={handleChange}
                     />
                   </div>
-                  
+
                   <div className="min-w-[150px]">
                     <Label htmlFor="link">Link</Label>
                     <Input
@@ -725,7 +725,7 @@ const CreateEditorialPage = () => {
                 </div>
               </div>
             </div>
-            
+
             {/* Third row - Notes (Analyst, Supervisor, Admin) with role-based access */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
               <div>
@@ -743,7 +743,7 @@ const CreateEditorialPage = () => {
                   disabled={isFieldReadOnly('analystNote')}
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="supervisorNote" className="flex items-center">
                   Supervisor Note
@@ -759,7 +759,7 @@ const CreateEditorialPage = () => {
                   disabled={isFieldReadOnly('supervisorNote')}
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="adminNote" className="flex items-center">
                   Admin Note
@@ -776,17 +776,17 @@ const CreateEditorialPage = () => {
                 />
               </div>
             </div>
-            
+
             {/* Form Actions */}
             <div className="flex justify-end space-x-2 mt-6">
-              <Button 
-                type="button" 
-                variant="outline" 
+              <Button
+                type="button"
+                variant="outline"
                 onClick={handleCancel}
               >
                 Cancel
               </Button>
-              <Button 
+              <Button
                 type="submit"
                 className="bg-indigo-950"
               >
