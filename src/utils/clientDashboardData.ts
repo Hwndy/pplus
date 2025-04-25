@@ -130,17 +130,17 @@ export const brandMediaAnalysisData = {
     { name: 'Video Mentions', value: 1 }
   ],
   weeklyTrend: [
-    { week: 'Week 1', onlineMedia: 35, printMedia: 30 },
+    { week: 'Week 1', onlineMedia: 45, printMedia: 25 },
     { week: 'Week 2', onlineMedia: 40, printMedia: 35 },
     { week: 'Week 3', onlineMedia: 15, printMedia: 10 },
     { week: 'Week 4', onlineMedia: 5, printMedia: 5 }
   ],
   monthlyTrend: [
-    { month: 'Jan', onlineMedia: 40, printMedia: 35 },
-    { month: 'Feb', onlineMedia: 35, printMedia: 30 },
-    { month: 'Mar', onlineMedia: 25, printMedia: 20 },
-    { month: 'Apr', onlineMedia: 0, printMedia: 0 },
-    { month: 'May', onlineMedia: 0, printMedia: 0 },
+    { month: 'Jan', onlineMedia: 50, printMedia: 45 },
+    { month: 'Feb', onlineMedia: 40, printMedia: 35 },
+    { month: 'Mar', onlineMedia: 30, printMedia: 25 },
+    { month: 'Apr', onlineMedia: 25, printMedia: 20 },
+    { month: 'May', onlineMedia: 20, printMedia: 15 },
     { month: 'Jun', onlineMedia: 0, printMedia: 0 },
     { month: 'Jul', onlineMedia: 0, printMedia: 0 },
     { month: 'Aug', onlineMedia: 0, printMedia: 0 },

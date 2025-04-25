@@ -2,16 +2,16 @@ import { useState } from 'react';
 import { DataCard } from '@/components/ui/DataCard';
 import { Stat } from '@/components/ui/Stat';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  BarChart, 
-  FileBarChart, 
-  Filter, 
-  Users, 
-  ArrowUpDown, 
-  Globe, 
-  Newspaper, 
-  ThumbsUp, 
-  Minus, 
+import {
+  BarChart,
+  FileBarChart,
+  Filter,
+  Users,
+  ArrowUpDown,
+  Globe,
+  Newspaper,
+  ThumbsUp,
+  Minus,
   ThumbsDown,
   PieChart as PieChartIcon,
   BarChart2,
@@ -23,24 +23,24 @@ import {
   Building,
   Target
 } from 'lucide-react';
-import { 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer, 
-  BarChart as RechartsBarChart, 
-  Bar, 
-  Cell, 
-  PieChart, 
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart as RechartsBarChart,
+  Bar,
+  Cell,
+  PieChart,
   Pie,
   Legend
 } from 'recharts';
-import { 
-  executiveSummaryData, 
-  insightRecommendationData, 
+import {
+  executiveSummaryData,
+  insightRecommendationData,
   industryLandscapeData,
   brandMediaSentimentData,
   brandMediaAnalysisData
@@ -88,7 +88,7 @@ export function ClientMediaDashboard() {
         {/* Executive Summary Section */}
         <TabsContent value="executive-summary" className="space-y-4">
           <h2 className="text-2xl font-bold">Executive Summary</h2>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-4">
             <DataCard title="Total media mentions" variant="glass" icon={<Newspaper size={24} />} className="lg:col-span-1">
               <Stat
@@ -97,7 +97,7 @@ export function ClientMediaDashboard() {
                 subtitle="(All media)"
               />
             </DataCard>
-            
+
             <DataCard title="Brand media reputation score" variant="glass" icon={<BarChart size={24} />} className="lg:col-span-1">
               <Stat
                 label="Reputation Score"
@@ -105,7 +105,7 @@ export function ClientMediaDashboard() {
                 subtitle="(0-1 scale)"
               />
             </DataCard>
-            
+
             <DataCard title="Brand exposure in local media" variant="glass" icon={<Newspaper size={24} />} className="lg:col-span-1">
               <Stat
                 label="Local Media"
@@ -113,7 +113,7 @@ export function ClientMediaDashboard() {
                 subtitle="mentions"
               />
             </DataCard>
-            
+
             <DataCard title="Brand exposure in International media" variant="glass" icon={<Globe size={24} />} className="lg:col-span-1">
               <Stat
                 label="International Media"
@@ -121,7 +121,7 @@ export function ClientMediaDashboard() {
                 subtitle="mentions"
               />
             </DataCard>
-            
+
             <DataCard title="Positive media exposure" variant="glass" icon={<ThumbsUp size={24} />} className="lg:col-span-1">
               <Stat
                 label="Positive"
@@ -129,7 +129,7 @@ export function ClientMediaDashboard() {
                 subtitle="mentions"
               />
             </DataCard>
-            
+
             <DataCard title="Neutral media exposure" variant="glass" icon={<Minus size={24} />} className="lg:col-span-1">
               <Stat
                 label="Neutral"
@@ -137,7 +137,7 @@ export function ClientMediaDashboard() {
                 subtitle="mentions"
               />
             </DataCard>
-            
+
             <DataCard title="Negative media exposure" variant="glass" icon={<ThumbsDown size={24} />} className="lg:col-span-1">
               <Stat
                 label="Negative"
@@ -203,7 +203,7 @@ export function ClientMediaDashboard() {
         {/* Insights & Recommendations Section */}
         <TabsContent value="insights" className="space-y-4">
           <h2 className="text-2xl font-bold">Insight / Recommendation / Suggestion</h2>
-          
+
           <div className="space-y-6">
             {insightRecommendationData.map((item) => (
               <div key={item.id} className="flex flex-col md:flex-row gap-4 border rounded-lg overflow-hidden">
@@ -222,7 +222,7 @@ export function ClientMediaDashboard() {
         {/* Industry Landscape Section */}
         <TabsContent value="industry" className="space-y-4">
           <h2 className="text-2xl font-bold">Industry Landscape Overview – Nigerian Financial Sector Highlights</h2>
-          
+
           <div className="space-y-6">
             {industryLandscapeData.map((item) => (
               <div key={item.id} className="flex flex-col md:flex-row gap-4 border rounded-lg overflow-hidden">
@@ -243,7 +243,7 @@ export function ClientMediaDashboard() {
         {/* Brand Drivers & Sentiment Section */}
         <TabsContent value="sentiment" className="space-y-4">
           <h2 className="text-2xl font-bold">Brand Media Sentiment Distribution Matrix</h2>
-          
+
           <div className="space-y-6">
             <div className="w-full h-20 bg-gray-100 rounded-lg overflow-hidden">
               <div className="flex h-full">
@@ -254,7 +254,7 @@ export function ClientMediaDashboard() {
                 <div className="bg-black" style={{ width: '8%' }}></div>
               </div>
             </div>
-            
+
             <div className="flex flex-wrap gap-2 justify-center">
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 bg-teal-500"></div>
@@ -279,7 +279,7 @@ export function ClientMediaDashboard() {
             </div>
 
             <h3 className="text-xl font-bold mt-8">Key Brand Reputational Drivers</h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="border rounded-lg overflow-hidden">
                 <div className="bg-green-500 text-white p-3 font-bold text-center">
@@ -294,7 +294,7 @@ export function ClientMediaDashboard() {
                   ))}
                 </div>
               </div>
-              
+
               <div className="border rounded-lg overflow-hidden">
                 <div className="bg-red-500 text-white p-3 font-bold text-center">
                   Negative
@@ -308,7 +308,7 @@ export function ClientMediaDashboard() {
                   ))}
                 </div>
               </div>
-              
+
               <div className="border rounded-lg overflow-hidden">
                 <div className="bg-gray-500 text-white p-3 font-bold text-center">
                   Neutral
@@ -329,26 +329,26 @@ export function ClientMediaDashboard() {
         {/* Brand Media Analysis Section */}
         <TabsContent value="media-analysis" className="space-y-4">
           <h2 className="text-2xl font-bold">Brand Media Analysis</h2>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <DataCard title="@News Mentions" variant="glass" icon={<Newspaper size={24} />}>
               <div className="flex items-center justify-center h-24">
                 <span className="text-4xl font-bold">{brandMediaAnalysisData.newsMentions}</span>
               </div>
             </DataCard>
-            
+
             <DataCard title="Photo Mentions" variant="glass" icon={<FileBarChart size={24} />}>
               <div className="flex items-center justify-center h-24">
                 <span className="text-4xl font-bold">{brandMediaAnalysisData.photoMentions}</span>
               </div>
             </DataCard>
-            
+
             <DataCard title="Video Mentions" variant="glass" icon={<FileBarChart size={24} />}>
               <div className="flex items-center justify-center h-24">
                 <span className="text-4xl font-bold">{brandMediaAnalysisData.videoMentions}</span>
               </div>
             </DataCard>
-            
+
             <DataCard title="Potential Reach" variant="glass" icon={<Users size={24} />}>
               <div className="flex items-center justify-center h-24">
                 <span className="text-4xl font-bold">{brandMediaAnalysisData.potentialReach.toLocaleString()}</span>
@@ -436,7 +436,7 @@ export function ClientMediaDashboard() {
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <RechartsBarChart
-                    data={brandMediaAnalysisData.monthlyTrend.slice(0, 3)} // Only showing Jan-Mar as in the image
+                    data={brandMediaAnalysisData.monthlyTrend.slice(0, 5)} // Showing Jan-May as in the image
                     margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />

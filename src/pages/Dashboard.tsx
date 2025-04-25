@@ -13,6 +13,9 @@ import { BrandMediaAnalysisPage } from '@/components/dashboard/BrandMediaAnalysi
 import { MediaDistributionPage } from '@/components/dashboard/MediaDistributionPage';
 import { PublicationsAnalysisPage } from '@/components/dashboard/PublicationsAnalysisPage';
 import { CoverageRegionPage } from '@/components/dashboard/CoverageRegionPage';
+import { CompetitiveIntelligencePage } from '@/components/dashboard/CompetitiveIntelligencePage';
+import { CompetitiveSentimentPage } from '@/components/dashboard/CompetitiveSentimentPage';
+import { CompetitiveCEOsPage } from '@/components/dashboard/CompetitiveCEOsPage';
 import { PlaceholderPage } from '@/components/dashboard/PlaceholderPage';
 import { Spinner } from '@/components/ui/spinner';
 import { Route, Routes, Navigate, useLocation } from 'react-router-dom';
@@ -219,13 +222,13 @@ const Dashboard = () => {
           user.role === 'client' ? <CoverageRegionPage /> : <Navigate to="/dashboard" replace />
         } />
         <Route path="competitive" element={
-          user.role === 'client' ? <PlaceholderPage title="Competitive Intelligence" /> : <Navigate to="/dashboard" replace />
+          user.role === 'client' ? <CompetitiveIntelligencePage /> : <Navigate to="/dashboard" replace />
         } />
         <Route path="competitive-sentiment" element={
-          user.role === 'client' ? <PlaceholderPage title="Competitive Sentiment Intelligence" /> : <Navigate to="/dashboard" replace />
+          user.role === 'client' ? <CompetitiveSentimentPage /> : <Navigate to="/dashboard" replace />
         } />
         <Route path="competitive-ceos" element={
-          user.role === 'client' ? <PlaceholderPage title="Competitive CEOs Intelligence" /> : <Navigate to="/dashboard" replace />
+          user.role === 'client' ? <CompetitiveCEOsPage /> : <Navigate to="/dashboard" replace />
         } />
         <Route path="competitive-pr" element={
           user.role === 'client' ? <PlaceholderPage title="Competitive PR Drivers" /> : <Navigate to="/dashboard" replace />
