@@ -7,6 +7,10 @@ import { dashboardSummary, dataEntries, mediaChannels } from '@/utils/mockData';
 import { ArrowUpDown, BarChart, FileBarChart, Filter, Users } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart as RechartsBarChart, Bar, Cell, PieChart, Pie } from 'recharts';
 import { ColumnDef } from '@tanstack/react-table';
+import { ThematicDistributionBreakdown } from './ThematicDistributionBreakdown';
+import { PublicationsAnalysis } from './PublicationsAnalysis';
+import { SocialStatsRegionalCoverage } from './SocialStatsRegionalCoverage';
+import { thematicDistributionData, publicationsAnalysisData, socialStatsData } from '@/utils/thematicDistributionData';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
@@ -52,13 +56,13 @@ const mediaReportsColumns: ColumnDef<any>[] = [
 ];
 
 export function ClientDashboard() {
-  const [selectedSection, setSelectedSection] = useState<'overview' | 'reports' | 'performance'>('overview');
-  
+  const [selectedSection, setSelectedSection] = useState<'overview' | 'reports' | 'performance' | 'thematic' | 'publications' | 'social'>('overview');
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Client Dashboard</h1>
-        <div className="flex space-x-2">
+        <div className="flex flex-wrap space-x-2">
           <button
             className={`px-4 py-2 rounded-md transition-colors ${
               selectedSection === 'overview'
@@ -88,6 +92,36 @@ export function ClientDashboard() {
             onClick={() => setSelectedSection('performance')}
           >
             Performance
+          </button>
+          <button
+            className={`px-4 py-2 rounded-md transition-colors ${
+              selectedSection === 'thematic'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground'
+            }`}
+            onClick={() => setSelectedSection('thematic')}
+          >
+            Thematic Distribution
+          </button>
+          <button
+            className={`px-4 py-2 rounded-md transition-colors ${
+              selectedSection === 'publications'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground'
+            }`}
+            onClick={() => setSelectedSection('publications')}
+          >
+            Publications
+          </button>
+          <button
+            className={`px-4 py-2 rounded-md transition-colors ${
+              selectedSection === 'social'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground'
+            }`}
+            onClick={() => setSelectedSection('social')}
+          >
+            Social Stats
           </button>
         </div>
       </div>
@@ -220,6 +254,36 @@ export function ClientDashboard() {
               </ResponsiveContainer>
             </div>
           </DataCard>
+        </div>
+      )}
+
+      {/* Thematic Distribution Breakdown Section */}
+      {selectedSection === 'thematic' && (
+        <div className="space-y-6">
+          <ThematicDistributionBreakdown items={thematicDistributionData} />
+        </div>
+      )}
+
+      {/* Publications Analysis Section */}
+      {selectedSection === 'publications' && (
+        <div className="space-y-6">
+          <PublicationsAnalysis
+            printPublications={publicationsAnalysisData.printPublications}
+            onlinePublications={publicationsAnalysisData.onlinePublications}
+            printReporters={publicationsAnalysisData.printReporters}
+            onlineReporters={publicationsAnalysisData.onlineReporters}
+            spokespersons={publicationsAnalysisData.spokespersons}
+          />
+        </div>
+      )}
+
+      {/* Social Stats and Regional Coverage Section */}
+      {selectedSection === 'social' && (
+        <div className="space-y-6">
+          <SocialStatsRegionalCoverage
+            socialStats={socialStatsData.socialPlatforms}
+            regionalCoverage={socialStatsData.regionalCoverage}
+          />
         </div>
       )}
     </div>

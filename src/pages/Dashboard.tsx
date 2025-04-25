@@ -3,7 +3,17 @@ import { useAuth } from '@/components/auth/AuthContext';
 import { AdminDashboard } from '@/components/dashboard/AdminDashboard';
 import { AnalystDashboard } from '@/components/dashboard/AnalystDashboard';
 import { ClientDashboard } from '@/components/dashboard/ClientDashboard';
+import { ClientMediaDashboard } from '@/components/dashboard/ClientMediaDashboard';
 import { SupervisorDashboard } from '@/components/dashboard/SupervisorDashboard';
+import { ExecutiveSummaryPage } from '@/components/dashboard/ExecutiveSummaryPage';
+import { OutcomeInsightsPage as ClientOutcomeInsightsPage } from '@/components/dashboard/OutcomeInsightsPage';
+import { IndustryLandscapePage } from '@/components/dashboard/IndustryLandscapePage';
+import { BrandSentimentPage } from '@/components/dashboard/BrandSentimentPage';
+import { BrandMediaAnalysisPage } from '@/components/dashboard/BrandMediaAnalysisPage';
+import { MediaDistributionPage } from '@/components/dashboard/MediaDistributionPage';
+import { PublicationsAnalysisPage } from '@/components/dashboard/PublicationsAnalysisPage';
+import { CoverageRegionPage } from '@/components/dashboard/CoverageRegionPage';
+import { PlaceholderPage } from '@/components/dashboard/PlaceholderPage';
 import { Spinner } from '@/components/ui/spinner';
 import { Route, Routes, Navigate, useLocation } from 'react-router-dom';
 
@@ -58,7 +68,7 @@ const Dashboard = () => {
         {user.role === 'admin' && <AdminDashboard />}
         {user.role === 'supervisor' && <SupervisorDashboard />}
         {user.role === 'analyst' && <AnalystDashboard />}
-        {user.role === 'client' && <ClientDashboard />}
+        {user.role === 'client' && <ExecutiveSummaryPage />}
       </div>
     );
   }
@@ -68,7 +78,9 @@ const Dashboard = () => {
     <div className="h-full">
       <Routes>
         {/* Common routes accessible to all roles */}
-        <Route path="swot" element={<SwotAnalysisPage />} />
+        <Route path="swot" element={
+          user.role === 'client' ? <PlaceholderPage title="SWOT Analysis" /> : <SwotAnalysisPage />
+        } />
         <Route path="swot/create" element={
           ['admin', 'analyst'].includes(user.role) ? <SwotAnalysisEntryPage /> : <Navigate to="/dashboard" replace />
         } />
@@ -179,6 +191,50 @@ const Dashboard = () => {
         } />
         <Route path="performance" element={
           user.role === 'client' ? <PerformancePage /> : <Navigate to="/dashboard" replace />
+        } />
+        <Route path="media-dashboard" element={
+          user.role === 'client' ? <ClientMediaDashboard /> : <Navigate to="/dashboard" replace />
+        } />
+
+        {/* New client routes based on sidebar */}
+        <Route path="insights" element={
+          user.role === 'client' ? <ClientOutcomeInsightsPage /> : <Navigate to="/dashboard" replace />
+        } />
+        <Route path="industry" element={
+          user.role === 'client' ? <IndustryLandscapePage /> : <Navigate to="/dashboard" replace />
+        } />
+        <Route path="brand-sentiment" element={
+          user.role === 'client' ? <BrandSentimentPage /> : <Navigate to="/dashboard" replace />
+        } />
+        <Route path="brand-media" element={
+          user.role === 'client' ? <BrandMediaAnalysisPage /> : <Navigate to="/dashboard" replace />
+        } />
+        <Route path="media-distribution" element={
+          user.role === 'client' ? <MediaDistributionPage /> : <Navigate to="/dashboard" replace />
+        } />
+        <Route path="publications" element={
+          user.role === 'client' ? <PublicationsAnalysisPage /> : <Navigate to="/dashboard" replace />
+        } />
+        <Route path="coverage-region" element={
+          user.role === 'client' ? <CoverageRegionPage /> : <Navigate to="/dashboard" replace />
+        } />
+        <Route path="competitive" element={
+          user.role === 'client' ? <PlaceholderPage title="Competitive Intelligence" /> : <Navigate to="/dashboard" replace />
+        } />
+        <Route path="competitive-sentiment" element={
+          user.role === 'client' ? <PlaceholderPage title="Competitive Sentiment Intelligence" /> : <Navigate to="/dashboard" replace />
+        } />
+        <Route path="competitive-ceos" element={
+          user.role === 'client' ? <PlaceholderPage title="Competitive CEOs Intelligence" /> : <Navigate to="/dashboard" replace />
+        } />
+        <Route path="competitive-pr" element={
+          user.role === 'client' ? <PlaceholderPage title="Competitive PR Drivers" /> : <Navigate to="/dashboard" replace />
+        } />
+        <Route path="glossary" element={
+          user.role === 'client' ? <PlaceholderPage title="Glossary" /> : <Navigate to="/dashboard" replace />
+        } />
+        <Route path="methodology" element={
+          user.role === 'client' ? <PlaceholderPage title="Principle & Methodology" /> : <Navigate to="/dashboard" replace />
         } />
 
         {/* Fallback - redirect to the main dashboard */}

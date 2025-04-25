@@ -15,6 +15,7 @@ import {
   ArrowRightLeft,
   LayoutDashboard,
   BarChart,
+  BarChart2,
   LineChart,
   Newspaper,
   Share2,
@@ -24,6 +25,7 @@ import {
   ThumbsUp,
   AlertTriangle,
   Building2,
+  Building,
   Briefcase,
   ShieldCheck,
   BookOpenText,
@@ -40,6 +42,8 @@ import {
   ArrowRight,
   Shield,
   PenTool,
+  Search,
+  TrendingUp,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -224,6 +228,27 @@ export function Sidebar({ className, isOpen = true, onClose }: SidebarProps) {
       { name: 'Submissions', href: '/dashboard/submissions', icon: ClipboardList }
     ];
     navigation = analystItems;
+  }
+  // For client users, include client-specific pages
+  else if (user.role === 'client') {
+    const clientItems = [
+      { name: 'Executive Summary', href: '/dashboard', icon: LayoutDashboard },
+      { name: 'SWOT Analysis', href: '/dashboard/swot', icon: Target },
+      { name: 'Outcome & Insights', href: '/dashboard/insights', icon: LineChart },
+      { name: 'Industry Landscape Overview', href: '/dashboard/industry', icon: Building },
+      { name: 'Brand Drivers & Sentiment Distribution', href: '/dashboard/brand-sentiment', icon: BarChart3 },
+      { name: 'Brand Media Analysis', href: '/dashboard/brand-media', icon: BarChart2 },
+      { name: 'Distribution of Media Activities', href: '/dashboard/media-distribution', icon: PieChart },
+      { name: 'Publications & Spokespersons Analysis', href: '/dashboard/publications', icon: Newspaper },
+      { name: 'Coverage by Region', href: '/dashboard/coverage-region', icon: Globe },
+      { name: 'Competitive Intelligence', href: '/dashboard/competitive', icon: Search },
+      { name: 'Competitive Sentiment Intelligence', href: '/dashboard/competitive-sentiment', icon: TrendingUp },
+      { name: 'Competitive CEOs Intelligence', href: '/dashboard/competitive-ceos', icon: Users },
+      { name: 'Competitive PR Drivers', href: '/dashboard/competitive-pr', icon: Target },
+      { name: 'Glossary', href: '/dashboard/glossary', icon: BookOpen },
+      { name: 'Principle & Methodology', href: '/dashboard/methodology', icon: FileText }
+    ];
+    navigation = clientItems;
   }
 
   return (
