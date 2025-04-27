@@ -4,15 +4,39 @@ import { DataCard } from '@/components/ui/DataCard';
 import { Stat } from '@/components/ui/Stat';
 import { DataTable } from '@/components/ui/DataTable';
 import { dashboardSummary, dataEntries, mediaChannels } from '@/utils/mockData';
-import { ArrowUpDown, BarChart, FileBarChart, Filter, Users } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart as RechartsBarChart, Bar, Cell, PieChart, Pie } from 'recharts';
+import {
+  ArrowUpDown,
+  BarChart,
+  FileBarChart,
+  Filter,
+  Users,
+  TrendingUp,
+  PieChart as PieChartIcon,
+  LineChart as LineChartIcon
+} from 'lucide-react';
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart as RechartsBarChart,
+  Bar,
+  Cell,
+  PieChart,
+  Pie,
+  Legend
+} from 'recharts';
 import { ColumnDef } from '@tanstack/react-table';
 import { ThematicDistributionBreakdown } from './ThematicDistributionBreakdown';
 import { PublicationsAnalysis } from './PublicationsAnalysis';
 import { SocialStatsRegionalCoverage } from './SocialStatsRegionalCoverage';
 import { thematicDistributionData, publicationsAnalysisData, socialStatsData } from '@/utils/thematicDistributionData';
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+// Enhanced color palette for better visual appeal
+const COLORS = ['#4F46E5', '#06B6D4', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6'];
 
 // Define columns for media reports table
 const mediaReportsColumns: ColumnDef<any>[] = [
@@ -58,113 +82,155 @@ const mediaReportsColumns: ColumnDef<any>[] = [
 export function ClientDashboard() {
   const [selectedSection, setSelectedSection] = useState<'overview' | 'reports' | 'performance' | 'thematic' | 'publications' | 'social'>('overview');
 
+  // Get current date for display
+  const currentDate = new Date();
+  const formattedDate = `${currentDate.getDate()} ${currentDate.toLocaleString('default', { month: 'short' })} ${currentDate.getFullYear()}`;
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Client Dashboard</h1>
-        <div className="flex flex-wrap space-x-2">
-          <button
-            className={`px-4 py-2 rounded-md transition-colors ${
-              selectedSection === 'overview'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground'
-            }`}
-            onClick={() => setSelectedSection('overview')}
-          >
-            Overview
-          </button>
-          <button
-            className={`px-4 py-2 rounded-md transition-colors ${
-              selectedSection === 'reports'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground'
-            }`}
-            onClick={() => setSelectedSection('reports')}
-          >
-            Reports
-          </button>
-          <button
-            className={`px-4 py-2 rounded-md transition-colors ${
-              selectedSection === 'performance'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground'
-            }`}
-            onClick={() => setSelectedSection('performance')}
-          >
-            Performance
-          </button>
-          <button
-            className={`px-4 py-2 rounded-md transition-colors ${
-              selectedSection === 'thematic'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground'
-            }`}
-            onClick={() => setSelectedSection('thematic')}
-          >
-            Thematic Distribution
-          </button>
-          <button
-            className={`px-4 py-2 rounded-md transition-colors ${
-              selectedSection === 'publications'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground'
-            }`}
-            onClick={() => setSelectedSection('publications')}
-          >
-            Publications
-          </button>
-          <button
-            className={`px-4 py-2 rounded-md transition-colors ${
-              selectedSection === 'social'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground'
-            }`}
-            onClick={() => setSelectedSection('social')}
-          >
-            Social Stats
-          </button>
-        </div>
+        <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-blue-500 text-transparent bg-clip-text">Client Dashboard</h1>
+        <div className="text-sm text-gray-500">{formattedDate}</div>
+      </div>
+
+      <div className="flex flex-wrap gap-2 bg-indigo-50 p-2 rounded-lg">
+        <button
+          className={`px-4 py-2 rounded-md transition-all ${
+            selectedSection === 'overview'
+              ? 'bg-white text-indigo-600 shadow-sm font-medium'
+              : 'bg-transparent text-gray-600 hover:bg-white/50 hover:text-indigo-600'
+          }`}
+          onClick={() => setSelectedSection('overview')}
+        >
+          Overview
+        </button>
+        <button
+          className={`px-4 py-2 rounded-md transition-all ${
+            selectedSection === 'reports'
+              ? 'bg-white text-indigo-600 shadow-sm font-medium'
+              : 'bg-transparent text-gray-600 hover:bg-white/50 hover:text-indigo-600'
+          }`}
+          onClick={() => setSelectedSection('reports')}
+        >
+          Reports
+        </button>
+        <button
+          className={`px-4 py-2 rounded-md transition-all ${
+            selectedSection === 'performance'
+              ? 'bg-white text-indigo-600 shadow-sm font-medium'
+              : 'bg-transparent text-gray-600 hover:bg-white/50 hover:text-indigo-600'
+          }`}
+          onClick={() => setSelectedSection('performance')}
+        >
+          Performance
+        </button>
+        <button
+          className={`px-4 py-2 rounded-md transition-all ${
+            selectedSection === 'thematic'
+              ? 'bg-white text-indigo-600 shadow-sm font-medium'
+              : 'bg-transparent text-gray-600 hover:bg-white/50 hover:text-indigo-600'
+          }`}
+          onClick={() => setSelectedSection('thematic')}
+        >
+          Thematic Distribution
+        </button>
+        <button
+          className={`px-4 py-2 rounded-md transition-all ${
+            selectedSection === 'publications'
+              ? 'bg-white text-indigo-600 shadow-sm font-medium'
+              : 'bg-transparent text-gray-600 hover:bg-white/50 hover:text-indigo-600'
+          }`}
+          onClick={() => setSelectedSection('publications')}
+        >
+          Publications
+        </button>
+        <button
+          className={`px-4 py-2 rounded-md transition-all ${
+            selectedSection === 'social'
+              ? 'bg-white text-indigo-600 shadow-sm font-medium'
+              : 'bg-transparent text-gray-600 hover:bg-white/50 hover:text-indigo-600'
+          }`}
+          onClick={() => setSelectedSection('social')}
+        >
+          Social Stats
+        </button>
       </div>
 
       {selectedSection === 'overview' && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-            <DataCard title="Total Mentions" variant="glass" icon={<BarChart size={24} />}>
-              <Stat
-                label="Media Mentions"
-                value={dashboardSummary.totalMentions}
-                subtitle="Across all channels"
-                trend={8}
-              />
+            <DataCard
+              title="Total Mentions"
+              variant="glass"
+              icon={<BarChart size={24} className="text-indigo-600" />}
+              className="border-indigo-100 hover:border-indigo-300 transition-all shadow-sm hover:shadow-md"
+            >
+              <div className="flex flex-col items-center justify-center p-4">
+                <div className="text-3xl font-bold text-indigo-600">{dashboardSummary.totalMentions}</div>
+                <div className="text-sm text-gray-500">Media mentions</div>
+                <div className="mt-2 text-xs text-green-500 flex items-center">
+                  <TrendingUp size={14} className="mr-1" />
+                  <span>+8% from last month</span>
+                </div>
+              </div>
             </DataCard>
-            <DataCard title="Audience Reach" variant="glass" icon={<Users size={24} />}>
-              <Stat
-                label="Total Reach"
-                value={dashboardSummary.totalReach}
-                subtitle="Potential audience"
-                trend={12}
-              />
+
+            <DataCard
+              title="Audience Reach"
+              variant="glass"
+              icon={<Users size={24} className="text-cyan-600" />}
+              className="border-cyan-100 hover:border-cyan-300 transition-all shadow-sm hover:shadow-md"
+            >
+              <div className="flex flex-col items-center justify-center p-4">
+                <div className="text-3xl font-bold text-cyan-600">{dashboardSummary.totalReach}</div>
+                <div className="text-sm text-gray-500">Potential audience</div>
+                <div className="mt-2 text-xs text-green-500 flex items-center">
+                  <TrendingUp size={14} className="mr-1" />
+                  <span>+12% from last month</span>
+                </div>
+              </div>
             </DataCard>
-            <DataCard title="Sentiment" variant="glass" icon={<ArrowUpDown size={24} />}>
-              <Stat
-                label="Average Sentiment"
-                value={`${(dashboardSummary.averageSentiment * 100).toFixed(0)}%`}
-                subtitle="Positive mentions"
-                trend={5}
-              />
+
+            <DataCard
+              title="Sentiment"
+              variant="glass"
+              icon={<ArrowUpDown size={24} className="text-emerald-600" />}
+              className="border-emerald-100 hover:border-emerald-300 transition-all shadow-sm hover:shadow-md"
+            >
+              <div className="flex flex-col items-center justify-center p-4">
+                <div className="text-3xl font-bold text-emerald-600">{`${(dashboardSummary.averageSentiment * 100).toFixed(0)}%`}</div>
+                <div className="text-sm text-gray-500">Positive mentions</div>
+                <div className="mt-2 text-xs text-green-500 flex items-center">
+                  <TrendingUp size={14} className="mr-1" />
+                  <span>+5% from last month</span>
+                </div>
+              </div>
             </DataCard>
-            <DataCard title="Share of Voice" variant="glass" icon={<FileBarChart size={24} />}>
-              <Stat
-                label="Market Share"
-                value="42%"
-                subtitle="Compared to competitors"
-                trend={-3}
-              />
+
+            <DataCard
+              title="Share of Voice"
+              variant="glass"
+              icon={<FileBarChart size={24} className="text-amber-600" />}
+              className="border-amber-100 hover:border-amber-300 transition-all shadow-sm hover:shadow-md"
+            >
+              <div className="flex flex-col items-center justify-center p-4">
+                <div className="text-3xl font-bold text-amber-600">42%</div>
+                <div className="text-sm text-gray-500">Market share</div>
+                <div className="mt-2 text-xs text-red-500 flex items-center">
+                  <TrendingUp size={14} className="mr-1" />
+                  <span>-3% from last month</span>
+                </div>
+              </div>
             </DataCard>
           </div>
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <DataCard title="Mentions Trend" variant="glass" icon={<BarChart size={24} />}>
+            <DataCard
+              title="Mentions Trend"
+              variant="glass"
+              icon={<LineChartIcon size={24} className="text-indigo-600" />}
+              className="border-indigo-100 hover:border-indigo-300 transition-all shadow-sm hover:shadow-md"
+            >
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart
@@ -173,28 +239,44 @@ export function ClientDashboard() {
                   >
                     <defs>
                       <linearGradient id="colorMentions" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#0088FE" stopOpacity={0.8} />
-                        <stop offset="95%" stopColor="#0088FE" stopOpacity={0} />
+                        <stop offset="5%" stopColor={COLORS[0]} stopOpacity={0.8} />
+                        <stop offset="95%" stopColor={COLORS[0]} stopOpacity={0.1} />
                       </linearGradient>
                     </defs>
                     <XAxis dataKey="date" />
                     <YAxis />
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <Tooltip />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                        border: 'none'
+                      }}
+                    />
+                    <Legend iconType="circle" />
                     <Area
                       type="monotone"
                       dataKey="value"
-                      stroke="#0088FE"
+                      name="Mentions"
+                      stroke={COLORS[0]}
+                      strokeWidth={2}
                       fillOpacity={1}
                       fill="url(#colorMentions)"
+                      activeDot={{ r: 6 }}
                     />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
             </DataCard>
 
-            <DataCard title="Media Breakdown" variant="glass" icon={<Filter size={24} />}>
-              <div className="h-80">
+            <DataCard
+              title="Media Breakdown"
+              variant="glass"
+              icon={<PieChartIcon size={24} className="text-cyan-600" />}
+              className="border-cyan-100 hover:border-cyan-300 transition-all shadow-sm hover:shadow-md"
+            >
+              <div className="h-80 relative">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -204,16 +286,39 @@ export function ClientDashboard() {
                       labelLine={false}
                       label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                       outerRadius={80}
+                      innerRadius={50}
                       fill="#8884d8"
                       dataKey="value"
+                      paddingAngle={2}
                     >
                       {dashboardSummary.mediaBreakdown.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                        border: 'none'
+                      }}
+                    />
+                    <Legend
+                      layout="vertical"
+                      verticalAlign="middle"
+                      align="right"
+                      iconType="circle"
+                    />
                   </PieChart>
                 </ResponsiveContainer>
+                <div className="absolute top-1/2 left-1/4 transform -translate-x-1/2 -translate-y-1/2 text-center">
+                  <div className="text-3xl font-bold text-cyan-600">
+                    {dashboardSummary.mediaBreakdown[0].value}%
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    {dashboardSummary.mediaBreakdown[0].name}
+                  </div>
+                </div>
               </div>
             </DataCard>
           </div>
