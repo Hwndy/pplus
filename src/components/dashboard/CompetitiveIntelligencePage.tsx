@@ -48,7 +48,7 @@ export function CompetitiveIntelligencePage() {
                 <YAxis 
                   dataKey="name" 
                   type="category" 
-                  width={150}
+                  width={0}
                   tick={(props) => {
                     const { x, y, payload } = props;
                     return (
@@ -82,7 +82,7 @@ export function CompetitiveIntelligencePage() {
                 <YAxis 
                   dataKey="name" 
                   type="category" 
-                  width={150}
+                  width={0}
                   tick={(props) => {
                     const { x, y, payload } = props;
                     return (
@@ -116,7 +116,7 @@ export function CompetitiveIntelligencePage() {
                 <YAxis 
                   dataKey="name" 
                   type="category" 
-                  width={150}
+                  width={0}
                   tick={(props) => {
                     const { x, y, payload } = props;
                     return (
@@ -150,7 +150,7 @@ export function CompetitiveIntelligencePage() {
                 <YAxis 
                   dataKey="name" 
                   type="category" 
-                  width={150}
+                  width={0}
                   tick={(props) => {
                     const { x, y, payload } = props;
                     return (
@@ -184,7 +184,7 @@ export function CompetitiveIntelligencePage() {
                 <YAxis 
                   dataKey="name" 
                   type="category" 
-                  width={150}
+                  width={0}
                   tick={(props) => {
                     const { x, y, payload } = props;
                     return (
@@ -218,7 +218,7 @@ export function CompetitiveIntelligencePage() {
                 <YAxis 
                   dataKey="name" 
                   type="category" 
-                  width={150}
+                  width={0}
                   tick={(props) => {
                     const { x, y, payload } = props;
                     return (
@@ -239,9 +239,9 @@ export function CompetitiveIntelligencePage() {
         </DataCard>
       </div>
 
-      <div className="text-xs text-gray-500 mt-8 border-t pt-4">
+      {/* <div className="text-xs text-gray-500 mt-8 border-t pt-4">
         <p>Copyright © 2023, P+ Measurement Services. All rights reserved. This audit report, including all its methodologies, contents, and analysis, is the intellectual property of P+ Measurement Services. It is intended solely for the use of the specifically named clients. Any unauthorized use is strictly prohibited.</p>
-      </div>
+      </div> */}
     </div>
   );
 }

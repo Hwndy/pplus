@@ -92,7 +92,7 @@ export default function AnalyticsPage() {
             </DataCard>
 
             <DataCard title="Media Channel Distribution" variant="glass" icon={<PieChartIcon size={24} className="text-indigo-600" />} className="border-indigo-100 hover:border-indigo-300 transition-all shadow-sm hover:shadow-md">
-              <div className="h-80 relative">
+              <div className="h-80 relative p-2">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -100,24 +100,38 @@ export default function AnalyticsPage() {
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      innerRadius={50}
+                      outerRadius="90%"
+                      innerRadius="50%"
                       fill="#8884d8"
                       dataKey="value"
-                      paddingAngle={2}
+                      paddingAngle={3}
+                      startAngle={90}
+                      endAngle={450}
                     >
                       {dashboardSummary.mediaBreakdown.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)', border: 'none' }} />
-                    <Legend layout="vertical" verticalAlign="middle" align="right" />
+                    <Tooltip
+                      formatter={(value) => [`${value}%`, 'Percentage']}
+                      contentStyle={{
+                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                        border: 'none'
+                      }}
+                    />
+                    <Legend
+                      verticalAlign="bottom"
+                      height={36}
+                      iconType="circle"
+                      wrapperStyle={{ paddingTop: '10px', fontSize: '12px' }}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
-                  <div className="text-3xl font-bold text-gray-800">100%</div>
-                  <div className="text-sm text-gray-500">Coverage</div>
+                  <div className="text-2xl font-bold text-gray-800">100%</div>
+                  <div className="text-xs text-gray-500 font-medium">Coverage</div>
                 </div>
               </div>
             </DataCard>

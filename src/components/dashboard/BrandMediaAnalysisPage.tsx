@@ -118,7 +118,7 @@ export function BrandMediaAnalysisPage() {
           icon={<PieChartIcon size={24} className="text-indigo-600" />}
           className="border-indigo-100 hover:border-indigo-300 transition-all shadow-sm hover:shadow-md"
         >
-          <div className="h-80 relative">
+          <div className="h-80 relative p-2">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -126,34 +126,40 @@ export function BrandMediaAnalysisPage() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  innerRadius={50}
+                  outerRadius="90%"
+                  innerRadius="50%"
                   fill="#8884d8"
                   dataKey="value"
-                  paddingAngle={2}
+                  paddingAngle={3}
+                  startAngle={90}
+                  endAngle={450}
                 >
                   {brandMediaAnalysisData.subsidiariesExposure.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={(value) => `${value}%`}
+                  formatter={(value) => [`${value}%`, 'Percentage']}
                   contentStyle={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
                     borderRadius: '8px',
                     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
                     border: 'none'
                   }}
                 />
-                <Legend layout="vertical" verticalAlign="middle" align="right" />
+                <Legend
+                  verticalAlign="bottom"
+                  height={36}
+                  iconType="circle"
+                  wrapperStyle={{ paddingTop: '10px', fontSize: '12px' }}
+                />
               </PieChart>
             </ResponsiveContainer>
-            <div className="absolute top-1/2 left-1/4 transform -translate-x-1/2 -translate-y-1/2 text-center">
-              <div className="text-3xl font-bold text-indigo-600">
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
+              <div className="text-2xl font-bold text-indigo-600">
                 {brandMediaAnalysisData.subsidiariesExposure[0].value}%
               </div>
-              <div className="text-sm text-gray-500">
+              <div className="text-xs text-gray-500 font-medium">
                 {brandMediaAnalysisData.subsidiariesExposure[0].name}
               </div>
             </div>
@@ -166,7 +172,7 @@ export function BrandMediaAnalysisPage() {
           icon={<PieChartIcon size={24} className="text-cyan-600" />}
           className="border-cyan-100 hover:border-cyan-300 transition-all shadow-sm hover:shadow-md"
         >
-          <div className="h-80 relative">
+          <div className="h-80 relative p-2">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -174,34 +180,40 @@ export function BrandMediaAnalysisPage() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  innerRadius={50}
+                  outerRadius="90%"
+                  innerRadius="50%"
                   fill="#8884d8"
                   dataKey="value"
-                  paddingAngle={2}
+                  paddingAngle={3}
+                  startAngle={90}
+                  endAngle={450}
                 >
                   {brandMediaAnalysisData.messagePlacement.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={(value) => `${value}%`}
+                  formatter={(value) => [`${value}%`, 'Percentage']}
                   contentStyle={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
                     borderRadius: '8px',
                     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
                     border: 'none'
                   }}
                 />
-                <Legend layout="vertical" verticalAlign="middle" align="right" />
+                <Legend
+                  verticalAlign="bottom"
+                  height={36}
+                  iconType="circle"
+                  wrapperStyle={{ paddingTop: '10px', fontSize: '12px' }}
+                />
               </PieChart>
             </ResponsiveContainer>
-            <div className="absolute top-1/2 left-1/4 transform -translate-x-1/2 -translate-y-1/2 text-center">
-              <div className="text-3xl font-bold text-cyan-600">
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
+              <div className="text-2xl font-bold text-cyan-600">
                 {brandMediaAnalysisData.messagePlacement[0].value}%
               </div>
-              <div className="text-sm text-gray-500">
+              <div className="text-xs text-gray-500 font-medium">
                 {brandMediaAnalysisData.messagePlacement[0].name}
               </div>
             </div>
@@ -216,11 +228,11 @@ export function BrandMediaAnalysisPage() {
           icon={<LineChartIcon size={24} className="text-emerald-600" />}
           className="border-emerald-100 hover:border-emerald-300 transition-all shadow-sm hover:shadow-md"
         >
-          <div className="h-80">
+          <div className="h-80 p-2">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart
                 data={brandMediaAnalysisData.weeklyTrend}
-                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                margin={{ top: 10, right: 10, left: 0, bottom: 10 }}
               >
                 <defs>
                   <linearGradient id="colorOnlineWeekly" x1="0" y1="0" x2="0" y2="1">
@@ -232,18 +244,31 @@ export function BrandMediaAnalysisPage() {
                     <stop offset="95%" stopColor={COLORS[2]} stopOpacity={0.1}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="week" />
-                <YAxis />
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={true} vertical={false} />
+                <XAxis
+                  dataKey="week"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 12, fill: '#666' }}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 12, fill: '#666' }}
+                />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
                     borderRadius: '8px',
                     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                    border: 'none'
+                    border: 'none',
+                    fontSize: '12px'
                   }}
                 />
-                <Legend iconType="circle" />
+                <Legend
+                  iconType="circle"
+                  wrapperStyle={{ paddingTop: '10px', fontSize: '12px' }}
+                />
                 <Area
                   type="monotone"
                   dataKey="onlineMedia"

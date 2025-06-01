@@ -81,9 +81,7 @@ const Dashboard = () => {
     <div className="h-full">
       <Routes>
         {/* Common routes accessible to all roles */}
-        <Route path="swot" element={
-          user.role === 'client' ? <PlaceholderPage title="SWOT Analysis" /> : <SwotAnalysisPage />
-        } />
+        <Route path="swot" element={<SwotAnalysisPage />} />
         <Route path="swot/create" element={
           ['admin', 'analyst'].includes(user.role) ? <SwotAnalysisEntryPage /> : <Navigate to="/dashboard" replace />
         } />

@@ -57,7 +57,7 @@ export function ExecutiveSummaryPage() {
         <div className="text-sm text-gray-500">{formattedDate}</div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
         <DataCard
           title="Total Media Mentions"
           variant="glass"
@@ -122,7 +122,7 @@ export function ExecutiveSummaryPage() {
           </div>
         </DataCard>
 
-        <DataCard
+        {/* <DataCard
           title="Positive Mentions"
           variant="glass"
           icon={<ThumbsUp size={24} className="text-green-600" />}
@@ -152,7 +152,7 @@ export function ExecutiveSummaryPage() {
               <span>-5% from last month</span>
             </div>
           </div>
-        </DataCard>
+        </DataCard> */}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -162,7 +162,7 @@ export function ExecutiveSummaryPage() {
           icon={<PieChartIcon size={24} className="text-indigo-600" />}
           className="border-indigo-100 hover:border-indigo-300 transition-all shadow-sm hover:shadow-md"
         >
-          <div className="h-80 relative">
+          <div className="h-80 relative p-2">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -170,37 +170,38 @@ export function ExecutiveSummaryPage() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  innerRadius={50}
+                  outerRadius="90%"
+                  innerRadius="50%"
                   fill="#8884d8"
                   dataKey="value"
-                  paddingAngle={2}
+                  paddingAngle={3}
+                  startAngle={90}
+                  endAngle={450}
                 >
                   {sentimentData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={SENTIMENT_COLORS[index % SENTIMENT_COLORS.length]} />
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={(value) => `${value}%`}
+                  formatter={(value) => [`${value}%`, 'Percentage']}
                   contentStyle={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
                     borderRadius: '8px',
                     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
                     border: 'none'
                   }}
                 />
                 <Legend
-                  layout="vertical"
-                  verticalAlign="middle"
-                  align="right"
+                  verticalAlign="bottom"
+                  height={36}
                   iconType="circle"
+                  wrapperStyle={{ paddingTop: '10px', fontSize: '12px' }}
                 />
               </PieChart>
             </ResponsiveContainer>
-            <div className="absolute top-1/2 left-1/4 transform -translate-x-1/2 -translate-y-1/2 text-center">
-              <div className="text-3xl font-bold text-green-600">{sentimentData[0].value}%</div>
-              <div className="text-sm text-gray-500">Positive</div>
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
+              <div className="text-2xl font-bold text-green-600">{sentimentData[0].value}%</div>
+              <div className="text-xs text-gray-500 font-medium">Positive</div>
             </div>
           </div>
         </DataCard>
@@ -211,7 +212,7 @@ export function ExecutiveSummaryPage() {
           icon={<Globe size={24} className="text-cyan-600" />}
           className="border-cyan-100 hover:border-cyan-300 transition-all shadow-sm hover:shadow-md"
         >
-          <div className="h-80 relative">
+          <div className="h-80 relative p-2">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -219,39 +220,40 @@ export function ExecutiveSummaryPage() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  innerRadius={50}
+                  outerRadius="90%"
+                  innerRadius="50%"
                   fill="#8884d8"
                   dataKey="value"
-                  paddingAngle={2}
+                  paddingAngle={3}
+                  startAngle={90}
+                  endAngle={450}
                 >
                   {executiveSummaryData.languageDistribution.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={(value) => `${value}%`}
+                  formatter={(value) => [`${value}%`, 'Percentage']}
                   contentStyle={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
                     borderRadius: '8px',
                     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
                     border: 'none'
                   }}
                 />
                 <Legend
-                  layout="vertical"
-                  verticalAlign="middle"
-                  align="right"
+                  verticalAlign="bottom"
+                  height={36}
                   iconType="circle"
+                  wrapperStyle={{ paddingTop: '10px', fontSize: '12px' }}
                 />
               </PieChart>
             </ResponsiveContainer>
-            <div className="absolute top-1/2 left-1/4 transform -translate-x-1/2 -translate-y-1/2 text-center">
-              <div className="text-3xl font-bold text-cyan-600">
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
+              <div className="text-2xl font-bold text-cyan-600">
                 {executiveSummaryData.languageDistribution[0].value}%
               </div>
-              <div className="text-sm text-gray-500">
+              <div className="text-xs text-gray-500 font-medium">
                 {executiveSummaryData.languageDistribution[0].name}
               </div>
             </div>
@@ -264,7 +266,7 @@ export function ExecutiveSummaryPage() {
           icon={<Newspaper size={24} className="text-emerald-600" />}
           className="border-emerald-100 hover:border-emerald-300 transition-all shadow-sm hover:shadow-md"
         >
-          <div className="h-80 relative">
+          <div className="h-80 relative p-2">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -272,39 +274,40 @@ export function ExecutiveSummaryPage() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  innerRadius={50}
+                  outerRadius="90%"
+                  innerRadius="50%"
                   fill="#8884d8"
                   dataKey="value"
-                  paddingAngle={2}
+                  paddingAngle={3}
+                  startAngle={90}
+                  endAngle={450}
                 >
                   {executiveSummaryData.mediaVehicleDistribution.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={(value) => `${value}%`}
+                  formatter={(value) => [`${value}%`, 'Percentage']}
                   contentStyle={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
                     borderRadius: '8px',
                     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
                     border: 'none'
                   }}
                 />
                 <Legend
-                  layout="vertical"
-                  verticalAlign="middle"
-                  align="right"
+                  verticalAlign="bottom"
+                  height={36}
                   iconType="circle"
+                  wrapperStyle={{ paddingTop: '10px', fontSize: '12px' }}
                 />
               </PieChart>
             </ResponsiveContainer>
-            <div className="absolute top-1/2 left-1/4 transform -translate-x-1/2 -translate-y-1/2 text-center">
-              <div className="text-3xl font-bold text-emerald-600">
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
+              <div className="text-2xl font-bold text-emerald-600">
                 {executiveSummaryData.mediaVehicleDistribution[0].value}%
               </div>
-              <div className="text-sm text-gray-500">
+              <div className="text-xs text-gray-500 font-medium">
                 {executiveSummaryData.mediaVehicleDistribution[0].name}
               </div>
             </div>
@@ -378,7 +381,7 @@ export function ExecutiveSummaryPage() {
           icon={<BarChart2 size={24} className="text-purple-600" />}
           className="border-purple-100 hover:border-purple-300 transition-all shadow-sm hover:shadow-md"
         >
-          <div className="h-80">
+          <div className="h-80 p-2">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={[
@@ -389,21 +392,35 @@ export function ExecutiveSummaryPage() {
                   { name: 'Anchoria Asset Mgt', value: 10 }
                 ]}
                 layout="vertical"
-                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                margin={{ top: 10, right: 10, left: 0, bottom: 10 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis type="number" domain={[0, 100]} />
-                <YAxis dataKey="name" type="category" width={150} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={true} vertical={false} />
+                <XAxis
+                  type="number"
+                  domain={[0, 35]}
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 14, fill: '#666' }}
+                />
+                <YAxis
+                  dataKey="name"
+                  type="category"
+                  width={0}
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 14, fill: '#666' }}
+                />
                 <Tooltip
-                  formatter={(value) => `${value}%`}
+                  formatter={(value) => [`${value}%`, 'Media Share']}
                   contentStyle={{
-                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
                     borderRadius: '8px',
                     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                    border: 'none'
+                    border: 'none',
+                    fontSize: '12px'
                   }}
                 />
-                <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={24}>
                   {[
                     { name: 'Cawry Asset Mgt', value: 30 },
                     { name: 'Quantum Zenith', value: 25 },
@@ -411,7 +428,7 @@ export function ExecutiveSummaryPage() {
                     { name: 'ARM Holding Company', value: 15 },
                     { name: 'Anchoria Asset Mgt', value: 10 }
                   ].map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={index === 0 ? COLORS[5] : '#e0e0e0'} />
+                    <Cell key={`cell-${index}`} fill={index === 0 ? COLORS[5] : '#e5e7eb'} />
                   ))}
                 </Bar>
               </BarChart>

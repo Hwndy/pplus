@@ -54,7 +54,7 @@ export function CompetitiveCEOsPage() {
                 <YAxis 
                   dataKey="name" 
                   type="category" 
-                  width={150}
+                  width={0}
                   tick={(props) => {
                     const { x, y, payload } = props;
                     return (
@@ -88,7 +88,7 @@ export function CompetitiveCEOsPage() {
                 <YAxis 
                   dataKey="name" 
                   type="category" 
-                  width={150}
+                  width={0}
                   tick={(props) => {
                     const { x, y, payload } = props;
                     return (
@@ -129,7 +129,7 @@ export function CompetitiveCEOsPage() {
                 <YAxis 
                   dataKey="name" 
                   type="category" 
-                  width={150}
+                  width={0}
                   tick={(props) => {
                     const { x, y, payload } = props;
                     return (
@@ -170,7 +170,7 @@ export function CompetitiveCEOsPage() {
                 <YAxis 
                   dataKey="name" 
                   type="category" 
-                  width={150}
+                  width={0}
                   tick={(props) => {
                     const { x, y, payload } = props;
                     return (

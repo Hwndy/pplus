@@ -30,7 +30,7 @@ export function MediaDistributionPage() {
               >
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis type="number" domain={[0, 35]} />
-                <YAxis dataKey="name" type="category" width={100} />
+                <YAxis dataKey="name" type="category" width={0} />
                 <Tooltip formatter={(value) => `${value}%`} />
                 <Bar dataKey="value" fill="#0088FE" name="Percentage" />
               </RechartsBarChart>

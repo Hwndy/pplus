@@ -149,50 +149,82 @@ export function ClientMediaDashboard() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <DataCard title="Language" variant="glass" icon={<Globe size={24} />}>
-              <div className="h-80">
+              <div className="h-80 relative p-2">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={executiveSummaryData.languageDistribution}
                       cx="50%"
                       cy="50%"
-                      labelLine={true}
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={100}
+                      labelLine={false}
+                      outerRadius="90%"
+                      innerRadius="50%"
                       fill="#8884d8"
                       dataKey="value"
+                      paddingAngle={3}
+                      startAngle={90}
+                      endAngle={450}
                     >
                       {executiveSummaryData.languageDistribution.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value) => `${value}%`} />
-                    <Legend />
+                    <Tooltip
+                      formatter={(value) => [`${value}%`, 'Percentage']}
+                      contentStyle={{
+                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                        border: 'none'
+                      }}
+                    />
+                    <Legend
+                      verticalAlign="bottom"
+                      height={36}
+                      iconType="circle"
+                      wrapperStyle={{ paddingTop: '10px', fontSize: '12px' }}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
             </DataCard>
 
             <DataCard title="Media Vehicle" variant="glass" icon={<Newspaper size={24} />}>
-              <div className="h-80">
+              <div className="h-80 relative p-2">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={executiveSummaryData.mediaVehicleDistribution}
                       cx="50%"
                       cy="50%"
-                      labelLine={true}
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={100}
+                      labelLine={false}
+                      outerRadius="90%"
+                      innerRadius="50%"
                       fill="#8884d8"
                       dataKey="value"
+                      paddingAngle={3}
+                      startAngle={90}
+                      endAngle={450}
                     >
                       {executiveSummaryData.mediaVehicleDistribution.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value) => `${value}%`} />
-                    <Legend />
+                    <Tooltip
+                      formatter={(value) => [`${value}%`, 'Percentage']}
+                      contentStyle={{
+                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                        border: 'none'
+                      }}
+                    />
+                    <Legend
+                      verticalAlign="bottom"
+                      height={36}
+                      iconType="circle"
+                      wrapperStyle={{ paddingTop: '10px', fontSize: '12px' }}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -358,36 +390,80 @@ export function ClientMediaDashboard() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <DataCard title="Thematic Distribution of Media Activities" variant="glass" icon={<BarChart2 size={24} />}>
-              <div className="h-80">
+              <div className="h-80 p-2">
                 <ResponsiveContainer width="100%" height="100%">
                   <RechartsBarChart
                     data={brandMediaAnalysisData.thematicDistribution}
                     layout="vertical"
-                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                    margin={{ top: 10, right: 10, left: 0, bottom: 10 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" domain={[0, 35]} />
-                    <YAxis dataKey="name" type="category" width={100} />
-                    <Tooltip formatter={(value) => `${value}%`} />
-                    <Bar dataKey="value" fill="#0088FE" name="Percentage" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={true} vertical={false} />
+                    <XAxis
+                      type="number"
+                      domain={[0, 35]}
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 12, fill: '#666' }}
+                    />
+                    <YAxis
+                      dataKey="name"
+                      type="category"
+                      width={120}
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 11, fill: '#666' }}
+                    />
+                    <Tooltip
+                      formatter={(value) => [`${value}%`, 'Percentage']}
+                      contentStyle={{
+                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                        border: 'none',
+                        fontSize: '12px'
+                      }}
+                    />
+                    <Bar dataKey="value" fill="#0088FE" name="Percentage" radius={[0, 6, 6, 0]} barSize={20} />
                   </RechartsBarChart>
                 </ResponsiveContainer>
               </div>
             </DataCard>
 
             <DataCard title="Brand & Subsidiaries Media Exposure" variant="glass" icon={<BarChart2 size={24} />}>
-              <div className="h-80">
+              <div className="h-80 p-2">
                 <ResponsiveContainer width="100%" height="100%">
                   <RechartsBarChart
                     data={brandMediaAnalysisData.subsidiariesExposure}
                     layout="vertical"
-                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                    margin={{ top: 10, right: 10, left: 0, bottom: 10 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" domain={[0, 55]} />
-                    <YAxis dataKey="name" type="category" width={100} />
-                    <Tooltip formatter={(value) => `${value}%`} />
-                    <Bar dataKey="value" fill="#00C49F" name="Percentage" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={true} vertical={false} />
+                    <XAxis
+                      type="number"
+                      domain={[0, 55]}
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 12, fill: '#666' }}
+                    />
+                    <YAxis
+                      dataKey="name"
+                      type="category"
+                      width={120}
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 11, fill: '#666' }}
+                    />
+                    <Tooltip
+                      formatter={(value) => [`${value}%`, 'Percentage']}
+                      contentStyle={{
+                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                        border: 'none',
+                        fontSize: '12px'
+                      }}
+                    />
+                    <Bar dataKey="value" fill="#00C49F" name="Percentage" radius={[0, 6, 6, 0]} barSize={20} />
                   </RechartsBarChart>
                 </ResponsiveContainer>
               </div>
