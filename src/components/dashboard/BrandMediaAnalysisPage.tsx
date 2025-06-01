@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { DataCard } from '@/components/ui/DataCard';
 import { Stat } from '@/components/ui/Stat';
+import { UniversalFilter, FilterOption, FilterValues } from '@/components/ui/UniversalFilter';
 import {
   BarChart as RechartsBarChart,
   Bar,
@@ -34,16 +35,101 @@ import {
 const COLORS = ['#4F46E5', '#06B6D4', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6'];
 
 export function BrandMediaAnalysisPage() {
+  const [filterValues, setFilterValues] = useState<FilterValues>({});
+
   // Get current date for display
   const currentDate = new Date();
   const formattedDate = `${currentDate.getDate()} ${currentDate.toLocaleString('default', { month: 'short' })} ${currentDate.getFullYear()}`;
 
+  // Filter options for Brand Media Analysis
+  const filterOptions: FilterOption[] = [
+    {
+      key: 'dateRange',
+      label: 'Date Range',
+      type: 'daterange',
+      placeholder: 'Select date range'
+    },
+    {
+      key: 'subsidiary',
+      label: 'Subsidiary',
+      type: 'multiselect',
+      options: [
+        { value: 'Stanbic IBTC Bank', label: 'Stanbic IBTC Bank' },
+        { value: 'Stanbic IBTC Pension Managers', label: 'Stanbic IBTC Pension Managers' },
+        { value: 'Stanbic IBTC Stockbrokers', label: 'Stanbic IBTC Stockbrokers' },
+        { value: 'Stanbic IBTC Asset Mgt', label: 'Stanbic IBTC Asset Mgt' },
+        { value: 'Stanbic IBTC Holdings', label: 'Stanbic IBTC Holdings' },
+        { value: 'Stanbic IBTC Capital', label: 'Stanbic IBTC Capital' }
+      ]
+    },
+    {
+      key: 'mentionType',
+      label: 'Mention Type',
+      type: 'multiselect',
+      options: [
+        { value: 'news', label: 'News Mentions' },
+        { value: 'photo', label: 'Photo Mentions' },
+        { value: 'video', label: 'Video Mentions' }
+      ]
+    },
+    {
+      key: 'placement',
+      label: 'Message Placement',
+      type: 'multiselect',
+      options: [
+        { value: 'headline', label: 'Headline Mentions' },
+        { value: 'logo', label: 'Logo Mentions' },
+        { value: 'photo', label: 'Photo Mentions' },
+        { value: 'video', label: 'Video Mentions' }
+      ]
+    },
+    {
+      key: 'mediaType',
+      label: 'Media Type',
+      type: 'select',
+      options: [
+        { value: 'online', label: 'Online Media' },
+        { value: 'print', label: 'Print Media' }
+      ]
+    }
+  ];
+
+  const resetFilters = () => {
+    setFilterValues({});
+  };
+
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-blue-500 text-transparent bg-clip-text">Brand Media Analysis</h2>
-        <div className="text-sm text-gray-500">{formattedDate}</div>
+    <div className="space-y-8 animate-fade-in">
+      {/* Beautiful Header Section */}
+      <div className="bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 rounded-2xl p-8 text-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-black/10"></div>
+        <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-white/10 transform translate-x-32 -translate-y-32"></div>
+        <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full bg-white/5 transform -translate-x-24 translate-y-24"></div>
+
+        <div className="relative z-10 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold mb-2 tracking-tight">Brand Media Analysis</h1>
+            <p className="text-purple-100 text-lg">Comprehensive media exposure and performance insights</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="bg-white/20 backdrop-blur-sm rounded-full p-4">
+              <BarChart2 size={32} className="text-white" />
+            </div>
+            <div className="text-right">
+              <div className="text-sm text-purple-100">Last Updated</div>
+              <div className="text-white font-medium">{formattedDate}</div>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* Filters */}
+      <UniversalFilter
+        filters={filterOptions}
+        values={filterValues}
+        onChange={setFilterValues}
+        onReset={resetFilters}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <DataCard
@@ -134,7 +220,7 @@ export function BrandMediaAnalysisPage() {
                   startAngle={90}
                   endAngle={450}
                 >
-                  {brandMediaAnalysisData.subsidiariesExposure.map((entry, index) => (
+                  {brandMediaAnalysisData.subsidiariesExposure.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
@@ -188,7 +274,7 @@ export function BrandMediaAnalysisPage() {
                   startAngle={90}
                   endAngle={450}
                 >
-                  {brandMediaAnalysisData.messagePlacement.map((entry, index) => (
+                  {brandMediaAnalysisData.messagePlacement.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>

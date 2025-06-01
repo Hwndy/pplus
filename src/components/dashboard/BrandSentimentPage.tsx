@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { DataCard } from '@/components/ui/DataCard';
 import { brandMediaSentimentData } from '@/utils/clientDashboardData';
+import { Heart, TrendingUp, BarChart3 } from 'lucide-react';
+import { UniversalFilter, FilterOption, FilterValues } from '@/components/ui/UniversalFilter';
 
 interface SentimentItemProps {
   title: string;
@@ -38,6 +40,56 @@ const SentimentItem: React.FC<SentimentItemProps> = ({ title, items }) => {
 };
 
 export function BrandSentimentPage() {
+  const [filterValues, setFilterValues] = useState<FilterValues>({});
+
+  // Filter options for Brand Sentiment
+  const filterOptions: FilterOption[] = [
+    {
+      key: 'dateRange',
+      label: 'Date Range',
+      type: 'daterange',
+      placeholder: 'Select date range'
+    },
+    {
+      key: 'sentimentType',
+      label: 'Sentiment Type',
+      type: 'multiselect',
+      options: [
+        { value: 'strongly_positive', label: 'Strongly Positive' },
+        { value: 'positive', label: 'Positive' },
+        { value: 'neutral', label: 'Neutral' },
+        { value: 'negative', label: 'Negative' },
+        { value: 'strongly_negative', label: 'Strongly Negative' }
+      ]
+    },
+    {
+      key: 'driverType',
+      label: 'Driver Type',
+      type: 'multiselect',
+      options: [
+        { value: 'positive', label: 'Positive Drivers' },
+        { value: 'negative', label: 'Negative Drivers' },
+        { value: 'neutral', label: 'Neutral Drivers' }
+      ]
+    },
+    {
+      key: 'publication',
+      label: 'Publication',
+      type: 'multiselect',
+      options: [
+        { value: 'BusinessDay', label: 'BusinessDay' },
+        { value: 'The Guardian', label: 'The Guardian' },
+        { value: 'Punch', label: 'Punch' },
+        { value: 'Vanguard', label: 'Vanguard' },
+        { value: 'ThisDay', label: 'ThisDay' }
+      ]
+    }
+  ];
+
+  const resetFilters = () => {
+    setFilterValues({});
+  };
+
   // Sample sentiment distribution data
   const sentimentDistribution = [
     { value: 78, label: 'Strongly Positive', color: '#1dd1a1' },
@@ -67,8 +119,33 @@ export function BrandSentimentPage() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <h2 className="text-2xl font-bold">Brand Media Sentiment Distribution Matrix</h2>
+    <div className="space-y-8 animate-fade-in">
+      {/* Beautiful Header Section */}
+      <div className="bg-gradient-to-r from-rose-600 via-pink-600 to-purple-600 rounded-2xl p-8 text-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-black/10"></div>
+        <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-white/10 transform translate-x-32 -translate-y-32"></div>
+        <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full bg-white/5 transform -translate-x-24 translate-y-24"></div>
+
+        <div className="relative z-10 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold mb-2 tracking-tight">Brand Media Sentiment Distribution Matrix</h1>
+            <p className="text-pink-100 text-lg">Comprehensive sentiment analysis and reputation drivers</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="bg-white/20 backdrop-blur-sm rounded-full p-4">
+              <Heart size={32} className="text-white" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <UniversalFilter
+        filters={filterOptions}
+        values={filterValues}
+        onChange={setFilterValues}
+        onReset={resetFilters}
+      />
 
       {/* Sentiment Distribution Bar */}
       <div className="mb-8">

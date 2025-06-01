@@ -16,6 +16,10 @@ import { CoverageRegionPage } from '@/components/dashboard/CoverageRegionPage';
 import { CompetitiveIntelligencePage } from '@/components/dashboard/CompetitiveIntelligencePage';
 import { CompetitiveSentimentPage } from '@/components/dashboard/CompetitiveSentimentPage';
 import { CompetitiveCEOsPage } from '@/components/dashboard/CompetitiveCEOsPage';
+import { CompetitivePRDriversPage } from '@/components/dashboard/CompetitivePRDriversPage';
+import { GlossaryPage } from '@/components/dashboard/GlossaryPage';
+import { PrincipleMethodologyPage } from '@/components/dashboard/PrincipleMethodologyPage';
+import { DailyMentionsInboxPage } from '@/components/dashboard/DailyMentionsInboxPage';
 import { PlaceholderPage } from '@/components/dashboard/PlaceholderPage';
 import { Spinner } from '@/components/ui/spinner';
 import { Route, Routes, Navigate, useLocation } from 'react-router-dom';
@@ -107,7 +111,7 @@ const Dashboard = () => {
         <Route path="companies" element={
           user.role === 'admin' ? <CompaniesPage /> : <Navigate to="/dashboard" replace />
         } />
-        <Route path="publications" element={
+        <Route path="publications-management" element={
           user.role === 'admin' ? <PublicationsPage /> : <Navigate to="/dashboard" replace />
         } />
         <Route path="placement" element={
@@ -229,13 +233,16 @@ const Dashboard = () => {
           user.role === 'client' ? <CompetitiveCEOsPage /> : <Navigate to="/dashboard" replace />
         } />
         <Route path="competitive-pr" element={
-          user.role === 'client' ? <PlaceholderPage title="Competitive PR Drivers" /> : <Navigate to="/dashboard" replace />
+          user.role === 'client' ? <CompetitivePRDriversPage /> : <Navigate to="/dashboard" replace />
         } />
         <Route path="glossary" element={
-          user.role === 'client' ? <PlaceholderPage title="Glossary" /> : <Navigate to="/dashboard" replace />
+          user.role === 'client' ? <GlossaryPage /> : <Navigate to="/dashboard" replace />
         } />
         <Route path="methodology" element={
-          user.role === 'client' ? <PlaceholderPage title="Principle & Methodology" /> : <Navigate to="/dashboard" replace />
+          user.role === 'client' ? <PrincipleMethodologyPage /> : <Navigate to="/dashboard" replace />
+        } />
+        <Route path="mentions-inbox" element={
+          user.role === 'client' ? <DailyMentionsInboxPage /> : <Navigate to="/dashboard" replace />
         } />
 
         {/* Fallback - redirect to the main dashboard */}

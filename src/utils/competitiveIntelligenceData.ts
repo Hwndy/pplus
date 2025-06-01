@@ -184,3 +184,42 @@ export const competitiveCEOsData = {
     }
   ]
 };
+
+// Competitive PR Drivers data
+export const competitivePRDriversData = {
+  companies: [
+    {
+      id: 'uba-group',
+      name: 'UBA Group',
+      color: '#3B82F6',
+      drivers: [
+        'Elumelu Commits to Boosting Gabon\'s Infrastructure, Youth Empowerment',
+        'Full Year 2024: UBA Grows Profit To N804 Billion, Declares N3.00 Kobo Final Dividend',
+        'UBA Charts Path For 2025, Focuses On Innovation, Digital Transformation, Sustainability',
+        'UBA And ICAN Partner To Drive Innovation, Excellence In Finance And Accounting'
+      ]
+    },
+    {
+      id: 'first-holdco',
+      name: 'First HoldCo Plc',
+      color: '#10B981',
+      drivers: [
+        'Dangote, Adenuga, Rabiu, And Otedola Retain Positions on Forbes Africa\'s Billionaires List',
+        'First HoldCo\'s rights issue oversubscribed by 25%, raising N187.6bn',
+        'FBN Holdings rebrands as FirstHoldCo cross all subsidiaries',
+        '25% oversubscription of First HoldCo\'s N150b rights issue paves the way for its Private Placement of N350b'
+      ]
+    },
+    {
+      id: 'gtco',
+      name: 'GTCO Plc',
+      color: '#F59E0B',
+      drivers: [
+        'Cyberstalking: GTCO Pardons Bloggers as Accused Persons Tender Unreserved Apology',
+        'GTCO Plc pays shareholders record dividend of N8.03k for 2024',
+        'GTCO profit jumps by 107.8 per cent to N1.266tn profit in 2024',
+        'Segun Agbaje leads GTCO to record $661.3 million profit, sets $134.4 million dividend payout'
+      ]
+    }
+  ]
+};

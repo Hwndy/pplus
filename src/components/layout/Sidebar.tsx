@@ -44,6 +44,7 @@ import {
   PenTool,
   Search,
   TrendingUp,
+  Inbox,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -183,7 +184,7 @@ export function Sidebar({ className, isOpen = true, onClose }: SidebarProps) {
       { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
       { name: 'Users', href: '/dashboard/users', icon: Users },
       { name: 'Companies', href: '/dashboard/companies', icon: Building2 },
-      { name: 'Publications', href: '/dashboard/publications', icon: BookOpenText },
+      { name: 'Publications', href: '/dashboard/publications-management', icon: BookOpenText },
       { name: 'Parameters', href: '/dashboard/parameters', icon: Settings },
       { name: 'Reports', href: '/dashboard/reports', icon: FileText },
       { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart },
@@ -233,6 +234,7 @@ export function Sidebar({ className, isOpen = true, onClose }: SidebarProps) {
   else if (user.role === 'client') {
     const clientItems = [
       { name: 'Executive Summary', href: '/dashboard', icon: LayoutDashboard },
+      { name: 'Daily Mentions Inbox', href: '/dashboard/mentions-inbox', icon: Inbox },
       { name: 'SWOT Analysis', href: '/dashboard/swot', icon: Target },
       { name: 'Outcome & Insights', href: '/dashboard/insights', icon: LineChart },
       { name: 'Industry Landscape Overview', href: '/dashboard/industry', icon: Building },

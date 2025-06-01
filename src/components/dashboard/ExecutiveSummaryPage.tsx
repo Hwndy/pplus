@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { DataCard } from '@/components/ui/DataCard';
 import { Stat } from '@/components/ui/Stat';
+import { UniversalFilter, FilterOption, FilterValues } from '@/components/ui/UniversalFilter';
 import {
   PieChart,
   Pie,
@@ -35,11 +36,61 @@ const COLORS = ['#4F46E5', '#06B6D4', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'
 const SENTIMENT_COLORS = ['#10B981', '#F59E0B', '#EF4444'];
 
 export function ExecutiveSummaryPage() {
+  const [filterValues, setFilterValues] = useState<FilterValues>({});
+
   // Get current date for display
   const currentDate = new Date();
   const formattedDate = `${currentDate.getDate()} ${currentDate.toLocaleString('default', { month: 'short' })} ${currentDate.getFullYear()}`;
 
-  // Calculate sentiment percentages
+  // Filter options for Executive Summary
+  const filterOptions: FilterOption[] = [
+    {
+      key: 'dateRange',
+      label: 'Date Range',
+      type: 'daterange',
+      placeholder: 'Select date range'
+    },
+    {
+      key: 'mediaType',
+      label: 'Media Type',
+      type: 'multiselect',
+      options: [
+        { value: 'online', label: 'Online Media' },
+        { value: 'print', label: 'Print Media' }
+      ]
+    },
+    {
+      key: 'language',
+      label: 'Language',
+      type: 'multiselect',
+      options: [
+        { value: 'English', label: 'English' },
+        { value: 'Portuguese', label: 'Portuguese' },
+        { value: 'Turkish', label: 'Turkish' }
+      ]
+    },
+    {
+      key: 'sentiment',
+      label: 'Sentiment',
+      type: 'multiselect',
+      options: [
+        { value: 'positive', label: 'Positive' },
+        { value: 'neutral', label: 'Neutral' },
+        { value: 'negative', label: 'Negative' }
+      ]
+    },
+    {
+      key: 'region',
+      label: 'Region',
+      type: 'select',
+      options: [
+        { value: 'local', label: 'Local Media' },
+        { value: 'international', label: 'International Media' }
+      ]
+    }
+  ];
+
+  // Calculate sentiment percentages (filtered data would be applied here)
   const totalMentions = executiveSummaryData.positiveMediaExposure +
                         executiveSummaryData.neutralMediaExposure +
                         executiveSummaryData.negativeMediaExposure;
@@ -50,12 +101,24 @@ export function ExecutiveSummaryPage() {
     { name: 'Negative', value: Math.round((executiveSummaryData.negativeMediaExposure / totalMentions) * 100) }
   ];
 
+  const resetFilters = () => {
+    setFilterValues({});
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-blue-500 text-transparent bg-clip-text">Executive Summary</h2>
         <div className="text-sm text-gray-500">{formattedDate}</div>
       </div>
+
+      {/* Filters */}
+      <UniversalFilter
+        filters={filterOptions}
+        values={filterValues}
+        onChange={setFilterValues}
+        onReset={resetFilters}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
         <DataCard
@@ -178,7 +241,7 @@ export function ExecutiveSummaryPage() {
                   startAngle={90}
                   endAngle={450}
                 >
-                  {sentimentData.map((entry, index) => (
+                  {sentimentData.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={SENTIMENT_COLORS[index % SENTIMENT_COLORS.length]} />
                   ))}
                 </Pie>
@@ -228,7 +291,7 @@ export function ExecutiveSummaryPage() {
                   startAngle={90}
                   endAngle={450}
                 >
-                  {executiveSummaryData.languageDistribution.map((entry, index) => (
+                  {executiveSummaryData.languageDistribution.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
@@ -282,7 +345,7 @@ export function ExecutiveSummaryPage() {
                   startAngle={90}
                   endAngle={450}
                 >
-                  {executiveSummaryData.mediaVehicleDistribution.map((entry, index) => (
+                  {executiveSummaryData.mediaVehicleDistribution.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
@@ -427,7 +490,7 @@ export function ExecutiveSummaryPage() {
                     { name: 'Stanbic IBTC Asset Mgt', value: 20 },
                     { name: 'ARM Holding Company', value: 15 },
                     { name: 'Anchoria Asset Mgt', value: 10 }
-                  ].map((entry, index) => (
+                  ].map((_, index) => (
                     <Cell key={`cell-${index}`} fill={index === 0 ? COLORS[5] : '#e5e7eb'} />
                   ))}
                 </Bar>
