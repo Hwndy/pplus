@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { format } from 'date-fns';
-import { CalendarIcon, Pencil, Image, Phone } from 'lucide-react';
+import { CalendarIcon, Pencil, Image, Phone, Loader2 } from 'lucide-react';
 import {
   Form,
   FormControl,
@@ -30,13 +30,8 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { User } from './EditUserForm';
 import { Textarea } from '@/components/ui/textarea';
-
-// Sample supervisors for the demo
-const MOCK_SUPERVISORS = [
-  { id: 'sup-1', name: 'John Supervisor' },
-  { id: 'sup-2', name: 'Sarah Manager' },
-  { id: 'sup-3', name: 'Michael Team Lead' },
-];
+import { useCreateUser, useSupervisors } from '@/hooks/useApi';
+import { toast } from 'sonner';
 
 interface CreateUserFormProps {
   onSave: (user: User) => void;
@@ -46,15 +41,18 @@ interface CreateUserFormProps {
 export function CreateUserForm({ onSave, onCancel }: CreateUserFormProps) {
   const [avatar, setAvatar] = useState('');
   const [showSupervisorField, setShowSupervisorField] = useState(false);
-  
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const createUser = useCreateUser();
+  const { data: supervisors } = useSupervisors();
+
   const form = useForm({
     defaultValues: {
-      id: `user-${Math.floor(Math.random() * 10000)}`,
       name: '',
       email: '',
-      role: 'admin',
+      role: 'ADMIN',
       mobileContact: '',
-      countryCode: '+1',
+      countryCode: '+234',
       joinDate: new Date(),
       expirationDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
       password: '',
@@ -67,41 +65,60 @@ export function CreateUserForm({ onSave, onCancel }: CreateUserFormProps) {
   const selectedRole = form.watch('role');
   
   useEffect(() => {
-    // Show supervisor field only when 'analyst' role is selected
-    setShowSupervisorField(selectedRole === 'analyst');
-    
-    // Reset supervisor value when role changes to non-analyst
-    if (selectedRole !== 'analyst') {
+    // Show supervisor field only when 'ANALYST' or 'CLIENT' role is selected
+    setShowSupervisorField(selectedRole === 'ANALYST' || selectedRole === 'CLIENT');
+
+    // Reset supervisor value when role changes to non-analyst/client
+    if (selectedRole !== 'ANALYST' && selectedRole !== 'CLIENT') {
       form.setValue('supervisorId', '');
     }
   }, [selectedRole, form]);
 
-  const onSubmit = (values: any) => {
+  const onSubmit = async (values: any) => {
+    if (isSubmitting) return;
+
     // Validate passwords match
     if (values.password !== values.confirmPassword) {
-      form.setError('confirmPassword', { 
+      form.setError('confirmPassword', {
         type: 'manual',
-        message: "Passwords don't match!" 
+        message: "Passwords don't match!"
       });
       return;
     }
-    
-    // Validate that analyst has a supervisor
-    if (values.role === 'analyst' && !values.supervisorId) {
-      form.setError('supervisorId', { 
+
+    // Validate that analyst/client has a supervisor
+    if ((values.role === 'ANALYST' || values.role === 'CLIENT') && !values.supervisorId) {
+      form.setError('supervisorId', {
         type: 'manual',
-        message: "Supervisor is required for analysts" 
+        message: "Supervisor is required for analysts and clients"
       });
       return;
     }
-    
-    const newUser: User = {
-      ...values,
-      mobileContact: `${values.countryCode} ${values.mobileContact}`,
-      avatar,
-      active: true,
-    };
-    onSave(newUser);
+
+    setIsSubmitting(true);
+
+    try {
+      const userData = {
+        name: values.name,
+        email: values.email,
+        password: values.password,
+        role: values.role,
+        mobileContact: values.mobileContact,
+        countryCode: values.countryCode,
+        supervisorId: values.supervisorId || undefined,
+        expirationDate: values.role === 'CLIENT' ? values.expirationDate.toISOString() : undefined,
+        avatar,
+      };
+
+      const result = await createUser.mutate(userData);
+      onSave(result);
+      toast.success("User created successfully");
+    } catch (error) {
+      console.error('Error creating user:', error);
+      toast.error("Failed to create user");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -132,23 +149,6 @@ export function CreateUserForm({ onSave, onCancel }: CreateUserFormProps) {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <FormField
-            control={form.control}
-            name="id"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>User ID</FormLabel>
-                <FormControl>
-                  <Input 
-                    {...field} 
-                    className="bg-gray-50 border-gray-200" 
-                    placeholder="#ID"
-                    disabled
-                  />
-                </FormControl>
-              </FormItem>
-            )}
-          />
 
           <FormField
             control={form.control}
@@ -255,10 +255,10 @@ export function CreateUserForm({ onSave, onCancel }: CreateUserFormProps) {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="supervisor">Supervisor</SelectItem>
-                    <SelectItem value="analyst">Analyst</SelectItem>
-                    <SelectItem value="client">Company</SelectItem>
+                    <SelectItem value="ADMIN">Admin</SelectItem>
+                    <SelectItem value="SUPERVISOR">Supervisor</SelectItem>
+                    <SelectItem value="ANALYST">Analyst</SelectItem>
+                    <SelectItem value="CLIENT">Client</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -284,7 +284,7 @@ export function CreateUserForm({ onSave, onCancel }: CreateUserFormProps) {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {MOCK_SUPERVISORS.map(supervisor => (
+                      {supervisors?.map((supervisor: any) => (
                         <SelectItem key={supervisor.id} value={supervisor.id}>
                           {supervisor.name}
                         </SelectItem>
@@ -418,15 +418,29 @@ export function CreateUserForm({ onSave, onCancel }: CreateUserFormProps) {
           />
 
           <div className="flex justify-end space-x-2 pt-4 border-t mt-6">
-            <Button 
-              type="button" 
-              variant="outline" 
+            <Button
+              type="button"
+              variant="outline"
               onClick={onCancel}
               className="bg-gray-50 hover:bg-gray-100 text-gray-800"
+              disabled={isSubmitting}
             >
               Discard
             </Button>
-            <Button type="submit" className="bg-indigo-950">Save</Button>
+            <Button
+              type="submit"
+              className="bg-indigo-950"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                'Save'
+              )}
+            </Button>
           </div>
         </form>
       </Form>

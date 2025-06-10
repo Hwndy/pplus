@@ -7,6 +7,7 @@ import { useLocation, Navigate } from 'react-router-dom';
 import { Spinner } from '@/components/ui/spinner';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Menu } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -111,6 +112,3 @@ export function Layout({ children }: LayoutProps) {
     </div>
   );
 }
-
-// Need to import cn from utils since we now use it in this file
-import { cn } from '@/lib/utils';

@@ -178,7 +178,7 @@ export function Sidebar({ className, isOpen = true, onClose }: SidebarProps) {
   let navigation = navigationItems;
 
   // For admin users, include all functionality (admin, supervisor, and analyst)
-  if (user.role === 'admin') {
+  if (user.role.toLowerCase() === 'admin') {
     // Group navigation items by role
     const adminItems: NavItem[] = [
       { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -188,6 +188,7 @@ export function Sidebar({ className, isOpen = true, onClose }: SidebarProps) {
       { name: 'Parameters', href: '/dashboard/parameters', icon: Settings },
       { name: 'Reports', href: '/dashboard/reports', icon: FileText },
       { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart },
+      { name: 'API Demo', href: '/dashboard/api-demo', icon: Settings },
     ];
 
     const supervisorItems: NavItem[] = [
@@ -214,11 +215,11 @@ export function Sidebar({ className, isOpen = true, onClose }: SidebarProps) {
     navigation = adminFullItems;
   }
   // For supervisor users, use the supervisor-specific items
-  else if (user.role === 'supervisor') {
+  else if (user.role.toLowerCase() === 'supervisor') {
     navigation = supervisorItems;
   }
   // For analyst users, include only essential pages
-  else if (user.role === 'analyst') {
+  else if (user.role.toLowerCase() === 'analyst') {
     const analystItems = [
       { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
       { name: 'Editorial', href: '/dashboard/editorial', icon: Newspaper },
@@ -231,7 +232,7 @@ export function Sidebar({ className, isOpen = true, onClose }: SidebarProps) {
     navigation = analystItems;
   }
   // For client users, include client-specific pages
-  else if (user.role === 'client') {
+  else if (user.role.toLowerCase() === 'client') {
     const clientItems = [
       { name: 'Executive Summary', href: '/dashboard', icon: LayoutDashboard },
       { name: 'Daily Mentions Inbox', href: '/dashboard/mentions-inbox', icon: Inbox },

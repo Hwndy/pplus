@@ -4,7 +4,13 @@ import { Link } from 'react-router-dom';
 import { DataCard } from '@/components/ui/DataCard';
 import { Stat } from '@/components/ui/Stat';
 import { DataTable } from '@/components/ui/DataTable';
-import { dashboardSummary, users, dataParameters, clients, allDataEntries } from '@/utils/mockData';
+import { useDashboardSummary, useUsers, useDataParameters, useCompanies, useEditorials, useDataEntries, useAuditLogStats } from '@/hooks/useApi';
+import { GlobalSearch } from '@/components/GlobalSearch';
+import { DataExport } from '@/components/DataExport';
+import { UserManagement } from '@/components/UserManagement';
+import { AuditLogViewer } from '@/components/AuditLogViewer';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { toast } from 'sonner';
 import {
   Users, Settings, BarChart, AlertTriangle, CheckCircle, XCircle,
   FileText, Newspaper, Target, Share2, LineChart, Zap, CheckSquare,
@@ -62,12 +68,39 @@ const userColumns: ColumnDef<any>[] = [
 ];
 
 export function AdminDashboard() {
-  const [selectedSection, setSelectedSection] = useState<'overview' | 'users' | 'parameters' | 'content-review' | 'data-entry'>('overview');
+  const [selectedSection, setSelectedSection] = useState<'overview' | 'users' | 'parameters' | 'content-review' | 'data-entry' | 'export' | 'audit'>('overview');
+
+  // API hooks for real data
+  const { data: dashboardData, loading: dashboardLoading, refetch: refetchDashboard } = useDashboardSummary();
+  const { data: usersData, loading: usersLoading, refetch: refetchUsers } = useUsers();
+  const { data: parametersData, loading: parametersLoading } = useDataParameters();
+  const { data: companiesData, loading: companiesLoading } = useCompanies();
+  const { data: editorialsData, loading: editorialsLoading } = useEditorials();
+  const { data: dataEntriesData, loading: dataEntriesLoading } = useDataEntries();
+  const { data: auditStats } = useAuditLogStats();
+
+  const handleSearchResult = (result: any) => {
+    toast.success(`Selected: ${result.title}`);
+    // Handle navigation based on result type
+    switch (result.type) {
+      case 'user':
+        setSelectedSection('users');
+        break;
+      case 'company':
+        // Navigate to companies page
+        break;
+      default:
+        break;
+    }
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+        <div>
+          <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+          <GlobalSearch onResultSelect={handleSearchResult} className="mt-2" />
+        </div>
         <div className="flex flex-wrap gap-2">
           <button
             className={`px-4 py-2 rounded-md transition-colors ${
@@ -119,6 +152,26 @@ export function AdminDashboard() {
           >
             Data Entry
           </button>
+          <button
+            className={`px-4 py-2 rounded-md transition-colors ${
+              selectedSection === 'export'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground'
+            }`}
+            onClick={() => setSelectedSection('export')}
+          >
+            Export
+          </button>
+          <button
+            className={`px-4 py-2 rounded-md transition-colors ${
+              selectedSection === 'audit'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground'
+            }`}
+            onClick={() => setSelectedSection('audit')}
+          >
+            Audit Logs
+          </button>
         </div>
       </div>
 
@@ -128,21 +181,21 @@ export function AdminDashboard() {
             <DataCard title="Total Users" variant="glass" icon={<Users size={24} />}>
               <Stat
                 label="System Users"
-                value={users.length}
+                value={usersLoading ? 'Loading...' : usersData?.length || 0}
                 subtitle="Active users in the system"
               />
             </DataCard>
             <DataCard title="Data Parameters" variant="glass" icon={<Settings size={24} />}>
               <Stat
                 label="Active Parameters"
-                value={dataParameters.length}
+                value={parametersLoading ? 'Loading...' : parametersData?.length || 0}
                 subtitle="Media monitoring parameters"
               />
             </DataCard>
             <DataCard title="Total Clients" variant="glass" icon={<Users size={24} />}>
               <Stat
                 label="Active Clients"
-                value={clients.length}
+                value={companiesLoading ? 'Loading...' : companiesData?.length || 0}
                 subtitle="Organizations being monitored"
               />
             </DataCard>
@@ -161,21 +214,21 @@ export function AdminDashboard() {
             <DataCard title="Pending Review" variant="glass" icon={<AlertCircle size={24} />}>
               <Stat
                 label="Content Pending Review"
-                value={allDataEntries.filter(e => e.status === 'pending').length}
+                value={dataEntriesLoading ? 'Loading...' : dataEntriesData?.filter((e: any) => e.status === 'pending').length || 0}
                 subtitle="Awaiting approval"
               />
             </DataCard>
             <DataCard title="Approved Content" variant="glass" icon={<CheckCircle size={24} />}>
               <Stat
                 label="Content Approved"
-                value={allDataEntries.filter(e => e.status === 'approved').length}
+                value={dataEntriesLoading ? 'Loading...' : dataEntriesData?.filter((e: any) => e.status === 'approved').length || 0}
                 subtitle="Successfully processed"
               />
             </DataCard>
             <DataCard title="Rejected Content" variant="glass" icon={<XCircle size={24} />}>
               <Stat
                 label="Content Rejected"
-                value={allDataEntries.filter(e => e.status === 'rejected').length}
+                value={dataEntriesLoading ? 'Loading...' : dataEntriesData?.filter((e: any) => e.status === 'rejected').length || 0}
                 subtitle="Require attention"
               />
             </DataCard>
@@ -203,7 +256,7 @@ export function AdminDashboard() {
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart
-                    data={dashboardSummary.mentionTrend}
+                    data={dashboardData?.mentionTrend || []}
                     margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
                   >
                     <defs>
@@ -233,7 +286,7 @@ export function AdminDashboard() {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={dashboardSummary.mediaBreakdown}
+                      data={dashboardData?.mediaBreakdown || []}
                       cx="50%"
                       cy="50%"
                       labelLine={false}
@@ -242,7 +295,7 @@ export function AdminDashboard() {
                       fill="#8884d8"
                       dataKey="value"
                     >
-                      {dashboardSummary.mediaBreakdown.map((entry, index) => (
+                      {(dashboardData?.mediaBreakdown || []).map((_entry: any, index: number) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
@@ -257,13 +310,7 @@ export function AdminDashboard() {
 
       {selectedSection === 'users' && (
         <div className="space-y-6">
-          <DataCard
-            title="User Management"
-            description="View and manage all system users"
-            variant="glass"
-          >
-            <DataTable columns={userColumns} data={users} />
-          </DataCard>
+          <UserManagement />
         </div>
       )}
 
@@ -289,7 +336,7 @@ export function AdminDashboard() {
                   header: 'Description',
                 },
               ]}
-              data={dataParameters}
+              data={parametersData || []}
             />
           </DataCard>
         </div>
@@ -302,21 +349,21 @@ export function AdminDashboard() {
             <DataCard title="Pending Review" variant="glass" icon={<AlertTriangle size={24} />}>
               <Stat
                 label="Content Pending Review"
-                value={allDataEntries.filter(e => e.status === 'pending').length}
+                value={dataEntriesLoading ? 'Loading...' : dataEntriesData?.filter((e: any) => e.status === 'pending').length || 0}
                 subtitle="Awaiting approval"
               />
             </DataCard>
             <DataCard title="Approved Content" variant="glass" icon={<CheckSquare size={24} />}>
               <Stat
                 label="Content Approved"
-                value={allDataEntries.filter(e => e.status === 'approved').length}
+                value={dataEntriesLoading ? 'Loading...' : dataEntriesData?.filter((e: any) => e.status === 'approved').length || 0}
                 subtitle="Successfully processed"
               />
             </DataCard>
             <DataCard title="Rejected Content" variant="glass" icon={<AlertTriangle size={24} />}>
               <Stat
                 label="Content Rejected"
-                value={allDataEntries.filter(e => e.status === 'rejected').length}
+                value={dataEntriesLoading ? 'Loading...' : dataEntriesData?.filter((e: any) => e.status === 'rejected').length || 0}
                 subtitle="Sent back for revision"
               />
             </DataCard>
@@ -348,21 +395,21 @@ export function AdminDashboard() {
             <DataCard title="Pending Review" variant="glass" icon={<AlertCircle size={24} />}>
               <Stat
                 label="Entries Pending Review"
-                value={allDataEntries.filter(e => e.status === 'pending').length}
+                value={dataEntriesLoading ? 'Loading...' : dataEntriesData?.filter((e: any) => e.status === 'pending').length || 0}
                 subtitle="Awaiting approval"
               />
             </DataCard>
             <DataCard title="Approved Entries" variant="glass" icon={<CheckCircle size={24} />}>
               <Stat
                 label="Entries Approved"
-                value={allDataEntries.filter(e => e.status === 'approved').length}
+                value={dataEntriesLoading ? 'Loading...' : dataEntriesData?.filter((e: any) => e.status === 'approved').length || 0}
                 subtitle="Successfully validated"
               />
             </DataCard>
             <DataCard title="Rejected Entries" variant="glass" icon={<XCircle size={24} />}>
               <Stat
                 label="Entries Rejected"
-                value={allDataEntries.filter(e => e.status === 'rejected').length}
+                value={dataEntriesLoading ? 'Loading...' : dataEntriesData?.filter((e: any) => e.status === 'rejected').length || 0}
                 subtitle="Require attention"
               />
             </DataCard>
@@ -455,6 +502,20 @@ export function AdminDashboard() {
               </Button>
             </div>
           </DataCard>
+        </div>
+      )}
+
+      {/* Export Section */}
+      {selectedSection === 'export' && (
+        <div className="space-y-6">
+          <DataExport />
+        </div>
+      )}
+
+      {/* Audit Logs Section */}
+      {selectedSection === 'audit' && (
+        <div className="space-y-6">
+          <AuditLogViewer />
         </div>
       )}
     </div>

@@ -19,9 +19,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, X, Copy } from 'lucide-react';
+import { Plus, X, Copy, Loader2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
+import { useCreateCompany } from '@/hooks/useApi';
 
 interface CompanyFormData {
   id?: number;
@@ -69,9 +70,12 @@ export function CreateCompanyForm({ onSave, onCancel }: CreateCompanyFormProps) 
     linkedinLink: '',
     youtubeLink: '',
   }]);
-  
+
   const [subsidiaries, setSubsidiaries] = useState<Array<{ id: number, name: string }>>([]);
-  
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const createCompany = useCreateCompany();
+
   const form = useForm({
     defaultValues: {
       name: '',
@@ -95,22 +99,64 @@ export function CreateCompanyForm({ onSave, onCancel }: CreateCompanyFormProps) 
     },
   });
 
-  const onSubmit = () => {
-    const companies = companyForms.map(formData => ({
-      id: Math.floor(Math.random() * 10000),
-      ...formData,
-      subsidiaries: subsidiaries,
-    }));
-    
-    if (companies.length === 1) {
-      onSave(companies[0]);
-      toast.success("Company created successfully");
-    } else {
-      // If multiple companies were created
-      companies.forEach(company => {
-        onSave(company);
-      });
-      toast.success(`${companies.length} companies created successfully`);
+  const onSubmit = async () => {
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+
+    try {
+      const companies = companyForms.map(formData => ({
+        name: formData.name,
+        email: formData.email,
+        industry: formData.industry,
+        website: formData.website,
+        description: `${formData.subIndustry} company`,
+        // Map form fields to API expected fields
+        phone: formData.phone,
+        address: `${formData.officeAddress}, ${formData.officeState}, ${formData.officeCountry}`,
+        ceo: formData.ceo,
+        // Additional fields can be stored in a metadata object
+        metadata: {
+          subIndustry: formData.subIndustry,
+          prefix: formData.prefix,
+          contactPerson: formData.contactPerson,
+          socialMedia: {
+            facebook: formData.facebookLink,
+            instagram: formData.instagramLink,
+            twitter: formData.twitterLink,
+            linkedin: formData.linkedinLink,
+            youtube: formData.youtubeLink,
+          },
+          subsidiaries: subsidiaries,
+        }
+      }));
+
+      // Create companies one by one
+      const createdCompanies = [];
+      for (const companyData of companies) {
+        try {
+          const result = await createCompany.mutate(companyData);
+          createdCompanies.push(result);
+        } catch (error) {
+          console.error('Error creating company:', error);
+          toast.error(`Failed to create company: ${companyData.name}`);
+        }
+      }
+
+      if (createdCompanies.length > 0) {
+        if (createdCompanies.length === 1) {
+          onSave(createdCompanies[0]);
+          toast.success("Company created successfully");
+        } else {
+          createdCompanies.forEach(company => onSave(company));
+          toast.success(`${createdCompanies.length} companies created successfully`);
+        }
+      }
+    } catch (error) {
+      console.error('Error in form submission:', error);
+      toast.error("Failed to create company");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -379,15 +425,29 @@ export function CreateCompanyForm({ onSave, onCancel }: CreateCompanyFormProps) 
             <div className="border-t pt-4 mt-4"></div>
 
             <div className="flex justify-end space-x-2 pt-4">
-              <Button 
-                type="button" 
-                variant="outline" 
+              <Button
+                type="button"
+                variant="outline"
                 onClick={onCancel}
                 className="bg-gray-50 hover:bg-gray-100 text-gray-800"
+                disabled={isSubmitting}
               >
                 Discard
               </Button>
-              <Button type="submit" className="bg-indigo-950">Save</Button>
+              <Button
+                type="submit"
+                className="bg-indigo-950"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  'Save'
+                )}
+              </Button>
             </div>
           </form>
         </Form>

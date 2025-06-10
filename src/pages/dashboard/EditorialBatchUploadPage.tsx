@@ -5,8 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { ArrowLeft, Download, Upload, FileSpreadsheet, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Download, Upload, FileSpreadsheet, CheckCircle, Loader2 } from 'lucide-react';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
+import { apiService } from '@/services/apiService';
 
 const EditorialBatchUploadPage = () => {
   const navigate = useNavigate();
@@ -28,7 +29,7 @@ const EditorialBatchUploadPage = () => {
   };
 
   // Handle batch upload
-  const handleBatchUpload = () => {
+  const handleBatchUpload = async () => {
     if (!uploadFile) {
       toast.error('Please select a file to upload');
       return;
@@ -36,26 +37,45 @@ const EditorialBatchUploadPage = () => {
 
     setIsUploading(true);
 
-    // Simulate file processing with a timeout
-    setTimeout(() => {
-      // In a real app, this would send the file to an API endpoint
-      // For demo purposes, we'll just show a success message and simulate stats
+    try {
+      const response = await apiService.batchUploadEditorials(uploadFile);
+
       setIsUploading(false);
       setUploadSuccess(true);
       setUploadStats({
-        total: 25,
-        processed: 23,
-        errors: 2
+        total: response.data?.total || 0,
+        processed: response.data?.processed || 0,
+        errors: response.data?.errors || 0
       });
+
       toast.success(`File ${uploadFile.name} processed successfully`);
-    }, 2000);
+    } catch (error) {
+      console.error('Batch upload error:', error);
+      setIsUploading(false);
+      toast.error('Failed to process file. Please check the format and try again.');
+    }
   };
 
   // Handle template download
-  const handleDownloadTemplate = () => {
-    // In a real app, this would download an Excel template
-    // For demo purposes, we'll just show a success message
-    toast.success('Template downloaded successfully');
+  const handleDownloadTemplate = async () => {
+    try {
+      const blob = await apiService.downloadEditorialTemplate();
+
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'editorial_template.xlsx';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success('Template downloaded successfully');
+    } catch (error) {
+      console.error('Template download error:', error);
+      toast.error('Failed to download template');
+    }
   };
 
   // Go back to editorial page
@@ -174,13 +194,16 @@ const EditorialBatchUploadPage = () => {
                   <Download className="mr-2 h-4 w-4" />
                   Download Template
                 </Button>
-                <Button 
-                  onClick={handleBatchUpload} 
+                <Button
+                  onClick={handleBatchUpload}
                   disabled={!uploadFile || isUploading}
                   className="bg-indigo-950"
                 >
                   {isUploading ? (
-                    <>Processing...</>
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Processing...
+                    </>
                   ) : (
                     <>
                       <Upload className="mr-2 h-4 w-4" />

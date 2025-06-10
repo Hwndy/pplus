@@ -27,9 +27,12 @@ import {
   PaginationNext, 
   PaginationPrevious 
 } from '@/components/ui/pagination';
-import { Pencil, Trash2, Search, Plus } from 'lucide-react';
+import { Pencil, Trash2, Search, Plus, RefreshCw, Download, Upload, Loader2 } from 'lucide-react';
 import { CreateUserForm } from '@/components/admin/CreateUserForm';
 import { EditUserForm } from '@/components/admin/EditUserForm';
+import { useUsers, useDeleteUser } from '@/hooks/useApi';
+import { FileUpload } from '@/components/FileUpload';
+import { apiService } from '@/services/apiService';
 import { toast } from 'sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -131,13 +134,27 @@ const mockUsers: User[] = [
 ];
 
 const UsersPage = () => {
-  const [users, setUsers] = useState<User[]>(mockUsers);
-  const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const usersPerPage = 10;
+
+  // API hooks
+  const { data: usersResponse, loading, error, refetch } = useUsers({
+    page: currentPage,
+    limit: usersPerPage,
+    search: searchTerm
+  });
+  const { mutate: deleteUser, loading: deleting } = useDeleteUser();
+
+  // Extract data from API response
+  const users = usersResponse?.data || [];
+  const pagination = usersResponse?.pagination;
+  const totalPages = pagination?.totalPages || 1;
+  const totalItems = pagination?.total || 0;
 
   // Handle search
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -147,33 +164,10 @@ const UsersPage = () => {
 
   // Handle save new user
   const handleSaveUser = (newUser: any) => {
-    setUsers([...users, {
-      id: users.length + 1,
-      name: newUser.name,
-      email: newUser.email,
-      role: newUser.role.charAt(0).toUpperCase() + newUser.role.slice(1),
-      status: 'active',
-      lastLogin: new Date().toISOString(),
-      mobileContact: newUser.mobileContact,
-      supervisorId: newUser.supervisorId,
-      expirationDate: newUser.expirationDate
-    }]);
     setIsCreateDialogOpen(false);
+    refetch(); // Refresh the list
     toast.success("User created successfully");
   };
-
-  // Filter users based on search term
-  const filteredUsers = users.filter(user => 
-    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.role.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  // Calculate pagination
-  const indexOfLastUser = currentPage * usersPerPage;
-  const indexOfFirstUser = indexOfLastUser - usersPerPage;
-  const currentUsers = filteredUsers.slice(indexOfFirstUser, indexOfLastUser);
-  const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
 
   // Handle edit
   const handleEdit = (id: number | string) => {
@@ -186,18 +180,38 @@ const UsersPage = () => {
 
   // Handle update user
   const handleUpdateUser = (updatedUser: User) => {
-    setUsers(users.map(user => 
-      user.id === updatedUser.id ? updatedUser : user
-    ));
     setIsEditDialogOpen(false);
     setSelectedUser(null);
+    refetch(); // Refresh the list
     toast.success("User updated successfully");
   };
 
   // Handle delete
-  const handleDelete = (id: number | string) => {
-    setUsers(users.filter(user => user.id !== id));
-    toast.success("User deleted successfully");
+  const handleDelete = async (id: number | string) => {
+    try {
+      await deleteUser(id.toString());
+      toast.success("User deleted successfully");
+      refetch();
+    } catch (error) {
+      toast.error("Failed to delete user");
+    }
+  };
+
+  // Handle file upload
+  const handleFileUpload = (files: any[]) => {
+    toast.success(`Uploaded ${files.length} files successfully`);
+    setIsUploadDialogOpen(false);
+    refetch(); // Refresh data after upload
+  };
+
+  // Handle export
+  const handleExport = async () => {
+    try {
+      const response = await apiService.exportUsers({ format: 'csv' });
+      toast.success('Users exported successfully');
+    } catch (error) {
+      toast.error('Failed to export users');
+    }
   };
 
   // Format date
@@ -222,7 +236,41 @@ const UsersPage = () => {
     <div className="p-6 h-full">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Users</h1>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => refetch()} disabled={loading}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          <Button variant="outline" onClick={handleExport}>
+            <Download className="mr-2 h-4 w-4" />
+            Export
+          </Button>
+          <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <Upload className="mr-2 h-4 w-4" />
+                Upload
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Upload User Data</DialogTitle>
+              </DialogHeader>
+              <FileUpload
+                uploadType="data"
+                accept=".csv,.xlsx,.xls"
+                onUploadComplete={handleFileUpload}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
+
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
+          <p className="text-red-600">Error loading users: {error}</p>
+        </div>
+      )}
 
       <div className="flex justify-between mb-4">
         <div className="relative w-64">
@@ -297,42 +345,62 @@ const UsersPage = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {currentUsers.map((user, index) => (
-              <TableRow key={user.id}>
-                <TableCell>{indexOfFirstUser + index + 1}</TableCell>
-                <TableCell>{user.name}</TableCell>
-                <TableCell>{user.email}</TableCell>
-                <TableCell>{user.role}</TableCell>
-                <TableCell>
-                  <span className={`px-2 py-1 rounded-full text-xs ${
-                    user.status === 'active' 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-red-100 text-red-800'
-                  }`}>
-                    {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
-                  </span>
-                </TableCell>
-                <TableCell>{formatDate(user.lastLogin)}</TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleEdit(user.id)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(user.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8">
+                  <div className="flex flex-col items-center gap-2">
+                    <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+                    <p className="text-gray-500">Loading users...</p>
                   </div>
                 </TableCell>
               </TableRow>
-            ))}
+            ) : users.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8">
+                  <p className="text-gray-500">No users found</p>
+                </TableCell>
+              </TableRow>
+            ) : (
+              users.map((user: any, index: number) => (
+                <TableRow key={user.id}>
+                  <TableCell>{((currentPage - 1) * usersPerPage) + index + 1}</TableCell>
+                  <TableCell>{user.name}</TableCell>
+                  <TableCell>{user.email}</TableCell>
+                  <TableCell>{user.role}</TableCell>
+                  <TableCell>
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      user.status === 'ACTIVE'
+                        ? 'bg-green-100 text-green-800'
+                        : user.status === 'INACTIVE'
+                        ? 'bg-gray-100 text-gray-800'
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {user.status}
+                    </span>
+                  </TableCell>
+                  <TableCell>{formatDate(user.lastLogin)}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEdit(user.id)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDelete(user.id)}
+                        disabled={deleting}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>
@@ -371,7 +439,7 @@ const UsersPage = () => {
       )}
 
       <div className="mt-4 text-sm text-gray-500">
-        Showing {indexOfFirstUser + 1} to {Math.min(indexOfLastUser, filteredUsers.length)} of {filteredUsers.length} results
+        Showing {((currentPage - 1) * usersPerPage) + 1} to {Math.min(currentPage * usersPerPage, totalItems)} of {totalItems} results
       </div>
     </div>
   );

@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: media-monitoring-db
+    environment:
+      POSTGRES_DB: media_monitoring_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - media-monitoring-network
+
+  # Redis (Optional - for session storage)
+  redis:
+    image: redis:7-alpine
+    container_name: media-monitoring-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - media-monitoring-network
+
+  # Backend API
+  api:
+    build: .
+    container_name: media-monitoring-api
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/media_monitoring_db
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: your-production-jwt-secret-change-this
+      JWT_REFRESH_SECRET: your-production-refresh-secret-change-this
+      CORS_ORIGIN: http://localhost:5173
+      PORT: 3001
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./uploads:/app/uploads
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - media-monitoring-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  media-monitoring-network:
+    driver: bridge

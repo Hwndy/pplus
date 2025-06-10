@@ -2,9 +2,10 @@
 import { createContext, useState, useContext, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { apiService } from '@/services/apiService';
 
-// Define our user types
-export type UserRole = 'admin' | 'supervisor' | 'analyst' | 'client';
+// Define our user types to match API
+export type UserRole = 'ADMIN' | 'SUPERVISOR' | 'ANALYST' | 'CLIENT';
 
 export interface User {
   id: string;
@@ -12,6 +13,14 @@ export interface User {
   email: string;
   role: UserRole;
   avatar?: string;
+  status?: string;
+  mobileContact?: string;
+  countryCode?: string;
+  supervisorId?: string;
+  expirationDate?: string;
+  lastLogin?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface AuthContextType {
@@ -31,37 +40,7 @@ const AuthContext = createContext<AuthContextType>({
   logout: () => {},
 });
 
-// Sample users for demo
-const DEMO_USERS: User[] = [
-  {
-    id: '1',
-    name: 'Admin User',
-    email: 'admin@example.com',
-    role: 'admin',
-    avatar: 'https://api.dicebear.com/7.x/personas/svg?seed=admin',
-  },
-  {
-    id: '2',
-    name: 'Supervisor User',
-    email: 'supervisor@example.com',
-    role: 'supervisor',
-    avatar: 'https://api.dicebear.com/7.x/personas/svg?seed=supervisor',
-  },
-  {
-    id: '3',
-    name: 'Analyst User',
-    email: 'analyst@example.com',
-    role: 'analyst',
-    avatar: 'https://api.dicebear.com/7.x/personas/svg?seed=analyst',
-  },
-  {
-    id: '4',
-    name: 'Client User',
-    email: 'client@example.com',
-    role: 'client',
-    avatar: 'https://api.dicebear.com/7.x/personas/svg?seed=client',
-  },
-];
+// No demo users - using real API
 
 // Create a provider component
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -72,14 +51,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Check if user is already logged in
   useEffect(() => {
     const checkAuth = async () => {
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
+      const token = localStorage.getItem('token');
+      if (token) {
         try {
-          const parsedUser = JSON.parse(storedUser);
-          setUser(parsedUser);
+          // Set the token in the API service
+          apiService.setToken(token);
+
+          // Verify the token by getting user profile
+          const response = await apiService.getProfile();
+          // Handle the wrapped response structure
+          if (response.data?.success && response.data?.data) {
+            setUser(response.data.data);
+          } else if (response.data) {
+            // Fallback for direct data response
+            setUser(response.data);
+          }
         } catch (error) {
-          console.error('Failed to parse stored user:', error);
+          console.error('Token validation failed:', error);
+          // Clear invalid token
+          localStorage.removeItem('token');
           localStorage.removeItem('user');
+          apiService.clearToken();
         }
       }
       setIsLoading(false);
@@ -92,20 +84,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = useCallback(async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      // For demo, we'll authenticate against our sample users
-      // In a real app, this would be an API call
-      const foundUser = DEMO_USERS.find(u => u.email.toLowerCase() === email.toLowerCase());
+      // Use real API for authentication
+      const response = await apiService.login(email, password);
 
-      if (foundUser && password === 'password') { // Simple password check for demo
-        setUser(foundUser);
-        localStorage.setItem('user', JSON.stringify(foundUser));
-        toast.success(`Welcome back, ${foundUser.name}!`);
+      // Check if the response has the expected structure
+      // Backend returns: { success: true, data: { user, token, refreshToken } }
+      // API utility wraps it as: { data: { success: true, data: { user, token, refreshToken } }, error: null, status: 200 }
+      if (response.data?.success && response.data?.data?.token && response.data?.data?.user) {
+        const loginData = response.data.data;
+
+        // Store token and user data
+        localStorage.setItem('token', loginData.token);
+        localStorage.setItem('user', JSON.stringify(loginData.user));
+
+        // Set token in API service for future requests
+        apiService.setToken(loginData.token);
+
+        // Update user state
+        setUser(loginData.user);
+
+        toast.success(`Welcome back, ${loginData.user.name}!`);
         navigate('/dashboard');
       } else {
-        throw new Error('Invalid email or password');
+        throw new Error('Invalid response from server');
       }
     } catch (error) {
-      toast.error('Login failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error('Login failed: ' + errorMessage);
       throw error;
     } finally {
       setIsLoading(false);
@@ -113,11 +118,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [navigate]);
 
   // Logout function - memoized to prevent unnecessary re-renders
-  const logout = useCallback(() => {
-    setUser(null);
-    localStorage.removeItem('user');
-    toast.info('You have been logged out');
-    navigate('/');
+  const logout = useCallback(async () => {
+    try {
+      // Call logout API
+      await apiService.logout();
+    } catch (error) {
+      console.error('Logout API call failed:', error);
+      // Continue with logout even if API call fails
+    } finally {
+      // Clear local state regardless of API call result
+      setUser(null);
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      apiService.clearToken();
+      toast.info('You have been logged out');
+      navigate('/');
+    }
   }, [navigate]);
 
   // Memoize the context value to prevent unnecessary re-renders

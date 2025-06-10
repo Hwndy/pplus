@@ -1,10 +1,11 @@
 
 import { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, FileSpreadsheet } from 'lucide-react';
+import { Plus, Pencil, Trash2, FileSpreadsheet, RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/DataTable';
 import { toast } from 'sonner';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useEditorials, useDeleteEditorial } from '@/hooks/useApi';
 
 interface Editorial {
   id: number;
@@ -173,23 +174,29 @@ const mockEditorials: Editorial[] = [
 const EditorialPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [editorials, setEditorials] = useState<Editorial[]>(mockEditorials);
+  const [currentPage, setCurrentPage] = useState(1);
+  const editorialsPerPage = 10;
+
+  // API hooks
+  const { data: editorialsResponse, loading, error, refetch } = useEditorials({
+    page: currentPage,
+    limit: editorialsPerPage
+  });
+  const { mutate: deleteEditorial, loading: deleting } = useDeleteEditorial();
+
+  // Extract data from API response
+  const editorials = editorialsResponse?.data || [];
+  const pagination = editorialsResponse?.pagination;
+  const totalPages = pagination?.totalPages || 1;
+  const totalItems = pagination?.total || 0;
 
   useEffect(() => {
     if (location.state?.savedEditorials) {
-      if (location.state.isEditMode) {
-        const updatedEditorials = editorials.map(editorial =>
-          editorial.id === location.state.savedEditorials[0].id
-            ? location.state.savedEditorials[0]
-            : editorial
-        );
-        setEditorials(updatedEditorials);
-      } else {
-        setEditorials([...editorials, ...location.state.savedEditorials]);
-      }
+      // Refresh data when coming back from create/edit
+      refetch();
       window.history.replaceState({}, document.title);
     }
-  }, [location.state]);
+  }, [location.state, refetch]);
 
   // Reordered columns according to the requirements
   const columns = [
@@ -268,9 +275,14 @@ const EditorialPage = () => {
     },
   ];
 
-  const handleDelete = (id: number) => {
-    setEditorials(editorials.filter(p => p.id !== id));
-    toast.success('Editorial deleted successfully');
+  const handleDelete = async (id: number) => {
+    try {
+      await deleteEditorial(id.toString());
+      toast.success('Editorial deleted successfully');
+      refetch(); // Refresh the list
+    } catch (error) {
+      toast.error('Failed to delete editorial');
+    }
   };
 
   const handleEdit = (editorial: Editorial) => {
@@ -291,8 +303,19 @@ const EditorialPage = () => {
   return (
     <div className="h-full flex flex-col overflow-auto">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Editorial</h1>
+        <div>
+          <h1 className="text-2xl font-bold">Editorial</h1>
+          <p className="text-gray-600 mt-1">Manage editorial content and media coverage</p>
+        </div>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => refetch()}
+            disabled={loading}
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
           <Button
             variant="outline"
             onClick={handleBatchUpload}
@@ -311,12 +334,33 @@ const EditorialPage = () => {
         </div>
       </div>
 
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
+          <p className="text-red-600">Error loading editorials: {error}</p>
+        </div>
+      )}
+
       <div className="flex-1 overflow-auto">
-        <DataTable
-          columns={columns}
-          data={editorials}
-        />
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="flex flex-col items-center gap-2">
+              <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+              <p className="text-gray-500">Loading editorials...</p>
+            </div>
+          </div>
+        ) : (
+          <DataTable
+            columns={columns}
+            data={editorials}
+          />
+        )}
       </div>
+
+      {totalItems > 0 && (
+        <div className="mt-4 text-sm text-gray-500 text-center">
+          Showing {editorials.length} of {totalItems} editorials
+        </div>
+      )}
     </div>
   );
 };
