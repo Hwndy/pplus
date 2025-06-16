@@ -181,40 +181,43 @@ model DataEntry {
 }
 
 model Editorial {
-  id                   String        @id @default(cuid())
-  date                 DateTime
-  companyId            String
-  company              Company       @relation(fields: [companyId], references: [id])
-  industry             String
-  brand                String
-  subSidiary           String?
-  publicationId        String
-  publication          Publication   @relation(fields: [publicationId], references: [id])
-  placement            String?
-  title                String
-  page                 String?
-  link                 String?
-  reporter             String?
-  country              String        @default("Nigeria")
-  language             String        @default("English")
-  spokesperson         String?
-  activity             String?
-  mediaType            MediaType
-  onlineChannel        String?
-  sentiment            SentimentType
-  mediaSentimentIndex  Float         @default(0)
-  advertSpend          Float         @default(0)
-  circulation          Int           @default(0)
-  audienceReach        Int           @default(0)
-  pageSize             String?
-  analystNote          String?
-  supervisorNote       String?
-  adminNote            String?
-  status               ContentStatus @default(PENDING)
-  analystId            String
-  analyst              User          @relation(fields: [analystId], references: [id])
-  createdAt            DateTime      @default(now())
-  updatedAt            DateTime      @updatedAt
+  id                      String        @id @default(cuid())
+  serialNumber            Int?          // Auto-generated serial number
+  date                    DateTime
+  companyId               String
+  company                 Company       @relation(fields: [companyId], references: [id])
+  industry                String
+  brand                   String
+  subIndustry             String?       // Updated from subSidiary
+  publicationId           String
+  publication             Publication   @relation(fields: [publicationId], references: [id])
+  placement               String?
+  title                   String
+  printWebClips           String?       // New field
+  reporter                String?
+  country                 String        @default("Nigeria")
+  language                String        @default("English")
+  spokesperson            String?
+  ceoMediaPresence        String?       // New field
+  ceoThoughtLeadership    String?       // New field
+  activity                String?
+  circulation             Int           @default(0)
+  audienceReach           Int           @default(0)
+  mediaType               MediaType
+  onlineChannel           String?
+  sentiment               SentimentType
+  sentimentClassification String?       // New field
+  sentimentScore          Float         @default(0) // Updated from mediaSentimentIndex
+  advertSpend             Float         @default(0)
+  pageSize                String?
+  analystNote             String?
+  supervisorNote          String?
+  adminNote               String?
+  status                  ContentStatus @default(PENDING)
+  analystId               String
+  analyst                 User          @relation(fields: [analystId], references: [id])
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
 
   @@map("editorials")
 }

@@ -399,9 +399,9 @@ export const batchUploadEditorials = asyncHandler(async (req: AuthenticatedReque
 
       try {
         // Validate required fields
-        if (!row.date || !row.company || !row.title || !row.publication) {
+        if (!row.date || !row.company || !row.title || !row.source) {
           errors++;
-          errorDetails.push(`Row ${i + 2}: Missing required fields (date, company, title, publication)`);
+          errorDetails.push(`Row ${i + 2}: Missing required fields (date, company, title, source)`);
           continue;
         }
 
@@ -420,15 +420,15 @@ export const batchUploadEditorials = asyncHandler(async (req: AuthenticatedReque
           });
         }
 
-        // Find or create publication
+        // Find or create publication (using source field)
         let publication = await prisma.publication.findFirst({
-          where: { name: { equals: row.publication, mode: 'insensitive' } }
+          where: { name: { equals: row.source, mode: 'insensitive' } }
         });
 
         if (!publication) {
           publication = await prisma.publication.create({
             data: {
-              name: row.publication,
+              name: row.source,
               type: row.mediaType === 'Online' ? 'ONLINE' : 'PRINT',
               country: row.country || 'Nigeria',
               description: `Auto-created from batch upload`,
@@ -436,31 +436,33 @@ export const batchUploadEditorials = asyncHandler(async (req: AuthenticatedReque
           });
         }
 
-        // Create editorial
+        // Create editorial with new fields
         await prisma.editorial.create({
           data: {
             date: new Date(row.date),
             companyId: company.id,
             industry: row.industry || company.industry,
             brand: row.brand || row.company,
-            subSector: row.subSector || '',
+            subIndustry: row.subIndustry || '',
             publicationId: publication.id,
             placement: row.placement || 'Article',
             title: row.title,
-            page: row.page ? parseInt(row.page) : null,
-            link: row.link || '',
+            printWebClips: row.printWebClips || '',
             reporter: row.reporter || '',
             country: row.country || 'Nigeria',
             language: row.language || 'English',
             spokesperson: row.spokesperson || '',
+            ceoMediaPresence: row.ceoMediaPresence || '',
+            ceoThoughtLeadership: row.ceoThoughtLeadership || '',
             activity: row.activity || '',
+            circulation: row.circulation ? parseInt(row.circulation) : 0,
+            audienceReach: row.audienceReach ? parseInt(row.audienceReach) : 0,
             mediaType: row.mediaType || 'Print',
             onlineChannel: row.onlineChannel || '',
             sentiment: row.sentiment || 'Neutral',
-            mediaSentimentIndex: row.mediaSentimentIndex ? parseInt(row.mediaSentimentIndex) : 0,
+            sentimentClassification: row.sentimentClassification || '',
+            sentimentScore: row.sentimentScore ? parseFloat(row.sentimentScore) : 0,
             advertSpend: row.advertSpend ? parseFloat(row.advertSpend) : 0,
-            circulation: row.circulation ? parseInt(row.circulation) : 0,
-            audienceReach: row.audienceReach ? parseInt(row.audienceReach) : 0,
             pageSize: row.pageSize || '',
             analystNote: row.analystNote || '',
             analystId: req.user!.id,
@@ -490,31 +492,33 @@ export const batchUploadEditorials = asyncHandler(async (req: AuthenticatedReque
 
 export const downloadEditorialTemplate = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
   try {
-    // Create a sample template with headers and example data
+    // Create a sample template with headers and example data using new parameters
     const templateData = [
       {
         date: '2024-01-15',
         company: 'Example Company Ltd',
         industry: 'Technology',
         brand: 'Example Brand',
-        subSector: 'Software',
-        publication: 'Tech News Daily',
+        subIndustry: 'Software',
+        source: 'Tech News Daily',
         placement: 'Headline',
         title: 'Example Company Launches New Innovation',
-        page: 1,
-        link: 'https://example.com/news/article',
+        printWebClips: 'Both Print and Web',
         reporter: 'John Reporter',
         country: 'Nigeria',
         language: 'English',
         spokesperson: 'Jane CEO (CEO, Example Company)',
+        ceoMediaPresence: 'High',
+        ceoThoughtLeadership: 'Strong',
         activity: 'Product Launch',
+        circulation: 100000,
+        audienceReach: 250000,
         mediaType: 'Online',
         onlineChannel: 'News Website',
         sentiment: 'Positive',
-        mediaSentimentIndex: 2,
+        sentimentClassification: 'Very Positive',
+        sentimentScore: 2.5,
         advertSpend: 50000,
-        circulation: 100000,
-        audienceReach: 250000,
         pageSize: 'Full Page',
         analystNote: 'Positive coverage of product launch'
       }

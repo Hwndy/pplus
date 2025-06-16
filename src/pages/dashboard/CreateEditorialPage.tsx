@@ -8,7 +8,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { CalendarIcon, Plus, Copy } from 'lucide-react';
+import { CalendarIcon, Plus, Copy, Save, Send, Loader2 } from 'lucide-react';
+import { useCreateEditorial, useUpdateEditorial, useCompanies, usePublications } from '@/hooks/useApi';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
   Select,
@@ -26,30 +28,33 @@ import { Calendar } from '@/components/ui/calendar';
 
 interface Editorial {
   id: number;
+  serialNumber?: number; // Auto-generated, not in form
   date: string;
   company: string;
   industry: string;
   brand: string;
-  subSector: string;
-  publication: string;
+  subIndustry: string; // Updated from subSector
+  source: string; // Updated from publication
   placement: string;
   title: string;
-  page: string;
-  link: string;
+  printWebClips: string; // New field
   reporter: string;
   country: string;
   language: string;
   spokesperson: string;
+  ceoMediaPresence: string; // New field
+  ceoThoughtLeadership: string; // New field
   activity: string;
+  circulation?: number;
+  audienceReach?: number;
   mediaType: string;
   onlineChannel?: string;
   sentiment: string;
-  mediaSentimentIndex: number;
+  sentimentClassification: string; // New field
+  sentimentScore: number; // Updated from mediaSentimentIndex
   advertSpend?: number;
-  circulation?: number;
-  audienceReach?: number;
   pageSize?: string;
-  status?: string;
+  status?: string; // DRAFT, PENDING, APPROVED, REJECTED
   analystNote?: string;
   supervisorNote?: string;
   adminNote?: string;
@@ -65,16 +70,33 @@ const industries = [
   'Online Streaming Platforms'
 ];
 
-const subSectors = {
+const subIndustries = {
   'Financial Services': [
     'Commercial Banks', 'Microfinance Banks', 'Investment Banks', 'Insurance Companies', 'Asset Management',
     'Financial Technology (Fintech)', 'Pension Fund Administrators', 'Mortgage Banks', 'Stockbroking Firms'
   ],
-  // ... additional subsectors for other industries
+  'Agriculture': [
+    'Crop Production', 'Livestock', 'Fisheries', 'Forestry', 'Agricultural Technology'
+  ],
+  'Real Estate': [
+    'Residential', 'Commercial', 'Industrial', 'Property Management', 'Real Estate Investment'
+  ],
+  'Transportation': [
+    'Aviation', 'Maritime', 'Road Transport', 'Rail Transport', 'Logistics'
+  ],
+  'Tobacco': [
+    'Cigarettes', 'Cigars', 'Smokeless Tobacco', 'E-cigarettes'
+  ],
+  'Non-Governmental Organization': [
+    'Healthcare NGO', 'Education NGO', 'Environmental NGO', 'Human Rights NGO', 'Development NGO'
+  ],
+  'Online Streaming Platforms': [
+    'Video Streaming', 'Music Streaming', 'Gaming Streaming', 'Live Streaming'
+  ]
 };
 
-const mediaTypes = ['Print', 'Online'];
-const companies = ['Stanbic IBTC Holdings', 'MTN Nigeria', 'Dangote Group'];
+const mediaTypes = ['Print', 'Online', 'TV', 'Radio', 'Social Media'];
+const companies = ['Stanbic IBTC Holdings', 'MTN Nigeria', 'Dangote Group', 'Access Bank', 'Zenith Bank'];
 const brands = [
   'Stanbic IBTC Bank',
   'Stanbic IBTC Capital',
@@ -83,14 +105,13 @@ const brands = [
   'Stanbic IBTC Pension',
   'Stanbic IBTC Holdings',
 ];
-const publications = ['ThisDay', 'The Punch', 'Vanguard', 'BusinessDay', 'Guardian'];
-const actions = ['Innovation', 'Corporate', 'Partnership', 'CSR/CSI', 'Sponsorship', 'Awards'];
-const natures = ['Online News', 'Print', 'Online Newspaper', 'Social Media', 'TV', 'Radio'];
-const placements = ['Headline', 'Photo'];
-const countries = ['Nigeria', 'Ghana', 'Kenya', 'South Africa'];
-const activities = ['Innovation', 'Corporate', 'Partnership', 'CSR/CSI', 'Sponsorship', 'Awards'];
+const sources = ['ThisDay', 'The Punch', 'Vanguard', 'BusinessDay', 'Guardian', 'Channels TV', 'BBC', 'CNN'];
+const placements = ['Headline', 'Photo', 'Feature Story', 'Opinion', 'Editorial', 'News Brief'];
+const countries = ['Nigeria', 'Ghana', 'Kenya', 'South Africa', 'Egypt', 'Morocco'];
+const activities = ['Innovation', 'Corporate', 'Partnership', 'CSR/CSI', 'Sponsorship', 'Awards', 'Product Launch', 'Merger & Acquisition'];
 const sentiments = ['Positive', 'Negative', 'Neutral'];
-const statuses = ['Pending', 'Approved', 'Rejected'];
+const sentimentClassifications = ['Very Positive', 'Positive', 'Neutral', 'Negative', 'Very Negative'];
+const statuses = ['DRAFT', 'PENDING', 'APPROVED', 'REJECTED'];
 const reporters = ['Eniola Olatunji', 'Joseph Inokotong', 'Michael Olaitan', 'Adebayo Olufemi', 'Funmi Johnson'];
 const spokespersons = [
   'Wole Adeniyi (CEO, Stanbic IBTC Bank)',
@@ -99,8 +120,11 @@ const spokespersons = [
   'Akinjide Orimolade (CEO, Stanbic IBTC Insurance)',
   'Demola Sogunle (CEO, Stanbic IBTC Holdings)',
 ];
-const spokespersonPositions = ['CEO', 'CFO', 'CTO', 'CMO', 'COO', 'President', 'Director'];
-const spokespersonCompanies = ['Stanbic IBTC Holdings', 'Stanbic IBTC Bank', 'Stanbic IBTC Pension'];
+const ceoMediaPresenceOptions = ['High', 'Medium', 'Low', 'None'];
+const ceoThoughtLeadershipOptions = ['Strong', 'Moderate', 'Weak', 'None'];
+const printWebClipsOptions = ['Print Only', 'Web Only', 'Both Print and Web', 'Social Media'];
+const onlineChannels = ['Website', 'Social Media', 'Mobile App', 'Email Newsletter', 'Podcast'];
+const pageSizes = ['Full Page', 'Half Page', 'Quarter Page', 'Banner', 'Small Ad'];
 
 const CreateEditorialPage = () => {
   const { toast } = useToast();
@@ -108,9 +132,23 @@ const CreateEditorialPage = () => {
   const location = useLocation();
   const isEditMode = !!location.state?.editorialData;
 
+  // API hooks
+  const createEditorial = useCreateEditorial();
+  const updateEditorial = useUpdateEditorial();
+  const { data: companiesResponse } = useCompanies({ limit: 100 });
+  const { data: publicationsResponse } = usePublications({ limit: 100 });
+
+  // Extract real data from API
+  const apiCompanies = companiesResponse?.data || [];
+  const apiPublications = publicationsResponse?.data || [];
+
   // Detect user role - this would normally come from authentication
   // For demo purposes, we'll use a hardcoded role
-  const userRole = 'admin'; // Options: 'analyst', 'supervisor', 'admin'
+  const userRole = 'analyst'; // Options: 'analyst', 'supervisor', 'admin'
+
+  // State for form submission
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionType, setSubmissionType] = useState<'draft' | 'send'>('draft');
 
   // Default initial form data
   const defaultFormData: Editorial = {
@@ -119,26 +157,28 @@ const CreateEditorialPage = () => {
     company: '',
     industry: 'Financial Services',
     brand: '',
-    subSector: '',
-    publication: '',
+    subIndustry: '',
+    source: '',
     placement: '',
     title: '',
-    page: '',
-    link: '',
+    printWebClips: '',
     reporter: '',
     country: 'Nigeria',
     language: 'English',
     spokesperson: '',
+    ceoMediaPresence: '',
+    ceoThoughtLeadership: '',
     activity: '',
+    circulation: 0,
+    audienceReach: 0,
     mediaType: 'Print',
     onlineChannel: '',
     sentiment: '',
-    mediaSentimentIndex: 0,
+    sentimentClassification: '',
+    sentimentScore: 0,
     advertSpend: 0,
-    circulation: 0,
-    audienceReach: 0,
     pageSize: '',
-    status: 'Pending',
+    status: 'DRAFT',
     analystNote: '',
     supervisorNote: '',
     adminNote: '',
@@ -325,15 +365,18 @@ const CreateEditorialPage = () => {
   };
 
   // Form validation
-  const validateForm = () => {
+  const validateForm = (isDraft: boolean = false) => {
     let hasErrors = false;
     const newErrors: Record<string, string> = {};
 
-    // Required fields
-    const requiredFields = ['title', 'brand', 'publication', 'date'];
+    // Required fields - less strict for drafts
+    const requiredFields = isDraft
+      ? ['title', 'company', 'date'] // Minimal requirements for draft
+      : ['title', 'company', 'brand', 'source', 'date', 'industry', 'country', 'language', 'mediaType'];
 
     requiredFields.forEach(field => {
-      if (!editorials[activeIndex][field as keyof Editorial]) {
+      const value = editorials[activeIndex][field as keyof Editorial];
+      if (!value || (typeof value === 'string' && value.trim() === '')) {
         newErrors[field] = `${field.charAt(0).toUpperCase() + field.slice(1)} is required`;
         hasErrors = true;
       }
@@ -344,35 +387,74 @@ const CreateEditorialPage = () => {
   };
 
   // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (type: 'draft' | 'send') => {
+    const isDraft = type === 'draft';
 
-    if (!validateForm()) {
+    if (!validateForm(isDraft)) {
       toast({
         title: "Validation Error",
-        description: "Please fill in all required fields.",
+        description: isDraft
+          ? "Please fill in the basic required fields to save as draft."
+          : "Please fill in all required fields to send for approval.",
         variant: "destructive"
       });
       return;
     }
 
-    // Clear session storage after successful submission
-    // This prevents old data from being loaded if the user creates a new editorial later
-    sessionStorage.removeItem(sessionKey);
+    setIsSubmitting(true);
+    setSubmissionType(type);
 
-    navigate('/dashboard/editorial', {
-      state: {
-        savedEditorials: editorials,
-        isEditMode
+    try {
+      // Prepare editorial data for API
+      const editorialData = {
+        ...editorials[activeIndex],
+        status: isDraft ? 'DRAFT' : 'PENDING',
+        // Map form fields to API expected fields
+        subIndustry: editorials[activeIndex].subIndustry,
+        source: editorials[activeIndex].source,
+        printWebClips: editorials[activeIndex].printWebClips,
+        ceoMediaPresence: editorials[activeIndex].ceoMediaPresence,
+        ceoThoughtLeadership: editorials[activeIndex].ceoThoughtLeadership,
+        sentimentClassification: editorials[activeIndex].sentimentClassification,
+        sentimentScore: editorials[activeIndex].sentimentScore,
+      };
+
+      let result;
+      if (isEditMode && location.state?.editorialData?.id) {
+        result = await updateEditorial.mutate({
+          id: location.state.editorialData.id,
+          data: editorialData
+        });
+      } else {
+        result = await createEditorial.mutate(editorialData);
       }
-    });
 
-    toast({
-      title: isEditMode ? "Editorial Updated" : "Editorial Created",
-      description: isEditMode
-        ? "The editorial has been updated successfully."
-        : `${editorials.length} editorial(s) have been created successfully.`
-    });
+      // Clear session storage after successful submission
+      sessionStorage.removeItem(sessionKey);
+
+      navigate('/dashboard/editorial', {
+        state: {
+          savedEditorials: [result],
+          isEditMode
+        }
+      });
+
+      toast.success(
+        isDraft
+          ? (isEditMode ? "Editorial draft updated successfully" : "Editorial saved as draft")
+          : (isEditMode ? "Editorial updated and sent for approval" : "Editorial sent for approval")
+      );
+
+    } catch (error) {
+      console.error('Error saving editorial:', error);
+      toast.error(
+        isDraft
+          ? "Failed to save draft"
+          : "Failed to send for approval"
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Cancel and go back
@@ -449,32 +531,13 @@ const CreateEditorialPage = () => {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="w-full">
+      <form className="w-full">
         <Card className="w-full">
           <CardContent className="p-6 w-full">
-            {/* First row - Company, Date, Media Type, Status */}
+            {/* First row - Date, Company, Industry, Brand */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
               <div>
-                <Label htmlFor="company">Search for a company</Label>
-                <Select
-                  value={editorials[activeIndex].company}
-                  onValueChange={(value) => handleSelectChange('company', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select company" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {companies.map((company) => (
-                      <SelectItem key={company} value={company}>
-                        {company}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="date">mm/dd/yyyy</Label>
+                <Label htmlFor="date">Date <span className="text-red-500">*</span></Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -485,7 +548,7 @@ const CreateEditorialPage = () => {
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {dates[activeIndex] ? format(dates[activeIndex]!, "MM/dd/yyyy") : <span>mm/dd/yyyy</span>}
+                      {dates[activeIndex] ? format(dates[activeIndex]!, "MM/dd/yyyy") : <span>Select date</span>}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
@@ -498,10 +561,335 @@ const CreateEditorialPage = () => {
                     />
                   </PopoverContent>
                 </Popover>
+                {errors.date && <p className="text-red-500 text-sm">{errors.date}</p>}
               </div>
 
               <div>
-                <Label htmlFor="mediaType">Media Type</Label>
+                <Label htmlFor="company">Company <span className="text-red-500">*</span></Label>
+                <Select
+                  value={editorials[activeIndex].company}
+                  onValueChange={(value) => handleSelectChange('company', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select company" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {apiCompanies.map((company: any) => (
+                      <SelectItem key={company.id} value={company.name}>
+                        {company.name}
+                      </SelectItem>
+                    ))}
+                    {companies.map((company) => (
+                      <SelectItem key={company} value={company}>
+                        {company}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.company && <p className="text-red-500 text-sm">{errors.company}</p>}
+              </div>
+
+              <div>
+                <Label htmlFor="industry">Industry <span className="text-red-500">*</span></Label>
+                <Select
+                  value={editorials[activeIndex].industry}
+                  onValueChange={(value) => handleSelectChange('industry', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select industry" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {industries.map((industry) => (
+                      <SelectItem key={industry} value={industry}>
+                        {industry}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.industry && <p className="text-red-500 text-sm">{errors.industry}</p>}
+              </div>
+
+              <div>
+                <Label htmlFor="brand">Brand <span className="text-red-500">*</span></Label>
+                <Select
+                  value={editorials[activeIndex].brand}
+                  onValueChange={(value) => handleSelectChange('brand', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select brand" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {brands.map((brand) => (
+                      <SelectItem key={brand} value={brand}>
+                        {brand}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.brand && <p className="text-red-500 text-sm">{errors.brand}</p>}
+              </div>
+            </div>
+
+            {/* Second row - Sub-Industry, Source, Placement, Title */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+              <div>
+                <Label htmlFor="subIndustry">Sub-Industry</Label>
+                <Select
+                  value={editorials[activeIndex].subIndustry}
+                  onValueChange={(value) => handleSelectChange('subIndustry', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select sub-industry" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(subIndustries[editorials[activeIndex].industry as keyof typeof subIndustries] || []).map((subIndustry) => (
+                      <SelectItem key={subIndustry} value={subIndustry}>
+                        {subIndustry}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="source">Source <span className="text-red-500">*</span></Label>
+                <Select
+                  value={editorials[activeIndex].source}
+                  onValueChange={(value) => handleSelectChange('source', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select source" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {apiPublications.map((publication: any) => (
+                      <SelectItem key={publication.id} value={publication.name}>
+                        {publication.name}
+                      </SelectItem>
+                    ))}
+                    {sources.map((source) => (
+                      <SelectItem key={source} value={source}>
+                        {source}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.source && <p className="text-red-500 text-sm">{errors.source}</p>}
+              </div>
+
+              <div>
+                <Label htmlFor="placement">Placement</Label>
+                <Select
+                  value={editorials[activeIndex].placement}
+                  onValueChange={(value) => handleSelectChange('placement', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select placement" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {placements.map((placement) => (
+                      <SelectItem key={placement} value={placement}>
+                        {placement}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="title">Title <span className="text-red-500">*</span></Label>
+                <Input
+                  id="title"
+                  name="title"
+                  value={editorials[activeIndex].title}
+                  onChange={handleChange}
+                  className={errors.title ? "border-red-500" : ""}
+                  placeholder="Enter article title"
+                />
+                {errors.title && <p className="text-red-500 text-sm">{errors.title}</p>}
+              </div>
+            </div>
+
+            {/* Third row - Print/Web Clips, Reporter, Country, Language */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+              <div>
+                <Label htmlFor="printWebClips">Print/Web Clips</Label>
+                <Select
+                  value={editorials[activeIndex].printWebClips}
+                  onValueChange={(value) => handleSelectChange('printWebClips', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {printWebClipsOptions.map((option) => (
+                      <SelectItem key={option} value={option}>
+                        {option}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="reporter">Reporter</Label>
+                <Select
+                  value={editorials[activeIndex].reporter}
+                  onValueChange={(value) => handleSelectChange('reporter', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select reporter" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {reporters.map((reporter) => (
+                      <SelectItem key={reporter} value={reporter}>
+                        {reporter}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="country">Country <span className="text-red-500">*</span></Label>
+                <Select
+                  value={editorials[activeIndex].country}
+                  onValueChange={(value) => handleSelectChange('country', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select country" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {countries.map((country) => (
+                      <SelectItem key={country} value={country}>
+                        {country}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.country && <p className="text-red-500 text-sm">{errors.country}</p>}
+              </div>
+
+              <div>
+                <Label htmlFor="language">Language <span className="text-red-500">*</span></Label>
+                <Input
+                  id="language"
+                  name="language"
+                  value={editorials[activeIndex].language}
+                  onChange={handleChange}
+                  className={errors.language ? "border-red-500" : ""}
+                  placeholder="e.g., English"
+                />
+                {errors.language && <p className="text-red-500 text-sm">{errors.language}</p>}
+              </div>
+            </div>
+
+            {/* Fourth row - Spokesperson, CEO Media Presence, CEO Thought Leadership, Activity */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+              <div>
+                <Label htmlFor="spokesperson">Spokesperson</Label>
+                <Select
+                  value={editorials[activeIndex].spokesperson}
+                  onValueChange={(value) => handleSelectChange('spokesperson', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select spokesperson" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {spokespersons.map((spokesperson) => (
+                      <SelectItem key={spokesperson} value={spokesperson}>
+                        {spokesperson}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="ceoMediaPresence">CEO Media Presence</Label>
+                <Select
+                  value={editorials[activeIndex].ceoMediaPresence}
+                  onValueChange={(value) => handleSelectChange('ceoMediaPresence', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select presence level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ceoMediaPresenceOptions.map((option) => (
+                      <SelectItem key={option} value={option}>
+                        {option}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="ceoThoughtLeadership">CEO Thought Leadership</Label>
+                <Select
+                  value={editorials[activeIndex].ceoThoughtLeadership}
+                  onValueChange={(value) => handleSelectChange('ceoThoughtLeadership', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select leadership level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ceoThoughtLeadershipOptions.map((option) => (
+                      <SelectItem key={option} value={option}>
+                        {option}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="activity">Activity</Label>
+                <Select
+                  value={editorials[activeIndex].activity}
+                  onValueChange={(value) => handleSelectChange('activity', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select activity" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activities.map((activity) => (
+                      <SelectItem key={activity} value={activity}>
+                        {activity}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Fifth row - Circulation, Audience Reach, Media Type, Online Channel */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+              <div>
+                <Label htmlFor="circulation">Circulation</Label>
+                <Input
+                  id="circulation"
+                  name="circulation"
+                  type="number"
+                  value={editorials[activeIndex].circulation?.toString() || ''}
+                  onChange={handleChange}
+                  placeholder="Enter circulation number"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="audienceReach">Audience Reach</Label>
+                <Input
+                  id="audienceReach"
+                  name="audienceReach"
+                  type="number"
+                  value={editorials[activeIndex].audienceReach?.toString() || ''}
+                  onChange={handleChange}
+                  placeholder="Enter audience reach"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="mediaType">Media Type <span className="text-red-500">*</span></Label>
                 <Select
                   value={editorials[activeIndex].mediaType}
                   onValueChange={(value) => handleSelectChange('mediaType', value)}
@@ -517,21 +905,22 @@ const CreateEditorialPage = () => {
                     ))}
                   </SelectContent>
                 </Select>
+                {errors.mediaType && <p className="text-red-500 text-sm">{errors.mediaType}</p>}
               </div>
 
               <div>
-                <Label htmlFor="status">Status</Label>
+                <Label htmlFor="onlineChannel">Online Channel</Label>
                 <Select
-                  value={editorials[activeIndex].status}
-                  onValueChange={(value) => handleSelectChange('status', value)}
+                  value={editorials[activeIndex].onlineChannel || ''}
+                  onValueChange={(value) => handleSelectChange('onlineChannel', value)}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
+                    <SelectValue placeholder="Select online channel" />
                   </SelectTrigger>
                   <SelectContent>
-                    {statuses.map((status) => (
-                      <SelectItem key={status} value={status}>
-                        {status}
+                    {onlineChannels.map((channel) => (
+                      <SelectItem key={channel} value={channel}>
+                        {channel}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -539,303 +928,97 @@ const CreateEditorialPage = () => {
               </div>
             </div>
 
-            {/* Second row - Horizontally scrollable fields with visible scrollbar */}
-            <div className="mb-6 relative">
-              <div className="overflow-x-auto pb-4 custom-scrollbar">
-                <div className="flex gap-4 min-w-max">
-                  <div className="min-w-[150px]">
-                    <Label htmlFor="activity">Action</Label>
-                    <Select
-                      value={editorials[activeIndex].activity}
-                      onValueChange={(value) => handleSelectChange('activity', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select action" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {actions.map((action) => (
-                          <SelectItem key={action} value={action}>
-                            {action}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+            {/* Sixth row - Sentiment, Sentiment Classification, Sentiment Score, Advert Spend */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+              <div>
+                <Label htmlFor="sentiment">Sentiment</Label>
+                <Select
+                  value={editorials[activeIndex].sentiment}
+                  onValueChange={(value) => handleSelectChange('sentiment', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select sentiment" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sentiments.map((sentiment) => (
+                      <SelectItem key={sentiment} value={sentiment}>
+                        {sentiment}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-                  <div className="min-w-[150px]">
-                    <Label htmlFor="publication">Publication</Label>
-                    <Select
-                      value={editorials[activeIndex].publication}
-                      onValueChange={(value) => handleSelectChange('publication', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select publication" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {publications.map((publication) => (
-                          <SelectItem key={publication} value={publication}>
-                            {publication}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {errors.publication && <p className="text-red-500 text-sm">{errors.publication}</p>}
-                  </div>
+              <div>
+                <Label htmlFor="sentimentClassification">Sentiment Classification</Label>
+                <Select
+                  value={editorials[activeIndex].sentimentClassification}
+                  onValueChange={(value) => handleSelectChange('sentimentClassification', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select classification" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sentimentClassifications.map((classification) => (
+                      <SelectItem key={classification} value={classification}>
+                        {classification}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-                  <div className="min-w-[150px]">
-                    <Label htmlFor="nature">Nature</Label>
-                    <Select
-                      value={editorials[activeIndex].placement}
-                      onValueChange={(value) => handleSelectChange('placement', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select nature" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {natures.map((nature) => (
-                          <SelectItem key={nature} value={nature}>
-                            {nature}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+              <div>
+                <Label htmlFor="sentimentScore">Sentiment Score</Label>
+                <Input
+                  id="sentimentScore"
+                  name="sentimentScore"
+                  type="number"
+                  min="-3"
+                  max="3"
+                  step="0.1"
+                  value={editorials[activeIndex].sentimentScore?.toString() || ''}
+                  onChange={handleChange}
+                  placeholder="Enter score (-3 to 3)"
+                />
+              </div>
 
-                  <div className="min-w-[220px]">
-                    <Label htmlFor="title">Title<span className="text-red-500">*</span></Label>
-                    <Input
-                      id="title"
-                      name="title"
-                      value={editorials[activeIndex].title}
-                      onChange={handleChange}
-                      className={errors.title ? "border-red-500" : ""}
-                    />
-                    {errors.title && <p className="text-red-500 text-sm">{errors.title}</p>}
-                  </div>
-
-                  <div className="min-w-[100px]">
-                    <Label htmlFor="page">Page<span className="text-red-500">*</span></Label>
-                    <Input
-                      id="page"
-                      name="page"
-                      type="number"
-                      value={editorials[activeIndex].page}
-                      onChange={handleChange}
-                    />
-                  </div>
-
-                  <div className="min-w-[150px]">
-                    <Label htmlFor="reporter">Reporters<span className="text-red-500">*</span></Label>
-                    <Select
-                      value={editorials[activeIndex].reporter}
-                      onValueChange={(value) => handleSelectChange('reporter', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select reporter" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {reporters.map((reporter) => (
-                          <SelectItem key={reporter} value={reporter}>
-                            {reporter}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="min-w-[200px]">
-                    <Label htmlFor="spokesperson">Spokesperson<span className="text-red-500">*</span></Label>
-                    <Select
-                      value={editorials[activeIndex].spokesperson}
-                      onValueChange={(value) => handleSelectChange('spokesperson', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select spokesperson" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {spokespersons.map((spokesperson) => (
-                          <SelectItem key={spokesperson} value={spokesperson}>
-                            {spokesperson}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="min-w-[150px]">
-                    <Label htmlFor="spokespersonPosition">Spokesperson Position</Label>
-                    <Select
-                      value={editorials[activeIndex].subSector} // Reusing subSector field for spokesperson position
-                      onValueChange={(value) => handleSelectChange('subSector', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select position" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {spokespersonPositions.map((position) => (
-                          <SelectItem key={position} value={position}>
-                            {position}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="min-w-[150px]">
-                    <Label htmlFor="spokespersonCompany">Spokesperson Company</Label>
-                    <Select
-                      value={editorials[activeIndex].brand} // Reusing brand field for spokesperson company
-                      onValueChange={(value) => handleSelectChange('brand', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select company" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {spokespersonCompanies.map((company) => (
-                          <SelectItem key={company} value={company}>
-                            {company}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {errors.brand && <p className="text-red-500 text-sm">{errors.brand}</p>}
-                  </div>
-
-                  <div className="min-w-[150px]">
-                    <Label htmlFor="sentiment">Sentiment</Label>
-                    <Select
-                      value={editorials[activeIndex].sentiment}
-                      onValueChange={(value) => handleSelectChange('sentiment', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select sentiment" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {sentiments.map((sentiment) => (
-                          <SelectItem key={sentiment} value={sentiment}>
-                            {sentiment}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="min-w-[100px]">
-                    <Label htmlFor="industry">Industry</Label>
-                    <Select
-                      value={editorials[activeIndex].industry}
-                      onValueChange={(value) => handleSelectChange('industry', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select industry" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {industries.map((industry) => (
-                          <SelectItem key={industry} value={industry}>
-                            {industry}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="min-w-[150px]">
-                    <Label htmlFor="country">Country</Label>
-                    <Select
-                      value={editorials[activeIndex].country}
-                      onValueChange={(value) => handleSelectChange('country', value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select country" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {countries.map((country) => (
-                          <SelectItem key={country} value={country}>
-                            {country}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="min-w-[120px]">
-                    <Label htmlFor="language">Language</Label>
-                    <Input
-                      id="language"
-                      name="language"
-                      value={editorials[activeIndex].language}
-                      onChange={handleChange}
-                    />
-                  </div>
-
-                  <div className="min-w-[150px]">
-                    <Label htmlFor="mediaSentimentIndex">Media Sentiment Index</Label>
-                    <Input
-                      id="mediaSentimentIndex"
-                      name="mediaSentimentIndex"
-                      type="number"
-                      min="-3"
-                      max="2"
-                      value={editorials[activeIndex].mediaSentimentIndex.toString()}
-                      onChange={handleChange}
-                    />
-                  </div>
-
-                  <div className="min-w-[120px]">
-                    <Label htmlFor="advertSpend">Advert Spend</Label>
-                    <Input
-                      id="advertSpend"
-                      name="advertSpend"
-                      type="number"
-                      value={editorials[activeIndex].advertSpend?.toString() || ''}
-                      onChange={handleChange}
-                    />
-                  </div>
-
-                  <div className="min-w-[120px]">
-                    <Label htmlFor="circulation">Circulation</Label>
-                    <Input
-                      id="circulation"
-                      name="circulation"
-                      type="number"
-                      value={editorials[activeIndex].circulation?.toString() || ''}
-                      onChange={handleChange}
-                    />
-                  </div>
-
-                  <div className="min-w-[120px]">
-                    <Label htmlFor="audienceReach">Audience Reach</Label>
-                    <Input
-                      id="audienceReach"
-                      name="audienceReach"
-                      type="number"
-                      value={editorials[activeIndex].audienceReach?.toString() || ''}
-                      onChange={handleChange}
-                    />
-                  </div>
-
-                  <div className="min-w-[120px]">
-                    <Label htmlFor="pageSize">Page Size</Label>
-                    <Input
-                      id="pageSize"
-                      name="pageSize"
-                      value={editorials[activeIndex].pageSize || ''}
-                      onChange={handleChange}
-                    />
-                  </div>
-
-                  <div className="min-w-[150px]">
-                    <Label htmlFor="link">Link</Label>
-                    <Input
-                      id="link"
-                      name="link"
-                      value={editorials[activeIndex].link}
-                      onChange={handleChange}
-                    />
-                  </div>
-                </div>
+              <div>
+                <Label htmlFor="advertSpend">Advert Spend</Label>
+                <Input
+                  id="advertSpend"
+                  name="advertSpend"
+                  type="number"
+                  value={editorials[activeIndex].advertSpend?.toString() || ''}
+                  onChange={handleChange}
+                  placeholder="Enter amount"
+                />
               </div>
             </div>
+
+            {/* Seventh row - Page Size */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+              <div>
+                <Label htmlFor="pageSize">Page Size</Label>
+                <Select
+                  value={editorials[activeIndex].pageSize || ''}
+                  onValueChange={(value) => handleSelectChange('pageSize', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select page size" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {pageSizes.map((size) => (
+                      <SelectItem key={size} value={size}>
+                        {size}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+
 
             {/* Third row - Notes (Analyst, Supervisor, Admin) with role-based access */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
@@ -894,14 +1077,46 @@ const CreateEditorialPage = () => {
                 type="button"
                 variant="outline"
                 onClick={handleCancel}
+                disabled={isSubmitting}
               >
                 Cancel
               </Button>
               <Button
-                type="submit"
-                className="bg-indigo-950"
+                type="button"
+                variant="outline"
+                onClick={() => handleSubmit('draft')}
+                disabled={isSubmitting}
+                className="border-blue-500 text-blue-600 hover:bg-blue-50"
               >
-                {isEditMode ? 'Update Editorial' : `Save ${editorials.length > 1 ? 'All Editorials' : 'Editorial'}`}
+                {isSubmitting && submissionType === 'draft' ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+                    Save as Draft
+                  </>
+                )}
+              </Button>
+              <Button
+                type="button"
+                onClick={() => handleSubmit('send')}
+                disabled={isSubmitting}
+                className="bg-indigo-600 hover:bg-indigo-700"
+              >
+                {isSubmitting && submissionType === 'send' ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send className="mr-2 h-4 w-4" />
+                    Save & Send for Approval
+                  </>
+                )}
               </Button>
             </div>
           </CardContent>
