@@ -322,7 +322,7 @@ class ApiService {
 
     // Note: For file uploads, we don't use the JSON API utility
     // We need to make a direct fetch request
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api'}/files/upload`, {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'https://p-analytics.onrender.com/api'}/files/upload`, {
       method: 'POST',
       headers: this.getAuthHeaders(false), // Don't include Content-Type for file uploads
       body: formData,
@@ -471,7 +471,7 @@ class ApiService {
       formData.append('files', file);
     });
 
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api'}/files/upload-multiple`, {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'https://p-analytics.onrender.com/api'}/files/upload-multiple`, {
       method: 'POST',
       headers: this.getAuthHeaders(false),
       body: formData,
@@ -489,7 +489,7 @@ class ApiService {
     const formData = new FormData();
     formData.append('avatar', file);
 
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api'}/files/upload-avatar`, {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'https://p-analytics.onrender.com/api'}/files/upload-avatar`, {
       method: 'POST',
       headers: this.getAuthHeaders(false),
       body: formData,
@@ -506,7 +506,7 @@ class ApiService {
     const formData = new FormData();
     formData.append('logo', file);
 
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api'}/files/upload-logo`, {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'https://p-analytics.onrender.com/api'}/files/upload-logo`, {
       method: 'POST',
       headers: this.getAuthHeaders(false),
       body: formData,
@@ -523,7 +523,7 @@ class ApiService {
     const formData = new FormData();
     formData.append('document', file);
 
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api'}/files/upload-document`, {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'https://p-analytics.onrender.com/api'}/files/upload-document`, {
       method: 'POST',
       headers: this.getAuthHeaders(false),
       body: formData,
@@ -540,7 +540,7 @@ class ApiService {
     const formData = new FormData();
     formData.append('data', file);
 
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api'}/files/upload-data`, {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'https://p-analytics.onrender.com/api'}/files/upload-data`, {
       method: 'POST',
       headers: this.getAuthHeaders(false),
       body: formData,
@@ -558,7 +558,7 @@ class ApiService {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api'}/editorials/batch-upload`, {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'https://p-analytics.onrender.com/api'}/editorials/batch-upload`, {
       method: 'POST',
       headers: this.getAuthHeaders(false),
       body: formData,
@@ -573,7 +573,7 @@ class ApiService {
 
   // Download template for batch upload
   async downloadEditorialTemplate() {
-    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api'}/editorials/template`, {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'https://p-analytics.onrender.com/api'}/editorials/template`, {
       method: 'GET',
       headers: this.getAuthHeaders(),
     });

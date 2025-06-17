@@ -85,6 +85,6 @@ export const deleteFile = (filePath: string): void => {
 
 // Helper function to get file URL
 export const getFileUrl = (filename: string, subDir: string): string => {
-  const baseUrl = process.env.BASE_URL || 'http://localhost:3001';
+  const baseUrl = process.env.BASE_URL || 'https://p-analytics.onrender.com/api';
   return `${baseUrl}/uploads/${subDir}/${filename}`;
 };

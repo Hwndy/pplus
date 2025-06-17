@@ -3,7 +3,7 @@
  */
 
 // Base URL for API requests
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://p-analytics.onrender.com/api';
 
 // Default request timeout in milliseconds
 const DEFAULT_TIMEOUT = 30000;
