@@ -330,80 +330,78 @@ const UsersPage = () => {
           </DialogContent>
         </Dialog>
       </div>
+<div className="border rounded-md">
+  <Table>
+    <TableHeader>
+      <TableRow>
+        <TableHead className="w-14">Sr.</TableHead>
+        <TableHead>Name</TableHead>
+        <TableHead>Email</TableHead>
+        <TableHead>Role</TableHead>
+        <TableHead>Status</TableHead>
+        <TableHead>Last Login</TableHead>
+        <TableHead className="text-right">Action</TableHead>
+      </TableRow>
+    </TableHeader>
+    <TableBody>
+      {loading ? (
+        <TableRow>
+          <TableCell colSpan={7} className="text-center py-8">
+            <div className="flex flex-col items-center gap-2">
+              <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+              <p className="text-gray-500">Loading users...</p>
+            </div>
+          </TableCell>
+        </TableRow>
+      ) : !Array.isArray(users) || users.length === 0 ? (
+        <TableRow>
+          <TableCell colSpan={7} className="text-center py-8">
+            <p className="text-gray-500">No users found</p>
+          </TableCell>
+        </TableRow>
+      ) : (
+        users.map((user: any, index: number) => (
+          <TableRow key={user.id}>
+            <TableCell>{(currentPage - 1) * usersPerPage + index + 1}</TableCell>
+            <TableCell>{user.name}</TableCell>
+            <TableCell>{user.email}</TableCell>
+            <TableCell>{user.role}</TableCell>
+            <TableCell>
+              <span
+                className={`px-2 py-1 rounded-full text-xs ${
+                  user.status === 'ACTIVE'
+                    ? 'bg-green-100 text-green-800'
+                    : user.status === 'INACTIVE'
+                    ? 'bg-gray-100 text-gray-800'
+                    : 'bg-red-100 text-red-800'
+                }`}
+              >
+                {user.status}
+              </span>
+            </TableCell>
+            <TableCell>{formatDate(user.lastLogin)}</TableCell>
+            <TableCell className="text-right">
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" size="icon" onClick={() => handleEdit(user.id)}>
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleDelete(user.id)}
+                  disabled={deleting}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </TableCell>
+          </TableRow>
+        ))
+      )}
+    </TableBody>
+  </Table>
+</div>
 
-      <div className="border rounded-md">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-14">Sr.</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Last Login</TableHead>
-              <TableHead className="text-right">Action</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
-                  <div className="flex flex-col items-center gap-2">
-                    <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
-                    <p className="text-gray-500">Loading users...</p>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : users.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
-                  <p className="text-gray-500">No users found</p>
-                </TableCell>
-              </TableRow>
-            ) : (
-              users.map((user: any, index: number) => (
-                <TableRow key={user.id}>
-                  <TableCell>{((currentPage - 1) * usersPerPage) + index + 1}</TableCell>
-                  <TableCell>{user.name}</TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>{user.role}</TableCell>
-                  <TableCell>
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      user.status === 'ACTIVE'
-                        ? 'bg-green-100 text-green-800'
-                        : user.status === 'INACTIVE'
-                        ? 'bg-gray-100 text-gray-800'
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      {user.status}
-                    </span>
-                  </TableCell>
-                  <TableCell>{formatDate(user.lastLogin)}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEdit(user.id)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(user.id)}
-                        disabled={deleting}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
 
       {totalPages > 1 && (
         <div className="mt-4">

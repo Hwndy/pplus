@@ -1,5 +1,5 @@
-
-import { LoginForm } from '@/components/auth/LoginForm';
+import React from 'react';
+import LoginForm from '@/components/auth/LoginForm'; // 
 
 const Index = () => {
   return (
@@ -9,7 +9,7 @@ const Index = () => {
         <div className="order-2 md:order-1">
           <LoginForm />
         </div>
-        
+
         {/* Right side - Illustration */}
         <div className="order-1 md:order-2 flex flex-col items-center justify-center">
           <img 

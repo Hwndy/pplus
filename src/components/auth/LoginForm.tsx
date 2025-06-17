@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useAuth } from './AuthContext';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -13,7 +12,7 @@ interface LoginFormProps {
   className?: string;
 }
 
-export function LoginForm({ className }: LoginFormProps) {
+const LoginForm = ({ className }: LoginFormProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -24,9 +23,10 @@ export function LoginForm({ className }: LoginFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
     try {
       await login(email, password);
+      // Optionally: show toast or redirect
     } catch (error) {
       console.error('Login error:', error);
     } finally {
@@ -43,7 +43,7 @@ export function LoginForm({ className }: LoginFormProps) {
       <CardHeader className="space-y-1 p-0 mb-6">
         <div className="flex items-center gap-2 mb-2">
           <div className="text-primary">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
               <path d="M12 4V20M4 12H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
             </svg>
           </div>
@@ -53,30 +53,32 @@ export function LoginForm({ className }: LoginFormProps) {
           </div>
         </div>
         <h1 className="text-2xl font-semibold">Welcome Back</h1>
-        <p className="text-sm text-muted-foreground">Welcome back! Please Enter Your Details.</p>
+        <p className="text-sm text-muted-foreground">Welcome back! Please enter your details.</p>
       </CardHeader>
+
       <CardContent className="p-0">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input 
-              id="email" 
-              type="email" 
-              placeholder="your@email.com" 
+            <Input
+              id="email"
+              type="email"
+              placeholder="your@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
               className="bg-muted border-muted"
             />
           </div>
+
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="password">Password</Label>
             </div>
             <div className="relative">
-              <Input 
-                id="password" 
-                type={showPassword ? "text" : "password"}
+              <Input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -91,36 +93,33 @@ export function LoginForm({ className }: LoginFormProps) {
               </button>
             </div>
           </div>
-          
+
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <Checkbox 
-                id="remember" 
+              <Checkbox
+                id="remember"
                 checked={rememberMe}
                 onCheckedChange={(checked) => setRememberMe(checked as boolean)}
               />
-              <Label htmlFor="remember" className="text-sm cursor-pointer">Remember me</Label>
+              <Label htmlFor="remember" className="text-sm cursor-pointer">
+                Remember me
+              </Label>
             </div>
             <a href="#" className="text-sm text-primary hover:underline">
               Forgot Password
             </a>
           </div>
 
-          <Button 
-            type="submit" 
-            className="w-full bg-primary text-white hover:bg-primary/90" 
+          <Button
+            type="submit"
+            className="w-full bg-primary text-white hover:bg-primary/90"
             disabled={isSubmitting}
             variant="default"
           >
             {isSubmitting ? 'Signing in...' : 'Sign in'}
           </Button>
 
-          <Button 
-            type="button" 
-            variant="outline"
-            className="w-full border border-input"
-            onClick={() => {}}
-          >
+          <Button type="button" variant="outline" className="w-full border border-input" onClick={() => {}}>
             <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
               <path
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -143,9 +142,9 @@ export function LoginForm({ className }: LoginFormProps) {
             Sign in with Google
           </Button>
 
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <Button 
-              type="button" 
+          {/* <div className="mt-4 grid grid-cols-2 gap-2">
+            <Button
+              type="button"
               variant="outline"
               onClick={() => {
                 setEmail('admin@example.com');
@@ -155,8 +154,8 @@ export function LoginForm({ className }: LoginFormProps) {
             >
               Admin Demo
             </Button>
-            <Button 
-              type="button" 
+            <Button
+              type="button"
               variant="outline"
               onClick={() => {
                 setEmail('client@example.com');
@@ -166,9 +165,11 @@ export function LoginForm({ className }: LoginFormProps) {
             >
               Client Demo
             </Button>
-          </div>
+          </div> */}
         </form>
       </CardContent>
     </Card>
   );
-}
+};
+
+export default LoginForm;

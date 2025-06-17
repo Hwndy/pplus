@@ -60,7 +60,9 @@ export function Header({ children }: HeaderProps) {
             <Button variant="ghost" className="relative h-9 w-9 rounded-full">
               <Avatar className="h-9 w-9 transition duration-300 hover:opacity-80">
                 <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                <AvatarFallback>{user?.name?.charAt(0) ?? ''}</AvatarFallback>
+                {/* const firstLetter = user?.name?.charAt(0) ?? ''; */}
+
               </Avatar>
             </Button>
           </DropdownMenuTrigger>

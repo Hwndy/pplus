@@ -45,9 +45,16 @@ export interface Publication {
 }
 
 export interface LoginResponse {
-  user: User;
-  token: string;
-  refreshToken: string;
+  data: {
+    token: string;
+    id: number;
+    username: string;
+    email: string;
+    role: string;
+    status: string;
+  };
+  message: string;
+
 }
 
 export interface PaginatedResponse<T> {
@@ -103,20 +110,19 @@ class ApiService {
 
   // Authentication
   async login(email: string, password: string) {
-    const response = await post<LoginResponse>('/auth/login', { email, password });
-    // Handle the wrapped response structure
-    if (response.data?.success && response.data?.data?.token) {
-      this.setToken(response.data.data.token);
-    } else if (response.data?.token) {
-      // Fallback for direct token response
-      this.setToken(response.data.token);
-    }
-    return response;
-  }
+  const response = await post<LoginResponse>('/auth/login', { email, password });
 
-  async getProfile() {
-    return get<User>('/auth/me', { headers: this.getAuthHeaders() });
-  }
+  // const token = response.data?.data?.token ?? response.data;
+  // const user = response.data?.data;
+
+  // if (!token) {
+  //   throw new Error('Invalid response from server: Token not found');
+  // }
+
+  // this.setToken(token);
+
+  return response;
+}
 
   async changePassword(currentPassword: string, newPassword: string) {
     return post<any>('/auth/change-password', 
