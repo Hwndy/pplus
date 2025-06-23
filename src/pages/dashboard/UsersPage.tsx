@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Table, 
   TableBody, 
@@ -140,6 +140,7 @@ const UsersPage = () => {
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const searchTimeout = useRef<NodeJS.Timeout>();
   const usersPerPage = 10;
 
   // API hooks
@@ -148,6 +149,29 @@ const UsersPage = () => {
     limit: usersPerPage,
     search: searchTerm
   });
+
+  // Handle search with debounce
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    
+    if (searchTimeout.current) {
+      clearTimeout(searchTimeout.current);
+    }
+    
+    searchTimeout.current = setTimeout(() => {
+      setCurrentPage(1);
+    }, 500);
+  };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeout.current) {
+        clearTimeout(searchTimeout.current);
+      }
+    };
+  }, []);
   const { mutate: deleteUser, loading: deleting } = useDeleteUser();
 
   // Extract data from API response
@@ -155,12 +179,6 @@ const UsersPage = () => {
   const pagination = usersResponse?.pagination;
   const totalPages = pagination?.totalPages || 1;
   const totalItems = pagination?.total || 0;
-
-  // Handle search
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-    setCurrentPage(1);
-  };
 
   // Handle save new user
   const handleSaveUser = (newUser: any) => {
