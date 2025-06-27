@@ -1,0 +1,2349 @@
+{
+	"info": {
+		"_postman_id": "41952562-c1992caa-f587-4685-abd5-deb217dd71ad",
+		"name": "Backend",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "Register",
+					"id": "41952562-118ff0ee-a00d-462e-a2ab-9f7690e539c0",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"testing\",\n    \"email\": \"admin@gmail.com\",\n    \"gender\": \"male\",\n    \"active\": true,\n    \"role_id\": 1,\n    \"password\": \"12345678\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/auth/register",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"auth",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login",
+					"id": "41952562-62301070-f76f-44ea-a0aa-9032887cc6d9",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"admin@gmail.com\",\n    \"password\": \"12345678\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/auth/login",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"id": "41952562-914f337e-18e9-4d84-8a6b-4a3017ddaa51"
+		},
+		{
+			"name": "User Management",
+			"item": [
+				{
+					"name": "Fetch All",
+					"id": "41952562-0ada1d51-a11a-4f9d-9cc9-8b33ff6f3691",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/users",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"users"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create user",
+					"id": "41952562-99b799a3-da35-475e-a80f-f0e24a760651",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"testing\",\n    \"email\": \"testing23@gmail.com\",\n    \"gender\": \"male\",\n    \"active\": true,\n    \"role_id\": 2,\n    \"password\": \"12345678\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/users",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"users"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update User",
+					"id": "41952562-cecc87f3-f102-48f1-be3a-a8f76a2ce82f",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"Supervisor Account\",\n    \"gender\": \"male\",\n    \"active\": false,\n    \"role_id\": 3,\n    \"password\": \"12345678\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/users/3",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"users",
+								"3"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Fetch Single User",
+					"id": "41952562-f6232d88-c5d7-46f8-a5d7-a7aa8b0ccf67",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/users/2",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"users",
+								"2"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete User",
+					"id": "41952562-d289a6fb-5ed8-4ccf-93b6-616920aa781c",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/users/2",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"users",
+								"2"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"id": "41952562-8e8d11d6-6c1f-4888-bc39-66e9422c4cfa"
+		},
+		{
+			"name": "Company  Management",
+			"item": [
+				{
+					"name": "Fetch All Company",
+					"id": "41952562-88f264fb-0a07-4d76-b23b-a71185ba6c0b",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/companies",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"companies"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Company",
+					"id": "41952562-33f916fa-924d-47d1-8e68-f3fd85093c38",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Tech Innovators Ltd Company\",\n    \"industry\": \"Technology\",\n    \"sub_industry\": \"Software Development\",\n    \"address\": \"123 Innovation Drive\",\n    \"subsidiaries\": [\n        {\n            \"prefix\": \"TI\",\n            \"subsidiary_id\": 1\n        }\n    ],\n    \"state\": \"Lagos\",\n    \"country\": \"Nigeria\",\n    \"email\": \"info@techinnovators.com\",\n    \"contact\": \"John Doe\",\n    \"ceo\": \"Jane Smith\",\n    \"phone_no\": \"+2348012345678\",\n    \"website\": \"https://techinnovators.com\",\n    \"facebook_link\": \"https://facebook.com/techinnovators\",\n    \"instagram_link\": \"https://instagram.com/techinnovators\",\n    \"twitter_link\": \"https://twitter.com/techinnovators\",\n    \"linkedin_link\": \"https://linkedin.com/company/techinnovators\",\n    \"youtube_link\": \"https://youtube.com/c/TechInnovators\"\n}\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/companies",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"companies"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Fetch Single",
+					"id": "41952562-52c9ad8b-d0e5-4e99-8304-9100eefebd79",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/companies/12",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"companies",
+								"12"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Company",
+					"id": "41952562-f3ca2e3e-d5a8-49ec-a9f1-57c4991be8a4",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/companies/2",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"companies",
+								"2"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Company Subsidiary",
+					"id": "41952562-69d31bce-eeeb-42cc-b2e1-945348266c87",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/companies/3/subsidiary/2",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"companies",
+								"3",
+								"subsidiary",
+								"2"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Company",
+					"id": "41952562-3ed995b0-1cac-4e7d-9e0d-d3047c417268",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Tech Innovators Ltd\",\n    \"industry\": \"Technology\",\n    \"sub_industry\": \"Software Development\",\n    \"address\": \"123 Innovation Drive\",\n    \"subsidiaries\": [\n        {\n            \"prefix\": \"TI\",\n            \"subsidiary_id\": 3\n        },\n        {\n            \"prefix\": \"AI\",\n            \"subsidiary_id\": 4\n        }\n    ],\n    \"state\": \"Lagos\",\n    \"country\": \"Nigeria\",\n    \"email\": \"info@techinnovators.com\",\n    \"contact\": \"John Doe\",\n    \"ceo\": \"Jane Smith\",\n    \"phone_no\": \"+2348012345678\",\n    \"website\": \"https://techinnovators.com\",\n    \"facebook_link\": \"https://facebook.com/techinnovators\",\n    \"instagram_link\": \"https://instagram.com/techinnovators\",\n    \"twitter_link\": \"https://twitter.com/techinnovators\",\n    \"linkedin_link\": \"https://linkedin.com/company/techinnovators\",\n    \"youtube_link\": \"https://youtube.com/c/TechInnovators\"\n}\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/companies/12",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"companies",
+								"12"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"id": "41952562-c5a2446f-1e2e-4a60-9935-6bf038737e25"
+		},
+		{
+			"name": "Role Management",
+			"item": [
+				{
+					"name": "Fetch All",
+					"id": "41952562-502ea16e-9130-49cf-b3ac-ab1b2c7175d9",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/roles",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"roles"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Fetch Single",
+					"id": "41952562-1644f187-dcac-49a7-9671-6b1897fc9b2b",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/roles/5",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"roles",
+								"5"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update",
+					"id": "41952562-ef070634-e3e0-4389-bedb-76e86c34bcfb",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Company\",\n    \"permission\": [0]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/roles/7",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"roles",
+								"7"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create",
+					"id": "41952562-1dcfc224-36a1-49fd-a0e4-dcd7c04aa47d",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Supervisor\",\n    \"permission\": [2, 3]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/roles",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"roles"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete",
+					"id": "41952562-67645e5c-8e67-46c5-9966-78ba2ab8a6b8",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/roles/7",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"roles",
+								"7"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"id": "41952562-3878aabb-614f-4c01-a6a7-dac21873e582"
+		},
+		{
+			"name": "Permission Management",
+			"item": [
+				{
+					"name": "Fetch All",
+					"id": "41952562-bc329996-a131-49a7-9f9f-a50a4f35d422",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/permissions",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"permissions"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create",
+					"id": "41952562-b9128d13-c2d5-425f-a6bd-eb42fb6ae8ca",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Delete User\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/permissions",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"permissions"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Fetch Single",
+					"id": "41952562-0f2fb1b8-fbd2-4a56-9eb0-8c413370eac7",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/permissions/1",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"permissions",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update",
+					"id": "41952562-9eed73be-eecf-4a70-bfec-d2134a00f3cb",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Can Update User\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/permissions/1",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"permissions",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete",
+					"id": "41952562-631197ab-0369-4238-8905-a1d36a50a93f",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/permissions/1",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"permissions",
+								"1"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"id": "41952562-17645229-40e2-4fc4-83fc-742ab0a25c0d"
+		},
+		{
+			"name": "Publication",
+			"item": [
+				{
+					"name": "Fetch All",
+					"id": "41952562-25110a0b-c616-427e-8527-0627bae42a76",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{url}}/publications",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"publications"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Fetch Single",
+					"id": "41952562-3c653538-4070-48c3-94c1-3d4e12a7b767",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{url}}/publications/2",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"publications",
+								"2"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create",
+					"id": "41952562-5698be1b-f318-4025-97f9-c34fc6f31c70",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Publication Sample 2\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/publications",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"publications"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update",
+					"id": "41952562-73d37ac8-5a98-4e22-8f43-c0bc70d89c52",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Publication Update\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/publications/2",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"publications",
+								"2"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete",
+					"id": "41952562-c5908f0b-0b41-44d1-acb5-c63683cbc53f",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/publications/2",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"publications",
+								"2"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"id": "41952562-d22dd50f-e54d-4463-a1fb-c380591a1c06"
+		},
+		{
+			"name": "Nature",
+			"item": [
+				{
+					"name": "Fetch All",
+					"id": "41952562-6493ed19-2ba5-4449-abf5-74b669d7b0e6",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/natures",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"natures"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Fetch Single",
+					"id": "41952562-d82162f5-3ae1-4702-bf4d-dc4941cbc090",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/natures/1",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"natures",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create",
+					"id": "41952562-1ea89ca7-f007-4098-b9d2-7d1c62e7164d",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Nature Testing\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/natures",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"natures"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update",
+					"id": "41952562-7ff80759-ab37-4f3c-9e60-1b7450e8261f",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Nature Updating\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/natures/2",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"natures",
+								"2"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete",
+					"id": "41952562-04b56f0a-09c5-47c7-96c4-3a8da5ccd526",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/natures/1",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"natures",
+								"1"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"id": "41952562-17a1612c-8d30-45d2-a85a-0e5290494ba9"
+		},
+		{
+			"name": "Channel",
+			"item": [
+				{
+					"name": "Fetch All",
+					"id": "41952562-dc38ca94-4b1a-435f-8e73-65afa0a53f9b",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/channels",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"channels"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Fetch Single",
+					"id": "41952562-f098a393-5b24-4082-b897-d88b8f4a105d",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/channels/1",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"channels",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create",
+					"id": "41952562-f31ed2d9-7d63-42a3-b2c8-2406e8493298",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Channel Testing\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/channels",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"channels"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update",
+					"id": "41952562-1e29f99f-c88e-4e13-b817-58d39de49961",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Channel Update\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/channels/2",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"channels",
+								"2"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete",
+					"id": "41952562-a5e1ad25-c22a-4c99-afdf-c3293c04e56e",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/channels/2",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"channels",
+								"2"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"id": "41952562-887d2e93-c832-49f2-bd24-0c0f221307aa"
+		},
+		{
+			"name": "Campaign Type",
+			"item": [
+				{
+					"name": "Fetch All",
+					"id": "41952562-f7c72d30-af76-4428-a6d4-62933d5b2518",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/campaign-types",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"campaign-types"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Fetch Single",
+					"id": "41952562-07ff7b94-1f7b-4217-b079-7c27f085c8ee",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/campaign-types/2",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"campaign-types",
+								"2"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create",
+					"id": "41952562-5aab5f4d-f3e6-4e89-a00d-c270a63f4c7c",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Campaign Type Testing\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/campaign-types",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"campaign-types"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update",
+					"id": "41952562-2351a6b0-39be-4856-8916-9d71ce8eb446",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Campaign Type Update\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/campaign-types/1",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"campaign-types",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete",
+					"id": "41952562-168f4607-6b28-4f16-ad1b-6af5f8c8a4d0",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/campaign-types/2",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"campaign-types",
+								"2"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"id": "41952562-99d60292-ded3-44ef-9082-91fdacf0f626"
+		},
+		{
+			"name": "Activity",
+			"item": [
+				{
+					"name": "Fetch All",
+					"id": "41952562-0efe3668-c92d-4c5c-aaef-afb812107eb3",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/activities",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"activities"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Fetch Single",
+					"id": "41952562-822e48f3-34b9-43fb-8255-c2ae1dfbd55d",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/activities/2",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"activities",
+								"2"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create",
+					"id": "41952562-f62d62cd-d51e-494e-bf2c-f17346608bfa",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"truce\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/activities",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"activities"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update",
+					"id": "41952562-1d551907-60b7-4c13-84d9-7eb003b60d0a",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Activity Update\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/activities/2",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"activities",
+								"2"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete",
+					"id": "41952562-472cbff6-463e-4cb1-9402-c033e286d1b2",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/activities/4",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"activities",
+								"4"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"id": "41952562-1bdbea1a-51db-40bc-a30a-e4e2db230793"
+		},
+		{
+			"name": "Media Type",
+			"item": [
+				{
+					"name": "Fetch All",
+					"id": "41952562-dbbe879f-293c-404a-a752-0c05fef2bc1a",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/media-types",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"media-types"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Fetch Single",
+					"id": "41952562-160c9bdb-85c4-41a6-a8e1-e4cd1f35d37a",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/media-types/1",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"media-types",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create",
+					"id": "41952562-a5b0a699-fe53-49c2-a08f-15a261de5ef9",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Channel Testing\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/media-types",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"media-types"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update",
+					"id": "41952562-8fef1787-8e72-48c9-8a10-a11200b67e86",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Media Type Update\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/media-types/1",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"media-types",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete",
+					"id": "41952562-41fd0070-ad69-40cc-8391-9341bda2fbe0",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/media-types/1",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"media-types",
+								"1"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"id": "41952562-a4771caf-1561-4f84-8ce0-d0a52fc3872a"
+		},
+		{
+			"name": "Placement",
+			"item": [
+				{
+					"name": "Fetch All",
+					"id": "41952562-b0dbf76f-9f78-4788-ae2d-d40de4443f58",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/placements",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"placements"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Fetch Single",
+					"id": "41952562-e43366af-9d64-4a70-8cf9-6fd1b678b879",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/placements/1",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"placements",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create",
+					"id": "41952562-aa6400a3-b4bd-40eb-bae4-05e266e07b02",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Channel Testing\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/placements",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"placements"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update",
+					"id": "41952562-1b9ced1e-8c85-4e03-9269-8858f550db76",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Placement Update\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/placements/1",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"placements",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete",
+					"id": "41952562-f0ac4c76-00a6-4328-b763-2562a9cb334d",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/placements/1",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"placements",
+								"1"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"id": "41952562-d685e41b-5faf-48f3-b92e-854945c95786"
+		},
+		{
+			"name": "Editorial",
+			"item": [
+				{
+					"name": "Create",
+					"id": "41952562-14fd17dd-dc24-44d8-b4f8-8f8dec22e4b8",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"date\": \"2025-04-08T00:00:00.000Z\",\n  \"media_type\": 2,\n  \"company\": 1,\n  \"brand\": \"Brand Name\",\n  \"industry\": \"Technology\",\n  \"sub_sector\": \"Software\",\n  \"publication\": 1,\n  \"placement\": 2,\n  \"title\": \"Breaking News: New Tech Innovation\",\n  \"page_number\": 5,\n  \"link\": \"https://example.com/article\",\n  \"reporter\": \"John Doe\",\n  \"country\": \"Nigeria\",\n  \"spokesperson\": \"Jane Smith\",\n  \"activity\": 1,\n  \"sentiment\": \"Positive\",\n  \"media_sentiment_index\": 1,\n  \"advert_spend\": 1000,\n  \"circulation\": 5000,\n  \"page_size\": \"A4\"\n}\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/editorials",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"editorials"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Fetch All",
+					"id": "41952562-07db50d2-3dbe-445b-a86e-b86b76f806e3",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/editorials",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"editorials"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Fetch Single",
+					"id": "41952562-86df98cf-b2fe-4837-9474-15f5c280a97d",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/editorials/2",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"editorials",
+								"2"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update",
+					"id": "41952562-e433cdc3-3adf-45e0-85e0-9a5169eabcec",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"date\": \"2025-04-08T00:00:00.000Z\",\n  \"media_type\": 2,\n  \"company\": 1,\n  \"brand\": \"Brand Name Update\",\n  \"industry\": \"Technology\",\n  \"sub_sector\": \"Software\",\n  \"publication\": 1,\n  \"placement\": 2,\n  \"title\": \"Breaking News: New Tech Innovation\",\n  \"page_number\": 5,\n  \"link\": \"https://example.com/article\",\n  \"reporter\": \"John Doe\",\n  \"country\": \"Nigeria\",\n  \"spokesperson\": \"Jane Smith\",\n  \"activity\": 1,\n  \"sentiment\": \"Positive\",\n  \"media_sentiment_index\": 1,\n  \"advert_spend\": 1000,\n  \"circulation\": 5000,\n  \"page_size\": \"A4\"\n}\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/editorials/1",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"editorials",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete",
+					"id": "41952562-f624c472-4b83-46f0-9b5c-f27f3aac1ea8",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/editorials/1",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"editorials",
+								"1"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"id": "41952562-428e7428-c945-47a1-90dd-eaccf2c407f5"
+		},
+		{
+			"name": "test",
+			"id": "41952562-1037c9c7-ea6e-41cc-a453-b370ec1dd6ee",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{url}}/test",
+					"host": [
+						"{{url}}"
+					],
+					"path": [
+						"test"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsImlhdCI6MTc0OTkxODMxNywiZXhwIjoxNzUwMDA0NzE3fQ.tK4ViJYDnwIYl2LTgrn5S7JMtawYN6lY5DWIr0N427Y",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"id": "9e9dc2ae-a756-49e4-bcb2-aa8b0f7674ab",
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"id": "e9206411-03bd-43a9-940f-23d7a84cd04a",
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	]
+}
