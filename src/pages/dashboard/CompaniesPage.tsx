@@ -149,10 +149,10 @@ const CompaniesPage = () => {
   const { mutate: deleteCompany, loading: deleting } = useDeleteCompany();
 
   // Extract data from API response
-  const companies = companiesResponse?.data || [];
-  const pagination = companiesResponse?.pagination;
-  const totalPages = pagination?.totalPages || 1;
-  const totalItems = pagination?.total || 0;
+const companies = Array.isArray(companiesResponse?.data) ? companiesResponse.data : [];
+const pagination = companiesResponse?.pagination;
+const totalPages = pagination?.totalPages || 1;
+const totalItems = pagination?.total || 0;
 
   // Handle filter changes
   const handleFilterChange = (newFilters: FilterValues) => {
