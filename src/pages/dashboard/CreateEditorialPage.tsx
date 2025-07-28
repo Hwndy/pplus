@@ -575,6 +575,10 @@ const CreateEditorialPage = () => {
                   </SelectTrigger>
                   <SelectContent>
                     {apiCompanies.map((company: any) => (
+                      {Array.isArray(apiCompanies) && apiCompanies.map(company => (
+  // render your component
+// ))}
+
                       <SelectItem key={company.id} value={company.name}>
                         {company.name}
                       </SelectItem>
