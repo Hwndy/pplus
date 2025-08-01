@@ -42,7 +42,7 @@ export function SupervisorDashboard() {
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
-  const [currentEntry, setCurrentEntry] = useState<any>(null);
+  const [currentEntry, setCurrentEntry] = useState<{ id: string; title: string; type: string; status: string; clientId: string; submittedAt: string } | null>(null);
 
   // Get client name by ID
   const getClientName = (id: string) => {

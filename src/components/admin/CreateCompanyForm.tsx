@@ -67,8 +67,8 @@ export function CreateCompanyForm({ onSave, onCancel }: CreateCompanyFormProps) 
     facebookLink: '',
     instagramLink: '',
     twitterLink: '',
-    linkedinLink: '',
-    youtubeLink: '',
+    linkedinLink: 'https://linkedin.com', // Set default value since it's required
+    youtubeLink: 'https://youtube.com', // Set default value since it's required
   }]);
 
   const [subsidiaries, setSubsidiaries] = useState<Array<{ id: number, name: string }>>([]);
@@ -94,8 +94,8 @@ export function CreateCompanyForm({ onSave, onCancel }: CreateCompanyFormProps) 
       facebookLink: '',
       instagramLink: '',
       twitterLink: '',
-      linkedinLink: '',
-      youtubeLink: '',
+      linkedinLink: 'https://linkedin.com',
+      youtubeLink: 'https://youtube.com',
     },
   });
 
@@ -110,25 +110,21 @@ export function CreateCompanyForm({ onSave, onCancel }: CreateCompanyFormProps) 
         email: formData.email,
         industry: formData.industry,
         website: formData.website,
-        description: `${formData.subIndustry} company`,
-        // Map form fields to API expected fields
-        phone: formData.phone,
-        address: `${formData.officeAddress}, ${formData.officeState}, ${formData.officeCountry}`,
+        // Map form fields to backend expected fields
+        sub_industry: formData.subIndustry, // Backend expects sub_industry
+        state: formData.officeState, // Backend expects state
+        country: formData.officeCountry, // Backend expects country
+        contact: formData.contactPerson, // Backend expects contact
+        phone_no: formData.phone, // Backend expects phone_no
+        address: formData.officeAddress, // Use just the address field
         ceo: formData.ceo,
-        // Additional fields can be stored in a metadata object
-        metadata: {
-          subIndustry: formData.subIndustry,
-          prefix: formData.prefix,
-          contactPerson: formData.contactPerson,
-          socialMedia: {
-            facebook: formData.facebookLink,
-            instagram: formData.instagramLink,
-            twitter: formData.twitterLink,
-            linkedin: formData.linkedinLink,
-            youtube: formData.youtubeLink,
-          },
-          subsidiaries: subsidiaries,
-        }
+        // Remove prefix as it's not allowed by backend
+        // Social media links as separate fields - provide defaults if empty
+        facebook_link: formData.facebookLink || 'https://facebook.com',
+        instagram_link: formData.instagramLink || 'https://instagram.com',
+        twitter_link: formData.twitterLink || 'https://twitter.com',
+        linkedin_link: formData.linkedinLink || 'https://linkedin.com', // Required field
+        youtube_link: formData.youtubeLink || 'https://youtube.com', // Required field
       }));
 
       // Create companies one by one
@@ -192,7 +188,6 @@ export function CreateCompanyForm({ onSave, onCancel }: CreateCompanyFormProps) 
     setCompanyForms(updatedForms);
   };
 
-  const prefixOptions = ['Mr.', 'Mrs.', 'Ms.', 'Dr.', 'Prof.'];
   const industryOptions = ['Financial Services', 'Technology', 'Healthcare', 'Manufacturing', 'Retail', 'Education', 'Media', 'Other'];
 
   return (
@@ -355,55 +350,76 @@ export function CreateCompanyForm({ onSave, onCancel }: CreateCompanyFormProps) 
                   </div>
                   
                   <div>
-                    <FormLabel>Prefix</FormLabel>
-                    <Select 
-                      value={companyForm.prefix}
-                      onValueChange={(value) => updateCompanyForm(formIndex, 'prefix', value)}
-                    >
-                      <SelectTrigger className="bg-gray-50 border-gray-200">
-                        <SelectValue placeholder="select prefix" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {prefixOptions.map(option => (
-                          <SelectItem key={option} value={option}>{option}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormLabel>Additional Info</FormLabel>
+                    <Input
+                      className="bg-gray-50 border-gray-200"
+                      placeholder="Any additional information"
+                      value=""
+                      disabled
+                    />
+                    <p className="text-xs text-gray-500 mt-1">This field is for future use</p>
                   </div>
                 </div>
                 
                 {/* Fifth Row - Social Media */}
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-3 gap-4 mb-6">
                   <div>
                     <FormLabel>Facebook Link</FormLabel>
-                    <Input 
-                      className="bg-gray-50 border-gray-200" 
+                    <Input
+                      className="bg-gray-50 border-gray-200"
                       placeholder="Enter Facebook URL"
                       type="url"
                       value={companyForm.facebookLink}
                       onChange={(e) => updateCompanyForm(formIndex, 'facebookLink', e.target.value)}
                     />
                   </div>
-                  
+
                   <div>
                     <FormLabel>Instagram Link</FormLabel>
-                    <Input 
-                      className="bg-gray-50 border-gray-200" 
+                    <Input
+                      className="bg-gray-50 border-gray-200"
                       placeholder="Enter Instagram URL"
                       type="url"
                       value={companyForm.instagramLink}
                       onChange={(e) => updateCompanyForm(formIndex, 'instagramLink', e.target.value)}
                     />
                   </div>
-                  
+
                   <div>
                     <FormLabel>Twitter Link</FormLabel>
-                    <Input 
-                      className="bg-gray-50 border-gray-200" 
+                    <Input
+                      className="bg-gray-50 border-gray-200"
                       placeholder="Enter Twitter URL"
                       type="url"
                       value={companyForm.twitterLink}
                       onChange={(e) => updateCompanyForm(formIndex, 'twitterLink', e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Sixth Row - Required Social Media */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <FormLabel>LinkedIn Link <span className="text-red-500">*</span></FormLabel>
+                    <Input
+                      className="bg-gray-50 border-gray-200"
+                      placeholder="Enter LinkedIn URL"
+                      type="url"
+                      value={companyForm.linkedinLink}
+                      onChange={(e) => updateCompanyForm(formIndex, 'linkedinLink', e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <FormLabel>YouTube Link <span className="text-red-500">*</span></FormLabel>
+                    <Input
+                      className="bg-gray-50 border-gray-200"
+                      placeholder="Enter YouTube URL"
+                      type="url"
+                      value={companyForm.youtubeLink}
+                      onChange={(e) => updateCompanyForm(formIndex, 'youtubeLink', e.target.value)}
+                      required
                     />
                   </div>
                 </div>

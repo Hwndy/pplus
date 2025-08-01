@@ -24,7 +24,7 @@ interface FileUploadProps {
   multiple?: boolean;
   accept?: string;
   maxSize?: number; // in MB
-  onUploadComplete?: (files: any[]) => void;
+  onUploadComplete?: (files: File[]) => void;
   className?: string;
 }
 
@@ -34,7 +34,7 @@ interface UploadFile {
   progress: number;
   status: 'pending' | 'uploading' | 'success' | 'error';
   error?: string;
-  result?: any;
+  result?: { id: string; url: string; name: string; size: number };
 }
 
 export function FileUpload({

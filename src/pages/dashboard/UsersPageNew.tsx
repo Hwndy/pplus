@@ -67,8 +67,19 @@ import {
 import { UserForm } from '@/components/forms/UserForm';
 import { useUsers, useDeleteUser } from '@/hooks/useApi';
 import { FileUpload } from '@/components/FileUpload';
-import { apiService } from '@/services/apiService';
+import { apiService, User } from '@/services/apiService';
 import { toast } from 'sonner';
+
+// Helper function to safely render role
+const renderRole = (role: string | { id: string; name: string } | unknown): string => {
+  if (typeof role === 'string') {
+    return role;
+  }
+  if (typeof role === 'object' && role !== null && 'name' in role) {
+    return (role as { name: string }).name;
+  }
+  return 'Unknown';
+};
 
 // Filter options for users
 const filterOptions: FilterOption[] = [
@@ -106,14 +117,14 @@ const UsersPage = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [filterValues, setFilterValues] = useState<FilterValues>({});
   const [showFilters, setShowFilters] = useState(false);
   const usersPerPage = 10;
 
   // Build API parameters from filters
   const apiParams = useMemo(() => {
-    const params: any = {
+    const params: Record<string, unknown> = {
       page: currentPage,
       limit: usersPerPage,
     };
@@ -128,8 +139,11 @@ const UsersPage = () => {
     return params;
   }, [currentPage, filterValues]);
 
-  // API hooks
-  const { data: usersResponse, loading, error, refetch } = useUsers(apiParams);
+  // API hooks with conservative approach (NO auto-refresh)
+  const { data: usersResponse, loading, error, refetch, lastFetch } = useUsers(apiParams, {
+    enableAutoRefresh: false, // DISABLED - manual refresh only
+    refreshInterval: 900000 // 15 minutes if enabled
+  });
   const { mutate: deleteUser, loading: deleting } = useDeleteUser();
 
   // Extract data from API response
@@ -145,13 +159,13 @@ const UsersPage = () => {
   };
 
   // Handle edit
-  const handleEdit = (user: any) => {
+  const handleEdit = (user: User) => {
     setSelectedUser(user);
     setIsEditDialogOpen(true);
   };
 
   // Handle view
-  const handleView = (user: any) => {
+  const handleView = (user: User) => {
     toast.info(`Viewing details for ${user.name}`);
   };
 
@@ -167,7 +181,7 @@ const UsersPage = () => {
   };
 
   // Handle form success
-  const handleFormSuccess = (user: any) => {
+  const handleFormSuccess = (user: User) => {
     setIsCreateDialogOpen(false);
     setIsEditDialogOpen(false);
     setSelectedUser(null);
@@ -182,7 +196,7 @@ const UsersPage = () => {
   };
 
   // Handle file upload
-  const handleFileUpload = (files: any[]) => {
+  const handleFileUpload = (files: File[]) => {
     toast.success(`Uploaded ${files.length} files successfully`);
     setIsUploadDialogOpen(false);
     refetch(); // Refresh data after upload
@@ -202,9 +216,16 @@ const UsersPage = () => {
   };
 
   // Format date
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return 'Never';
+
     const date = new Date(dateString);
+
+    // Check if the date is valid
+    if (isNaN(date.getTime())) {
+      return 'Invalid Date';
+    }
+
     return new Intl.DateTimeFormat('en-US', {
       year: 'numeric',
       month: 'short',
@@ -322,7 +343,7 @@ const UsersPage = () => {
               <div>
                 <p className="text-sm font-medium text-gray-600">Active Users</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {users.filter((u: any) => u.status === 'ACTIVE').length}
+                  {users.filter((u: User) => u.isActive).length}
                 </p>
               </div>
               <UserCheck className="h-8 w-8 text-green-600" />
@@ -335,7 +356,7 @@ const UsersPage = () => {
               <div>
                 <p className="text-sm font-medium text-gray-600">Roles</p>
                 <p className="text-2xl font-bold text-blue-600">
-                  {new Set(users.map((u: any) => u.role)).size}
+                  {new Set(users.map((u: User) => renderRole(u.role))).size}
                 </p>
               </div>
               <Shield className="h-8 w-8 text-blue-600" />

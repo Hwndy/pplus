@@ -69,6 +69,19 @@ import { CreateCompanyForm } from '@/components/admin/CreateCompanyForm';
 import { useCompanies, useDeleteCompany } from '@/hooks/useApi';
 import { GlobalSearch } from '@/components/GlobalSearch';
 import { FileUpload } from '@/components/FileUpload';
+
+interface Company {
+  id: string;
+  name: string;
+  industry: string;
+  email: string;
+  phone: string;
+  website: string;
+  address: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
 import { apiService } from '@/services/apiService';
 import { toast } from 'sonner';
 
@@ -129,7 +142,7 @@ const CompaniesPage = () => {
 
   // Build API parameters from filters
   const apiParams = useMemo(() => {
-    const params: any = {
+    const params: Record<string, unknown> = {
       page: currentPage,
       limit: companiesPerPage,
     };
@@ -144,8 +157,11 @@ const CompaniesPage = () => {
     return params;
   }, [currentPage, filterValues]);
 
-  // API hooks
-  const { data: companiesResponse, loading, error, refetch } = useCompanies(apiParams);
+  // API hooks with NO auto-refresh (manual only)
+  const { data: companiesResponse, loading, error, refetch, lastFetch } = useCompanies(apiParams, {
+    enableAutoRefresh: false, // COMPLETELY DISABLED
+    refreshInterval: 900000 // Not used since auto-refresh is disabled
+  });
   const { mutate: deleteCompany, loading: deleting } = useDeleteCompany();
 
   // Extract data from API response
@@ -161,7 +177,7 @@ const totalItems = pagination?.total || 0;
   };
 
   // Handle edit
-  const handleEdit = (company: any) => {
+  const handleEdit = (company: Company) => {
     toast.info(`Edit functionality for ${company.name} - Opening edit form...`);
     // TODO: Implement edit form or navigate to edit page
   };

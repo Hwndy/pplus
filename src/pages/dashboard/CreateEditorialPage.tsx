@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { CalendarIcon, Plus, Copy, Save, Send, Loader2 } from 'lucide-react';
 import { useCreateEditorial, useUpdateEditorial, useCompanies, usePublications } from '@/hooks/useApi';
+import { Company, Publication } from '@/services/apiService';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
@@ -574,11 +575,7 @@ const CreateEditorialPage = () => {
                     <SelectValue placeholder="Select company" />
                   </SelectTrigger>
                   <SelectContent>
-                    {apiCompanies.map((company: any) => (
-                      {Array.isArray(apiCompanies) && apiCompanies.map(company => (
-  // render your component
-// ))}
-
+                    {Array.isArray(apiCompanies) && apiCompanies.map((company: Company) => (
                       <SelectItem key={company.id} value={company.name}>
                         {company.name}
                       </SelectItem>
@@ -665,7 +662,7 @@ const CreateEditorialPage = () => {
                     <SelectValue placeholder="Select source" />
                   </SelectTrigger>
                   <SelectContent>
-                    {apiPublications.map((publication: any) => (
+                    {apiPublications.map((publication: Publication) => (
                       <SelectItem key={publication.id} value={publication.name}>
                         {publication.name}
                       </SelectItem>

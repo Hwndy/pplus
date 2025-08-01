@@ -29,8 +29,8 @@ const userSchema = z.object({
 type UserFormData = z.infer<typeof userSchema>;
 
 interface UserFormProps {
-  user?: any;
-  onSuccess?: (user: any) => void;
+  user?: UserFormData & { id?: string };
+  onSuccess?: (user: UserFormData & { id?: string }) => void;
   onCancel?: () => void;
   mode?: 'create' | 'edit';
 }

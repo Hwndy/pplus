@@ -192,12 +192,19 @@ const DailyMentionsViewPage = () => {
     }
   };
 
-  const formattedDate = new Date(report.date).toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
+  const formatReportDate = (dateString: string) => {
+    if (!dateString) return 'Unknown Date';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Invalid Date';
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const formattedDate = formatReportDate(report.date);
 
   return (
     <div className="p-6 w-full">

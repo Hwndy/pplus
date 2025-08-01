@@ -28,8 +28,8 @@ const companySchema = z.object({
 type CompanyFormData = z.infer<typeof companySchema>;
 
 interface CompanyFormProps {
-  company?: any;
-  onSuccess?: (company: any) => void;
+  company?: CompanyFormData & { id?: string };
+  onSuccess?: (company: CompanyFormData & { id?: string }) => void;
   onCancel?: () => void;
   mode?: 'create' | 'edit';
 }

@@ -214,21 +214,21 @@ export function AdminDashboard() {
             <DataCard title="Pending Review" variant="glass" icon={<AlertCircle size={24} />}>
               <Stat
                 label="Content Pending Review"
-                value={dataEntriesLoading ? 'Loading...' : dataEntriesData?.filter((e: any) => e.status === 'pending').length || 0}
+                value={dataEntriesLoading ? 'Loading...' : (Array.isArray(dataEntriesData) ? dataEntriesData.filter((e: any) => e.status === 'pending').length : 0)}
                 subtitle="Awaiting approval"
               />
             </DataCard>
             <DataCard title="Approved Content" variant="glass" icon={<CheckCircle size={24} />}>
               <Stat
                 label="Content Approved"
-                value={dataEntriesLoading ? 'Loading...' : dataEntriesData?.filter((e: any) => e.status === 'approved').length || 0}
+                value={dataEntriesLoading ? 'Loading...' : (Array.isArray(dataEntriesData) ? dataEntriesData.filter((e: any) => e.status === 'approved').length : 0)}
                 subtitle="Successfully processed"
               />
             </DataCard>
             <DataCard title="Rejected Content" variant="glass" icon={<XCircle size={24} />}>
               <Stat
                 label="Content Rejected"
-                value={dataEntriesLoading ? 'Loading...' : dataEntriesData?.filter((e: any) => e.status === 'rejected').length || 0}
+                value={dataEntriesLoading ? 'Loading...' : (Array.isArray(dataEntriesData) ? dataEntriesData.filter((e: any) => e.status === 'rejected').length : 0)}
                 subtitle="Require attention"
               />
             </DataCard>
@@ -349,21 +349,21 @@ export function AdminDashboard() {
             <DataCard title="Pending Review" variant="glass" icon={<AlertTriangle size={24} />}>
               <Stat
                 label="Content Pending Review"
-                value={dataEntriesLoading ? 'Loading...' : dataEntriesData?.filter((e: any) => e.status === 'pending').length || 0}
+                value={dataEntriesLoading ? 'Loading...' : (Array.isArray(dataEntriesData) ? dataEntriesData.filter((e: any) => e.status === 'pending').length : 0)}
                 subtitle="Awaiting approval"
               />
             </DataCard>
             <DataCard title="Approved Content" variant="glass" icon={<CheckSquare size={24} />}>
               <Stat
                 label="Content Approved"
-                value={dataEntriesLoading ? 'Loading...' : dataEntriesData?.filter((e: any) => e.status === 'approved').length || 0}
+                value={dataEntriesLoading ? 'Loading...' : (Array.isArray(dataEntriesData) ? dataEntriesData.filter((e: any) => e.status === 'approved').length : 0)}
                 subtitle="Successfully processed"
               />
             </DataCard>
             <DataCard title="Rejected Content" variant="glass" icon={<AlertTriangle size={24} />}>
               <Stat
                 label="Content Rejected"
-                value={dataEntriesLoading ? 'Loading...' : dataEntriesData?.filter((e: any) => e.status === 'rejected').length || 0}
+                value={dataEntriesLoading ? 'Loading...' : (Array.isArray(dataEntriesData) ? dataEntriesData.filter((e: any) => e.status === 'rejected').length : 0)}
                 subtitle="Sent back for revision"
               />
             </DataCard>
@@ -395,21 +395,21 @@ export function AdminDashboard() {
             <DataCard title="Pending Review" variant="glass" icon={<AlertCircle size={24} />}>
               <Stat
                 label="Entries Pending Review"
-                value={dataEntriesLoading ? 'Loading...' : dataEntriesData?.filter((e: any) => e.status === 'pending').length || 0}
+                value={dataEntriesLoading ? 'Loading...' : (Array.isArray(dataEntriesData) ? dataEntriesData.filter((e: any) => e.status === 'pending').length : 0)}
                 subtitle="Awaiting approval"
               />
             </DataCard>
             <DataCard title="Approved Entries" variant="glass" icon={<CheckCircle size={24} />}>
               <Stat
                 label="Entries Approved"
-                value={dataEntriesLoading ? 'Loading...' : dataEntriesData?.filter((e: any) => e.status === 'approved').length || 0}
+                value={dataEntriesLoading ? 'Loading...' : (Array.isArray(dataEntriesData) ? dataEntriesData.filter((e: any) => e.status === 'approved').length : 0)}
                 subtitle="Successfully validated"
               />
             </DataCard>
             <DataCard title="Rejected Entries" variant="glass" icon={<XCircle size={24} />}>
               <Stat
                 label="Entries Rejected"
-                value={dataEntriesLoading ? 'Loading...' : dataEntriesData?.filter((e: any) => e.status === 'rejected').length || 0}
+                value={dataEntriesLoading ? 'Loading...' : (Array.isArray(dataEntriesData) ? dataEntriesData.filter((e: any) => e.status === 'rejected').length : 0)}
                 subtitle="Require attention"
               />
             </DataCard>

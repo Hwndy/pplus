@@ -160,7 +160,7 @@ export default function ContentReviewListPage() {
   const [content, setContent] = useState(allContent);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [viewDetailsDialogOpen, setViewDetailsDialogOpen] = useState(false);
-  const [selectedContent, setSelectedContent] = useState<any>(null);
+  const [selectedContent, setSelectedContent] = useState<{ id: string; title: string; type: string; status: string; content: string; author: string; date: string } | null>(null);
   const [rejectReason, setRejectReason] = useState('');
 
   // Handle direct approval

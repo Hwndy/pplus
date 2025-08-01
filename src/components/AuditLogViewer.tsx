@@ -41,7 +41,7 @@ export function AuditLogViewer() {
     limit: 20,
   });
 
-  const [selectedLog, setSelectedLog] = useState<any>(null);
+  const [selectedLog, setSelectedLog] = useState<{ id: string; action: string; userId: string; timestamp: string; details: string } | null>(null);
 
   // Fetch audit logs
   const { data: auditLogs, loading, error, refetch } = useAuditLogs(filters);
@@ -52,7 +52,7 @@ export function AuditLogViewer() {
     endDate: filters.endDate?.toISOString(),
   });
 
-  const handleFilterChange = (key: keyof AuditLogFilters, value: any) => {
+  const handleFilterChange = (key: keyof AuditLogFilters, value: string | number | Date | undefined) => {
     setFilters(prev => ({
       ...prev,
       [key]: value,

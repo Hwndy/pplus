@@ -111,7 +111,7 @@ export default function ContentReviewPage() {
   const navigate = useNavigate();
   
   // State for the selected content
-  const [content, setContent] = useState<any>(null);
+  const [content, setContent] = useState<{ id: string; title: string; type: string; status: string; content: string; author: string; date: string } | null>(null);
   
   // State for review dialog
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);

@@ -52,51 +52,57 @@ export function GlobalSearch({ onResultSelect, placeholder = "Search companies, 
 
         // Search editorials
         searchPromises.push(
-          apiService.getEditorials({ search: query, limit: 5 }).then(response => 
-            response.data.map((editorial: any) => ({
+          apiService.getEditorials({ search: query, limit: 5 }).then(response => {
+            const editorials = Array.isArray(response.data) ? response.data : [];
+            return editorials.map((editorial: any) => ({
               id: editorial.id,
               title: editorial.title || 'Untitled Editorial',
               subtitle: `${editorial.company?.name || 'Unknown Company'} • ${editorial.publication?.name || 'Unknown Publication'}`,
               type: 'editorial' as const,
               icon: <FileText className="h-4 w-4" />,
               data: editorial,
-            }))
-          ).catch(() => [])
+            }));
+          }).catch(() => [])
         );
 
         // Search users (if admin/supervisor)
         searchPromises.push(
-          apiService.getUsers({ search: query, limit: 5 }).then(response => 
-            response.data.map((user: any) => ({
-              id: user.id,
-              title: user.name,
-              subtitle: `${user.email} • ${user.role}`,
-              type: 'user' as const,
-              icon: <Users className="h-4 w-4" />,
-              data: user,
-            }))
-          ).catch(() => [])
+          apiService.getUsers({ search: query, limit: 5 }).then(response => {
+            const users = Array.isArray(response.data) ? response.data : [];
+            return users.map((user: any) => {
+              const role = typeof user.role === 'object' ? user.role?.name || 'Unknown' : user.role;
+              return {
+                id: user.id,
+                title: user.name,
+                subtitle: `${user.email} • ${role}`,
+                type: 'user' as const,
+                icon: <Users className="h-4 w-4" />,
+                data: user,
+              };
+            });
+          }).catch(() => [])
         );
 
         // Search publications
         searchPromises.push(
-          apiService.getPublications({ search: query, limit: 5 }).then(response => 
-            response.data.map((publication: any) => ({
+          apiService.getPublications({ search: query, limit: 5 }).then(response => {
+            const publications = Array.isArray(response.data) ? response.data : [];
+            return publications.map((publication: any) => ({
               id: publication.id,
               title: publication.name,
               subtitle: `${publication.type} • ${publication.country}`,
               type: 'publication' as const,
               icon: <Database className="h-4 w-4" />,
               data: publication,
-            }))
-          ).catch(() => [])
+            }));
+          }).catch(() => [])
         );
 
         const searchResults = await Promise.all(searchPromises);
         const allResults = searchResults.flat();
 
         // Add company results - only if we actually searched for companies
-        const companySearchResults = (shouldSearchCompanies && companyResults)
+        const companySearchResults = (shouldSearchCompanies && Array.isArray(companyResults))
           ? companyResults.map((company: any) => ({
               id: company.id,
               title: company.name,

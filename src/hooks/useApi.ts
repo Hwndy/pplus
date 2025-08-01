@@ -1,43 +1,103 @@
-import { useState, useEffect, useCallback } from 'react';
-import { apiService } from '@/services/apiService';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { apiService, QueryParams } from '@/services/apiService';
 
-// Generic API hook for data fetching
+// Completely rewritten API data fetching hook to prevent infinite loops
 export function useApiData<T>(
   apiCall: () => Promise<{ data: T }>,
-  dependencies: any[] = []
+  dependencies: string[] = [],
+  _options: {
+    enableAutoRefresh?: boolean;
+    refreshInterval?: number;
+  } = {}
 ) {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastFetch, setLastFetch] = useState<number>(0);
 
-  const fetchData = useCallback(async () => {
+  // Store the API call in a ref to prevent it from causing re-renders
+  const apiCallRef = useRef(apiCall);
+  apiCallRef.current = apiCall;
+
+  // Create a stable reference to dependencies to prevent infinite loops
+  const depsRef = useRef<string[]>([]);
+  const mountedRef = useRef(false);
+
+  // Check if dependencies have actually changed
+  const depsChanged = useMemo(() => {
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      depsRef.current = [...dependencies];
+      return true; // First mount
+    }
+
+    const changed = !depsRef.current.every((dep, index) => dep === dependencies[index]) ||
+                   depsRef.current.length !== dependencies.length;
+    if (changed) {
+      depsRef.current = [...dependencies];
+    }
+    return changed;
+  }, [dependencies]);
+
+  // Manual fetch function that doesn't depend on changing references
+  const fetchData = useCallback(async (force = false) => {
     try {
+      // Prevent rapid successive calls
+      const now = Date.now();
+      if (!force && now - lastFetch < 3000) { // Minimum 3 seconds between calls
+        return;
+      }
+
       setLoading(true);
       setError(null);
-      const response = await apiCall();
 
-      // Handle the wrapped response structure
-      // API returns: { data: { success: true, data: actualData }, error: null, status: 200 }
-      if (response.data?.success && response.data?.data !== undefined) {
-        setData(response.data.data);
-      } else if (response.data) {
-        // Fallback for direct data response
-        setData(response.data);
+      const response = await apiCallRef.current();
+
+      // Handle response data safely
+      const responseData = response?.data;
+      if (responseData && typeof responseData === 'object') {
+        // Handle backend response structure: { data: [...], message: "..." }
+        if ('data' in responseData && responseData.data !== undefined) {
+          setData(responseData.data as T);
+        } else if ('success' in responseData && (responseData as any).data !== undefined) {
+          // Handle wrapped response: { success: true, data: [...], message: "..." }
+          setData((responseData as any).data as T);
+        } else {
+          // Fallback: treat the entire response as data
+          setData(responseData as T);
+        }
       } else {
-        setData(null);
+        setData(responseData as T);
       }
+
+      setLastFetch(now);
     } catch (err) {
+      console.error('API fetch error:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
     }
-  }, dependencies);
+  }, [lastFetch]); // Only depend on lastFetch for rate limiting
 
+  // Only fetch when dependencies actually change
   useEffect(() => {
-    fetchData();
+    if (depsChanged) {
+      fetchData(true);
+    }
+  }, [depsChanged, fetchData]);
+
+  // Manual refetch function
+  const refetch = useCallback(() => {
+    fetchData(true);
   }, [fetchData]);
 
-  return { data, loading, error, refetch: fetchData };
+  return {
+    data,
+    loading,
+    error,
+    refetch,
+    lastFetch: new Date(lastFetch)
+  };
 }
 
 // Authentication hooks
@@ -49,9 +109,7 @@ export function useAuth() {
     try {
       const response = await apiService.login(email, password);
       // Handle wrapped response structure
-      if (response.data?.success && response.data?.data?.user) {
-        setUser(response.data.data.user);
-      } else if (response.data?.user) {
+      if (response.success && response.data?.user) {
         setUser(response.data.user);
       }
       return response;
@@ -75,14 +133,11 @@ export function useAuth() {
   const getProfile = async () => {
     try {
       setLoading(true);
-      const response = await apiService.getProfile();
-      // Handle wrapped response structure
-      if (response.data?.success && response.data?.data) {
-        setUser(response.data.data);
-        return response.data.data;
-      } else if (response.data) {
-        setUser(response.data);
-        return response.data;
+      const savedUser = localStorage.getItem('user');
+      if (savedUser) {
+        const userData = JSON.parse(savedUser);
+        setUser(userData);
+        return userData;
       }
       return null;
     } catch (error) {
@@ -96,7 +151,8 @@ export function useAuth() {
 
   useEffect(() => {
     const token = localStorage.getItem('token');
-    if (token) {
+    const savedUser = localStorage.getItem('user');
+    if (token && savedUser) {
       getProfile();
     } else {
       setLoading(false);
@@ -114,8 +170,25 @@ export function useAuth() {
 }
 
 // Users hooks
-export function useUsers(params?: Record<string, any>) {
-  return useApiData(() => apiService.getUsers(params), [params]);
+export function useUsers(params?: Record<string, any>, options?: { enableAutoRefresh?: boolean; refreshInterval?: number }) {
+  // Create stable dependency array
+  const deps = [
+    String(params?.page || 1),
+    String(params?.limit || 10),
+    String(params?.search || ''),
+    String(params?.role || ''),
+    String(params?.status || ''),
+    String(params?.isActive || '')
+  ];
+
+  return useApiData(
+    () => apiService.getUsers(params),
+    deps,
+    {
+      enableAutoRefresh: options?.enableAutoRefresh || false,
+      refreshInterval: options?.refreshInterval || 900000 // 15 minutes default
+    }
+  );
 }
 
 export function useUser(id: string) {
@@ -127,14 +200,24 @@ export function useSupervisors() {
 }
 
 // Companies hooks
-export function useCompanies(params?: Record<string, any>) {
-  return useApiData(() => apiService.getCompanies(params), [
-    params?.page,
-    params?.limit,
-    params?.search,
-    params?.isActive,
-    params?.industry
-  ]);
+export function useCompanies(params?: QueryParams, options?: { enableAutoRefresh?: boolean; refreshInterval?: number }) {
+  // Create stable dependency array
+  const deps = [
+    String(params?.page || 1),
+    String(params?.limit || 10),
+    String(params?.search || ''),
+    String(params?.isActive || ''),
+    String(params?.industry || '')
+  ];
+
+  return useApiData(
+    () => apiService.getCompanies(params),
+    deps,
+    {
+      enableAutoRefresh: options?.enableAutoRefresh || false,
+      refreshInterval: options?.refreshInterval || 1200000 // 20 minutes default
+    }
+  );
 }
 
 export function useCompany(id: string) {
@@ -142,19 +225,29 @@ export function useCompany(id: string) {
 }
 
 export function useCompanySearch(query: string, limit?: number) {
-  return useApiData(() => apiService.searchCompanies(query, limit), [query, limit]);
+  return useApiData(() => apiService.searchCompanies(query, limit), [query, String(limit || '')]);
 }
 
 // Publications hooks
-export function usePublications(params?: Record<string, any>) {
-  return useApiData(() => apiService.getPublications(params), [
-    params?.page,
-    params?.limit,
-    params?.search,
-    params?.type,
-    params?.country,
-    params?.isActive
-  ]);
+export function usePublications(params?: QueryParams, options?: { enableAutoRefresh?: boolean; refreshInterval?: number }) {
+  // Create stable dependency array
+  const deps = [
+    String(params?.page || 1),
+    String(params?.limit || 10),
+    String(params?.search || ''),
+    String(params?.type || ''),
+    String(params?.country || ''),
+    String(params?.isActive || '')
+  ];
+
+  return useApiData(
+    () => apiService.getPublications(params),
+    deps,
+    {
+      enableAutoRefresh: false, // DISABLED
+      refreshInterval: options?.refreshInterval || 900000
+    }
+  );
 }
 
 export function usePublication(id: string) {
@@ -163,14 +256,18 @@ export function usePublication(id: string) {
 
 // Media Channels hooks
 export function useMediaChannels(params?: Record<string, any>) {
-  return useApiData(() => apiService.getMediaChannels(params), [
-    params?.page,
-    params?.limit,
-    params?.search,
-    params?.type,
-    params?.category,
-    params?.isActive
-  ]);
+  const deps = [
+    String(params?.page || 1),
+    String(params?.limit || 10),
+    String(params?.search || ''),
+    String(params?.type || ''),
+    String(params?.category || ''),
+    String(params?.isActive || '')
+  ];
+
+  return useApiData(() => apiService.getMediaChannels(params), deps, {
+    enableAutoRefresh: false
+  });
 }
 
 export function useMediaChannel(id: string) {
@@ -179,13 +276,17 @@ export function useMediaChannel(id: string) {
 
 // Data Parameters hooks
 export function useDataParameters(params?: Record<string, any>) {
-  return useApiData(() => apiService.getDataParameters(params), [
-    params?.page,
-    params?.limit,
-    params?.search,
-    params?.category,
-    params?.isActive
-  ]);
+  const deps = [
+    String(params?.page || 1),
+    String(params?.limit || 10),
+    String(params?.search || ''),
+    String(params?.category || ''),
+    String(params?.isActive || '')
+  ];
+
+  return useApiData(() => apiService.getDataParameters(params), deps, {
+    enableAutoRefresh: false
+  });
 }
 
 export function useDataParameter(id: string) {
@@ -193,19 +294,29 @@ export function useDataParameter(id: string) {
 }
 
 // Data Entries hooks
-export function useDataEntries(params?: Record<string, any>) {
-  return useApiData(() => apiService.getDataEntries(params), [
-    params?.page,
-    params?.limit,
-    params?.search,
-    params?.companyId,
-    params?.parameterId,
-    params?.channelId,
-    params?.status,
-    params?.analystId,
-    params?.startDate,
-    params?.endDate
-  ]);
+export function useDataEntries(params?: QueryParams, options?: { enableAutoRefresh?: boolean; refreshInterval?: number }) {
+  // Create stable dependency array
+  const deps = [
+    String(params?.page || 1),
+    String(params?.limit || 10),
+    String(params?.search || ''),
+    String(params?.companyId || ''),
+    String(params?.parameterId || ''),
+    String(params?.channelId || ''),
+    String(params?.status || ''),
+    String(params?.analystId || ''),
+    String(params?.startDate || ''),
+    String(params?.endDate || '')
+  ];
+
+  return useApiData(
+    () => apiService.getDataEntries(params),
+    deps,
+    {
+      enableAutoRefresh: false, // DISABLED
+      refreshInterval: options?.refreshInterval || 900000
+    }
+  );
 }
 
 export function useDataEntry(id: string) {
@@ -213,20 +324,30 @@ export function useDataEntry(id: string) {
 }
 
 // Editorials hooks
-export function useEditorials(params?: Record<string, any>) {
-  return useApiData(() => apiService.getEditorials(params), [
-    params?.page,
-    params?.limit,
-    params?.search,
-    params?.companyId,
-    params?.publicationId,
-    params?.mediaType,
-    params?.sentiment,
-    params?.status,
-    params?.analystId,
-    params?.startDate,
-    params?.endDate
-  ]);
+export function useEditorials(params?: QueryParams, options?: { enableAutoRefresh?: boolean; refreshInterval?: number }) {
+  // Create stable dependency array
+  const deps = [
+    String(params?.page || 1),
+    String(params?.limit || 10),
+    String(params?.search || ''),
+    String(params?.companyId || ''),
+    String(params?.publicationId || ''),
+    String(params?.mediaType || ''),
+    String(params?.sentiment || ''),
+    String(params?.status || ''),
+    String(params?.analystId || ''),
+    String(params?.startDate || ''),
+    String(params?.endDate || '')
+  ];
+
+  return useApiData(
+    () => apiService.getEditorials(params),
+    deps,
+    {
+      enableAutoRefresh: false, // DISABLED
+      refreshInterval: options?.refreshInterval || 900000
+    }
+  );
 }
 
 export function useEditorial(id: string) {
@@ -235,13 +356,17 @@ export function useEditorial(id: string) {
 
 // SWOT Analysis hooks
 export function useSwotAnalyses(params?: Record<string, any>) {
-  return useApiData(() => apiService.getSwotAnalyses(params), [
-    params?.page,
-    params?.limit,
-    params?.search,
-    params?.companyId,
-    params?.analystId
-  ]);
+  const deps = [
+    String(params?.page || 1),
+    String(params?.limit || 10),
+    String(params?.search || ''),
+    String(params?.companyId || ''),
+    String(params?.analystId || '')
+  ];
+
+  return useApiData(() => apiService.getSwotAnalyses(params), deps, {
+    enableAutoRefresh: false
+  });
 }
 
 export function useSwotAnalysis(id: string) {
@@ -249,15 +374,25 @@ export function useSwotAnalysis(id: string) {
 }
 
 // Daily Mentions hooks
-export function useDailyMentions(params?: Record<string, any>) {
-  return useApiData(() => apiService.getDailyMentions(params), [
-    params?.page,
-    params?.limit,
-    params?.search,
-    params?.companyId,
-    params?.date,
-    params?.analystId
-  ]);
+export function useDailyMentions(params?: QueryParams, options?: { enableAutoRefresh?: boolean; refreshInterval?: number }) {
+  // Create stable dependency array
+  const deps = [
+    String(params?.page || 1),
+    String(params?.limit || 10),
+    String(params?.search || ''),
+    String(params?.companyId || ''),
+    String(params?.date || ''),
+    String(params?.analystId || '')
+  ];
+
+  return useApiData(
+    () => apiService.getDailyMentions(params),
+    deps,
+    {
+      enableAutoRefresh: false, // DISABLED
+      refreshInterval: options?.refreshInterval || 900000
+    }
+  );
 }
 
 export function useDailyMention(id: string) {
@@ -266,54 +401,78 @@ export function useDailyMention(id: string) {
 
 // Analytics hooks
 export function useDashboardSummary(params?: Record<string, any>) {
-  return useApiData(() => apiService.getDashboardSummary(params), [
-    params?.startDate,
-    params?.endDate,
-    params?.companyId
-  ]);
+  const deps = [
+    String(params?.startDate || ''),
+    String(params?.endDate || ''),
+    String(params?.companyId || '')
+  ];
+
+  return useApiData(() => apiService.getDashboardSummary(params), deps, {
+    enableAutoRefresh: false
+  });
 }
 
 export function useMentionsTrend(params?: Record<string, any>) {
-  return useApiData(() => apiService.getMentionsTrend(params), [
-    params?.startDate,
-    params?.endDate,
-    params?.companyId,
-    params?.period
-  ]);
+  const deps = [
+    String(params?.startDate || ''),
+    String(params?.endDate || ''),
+    String(params?.companyId || ''),
+    String(params?.period || '')
+  ];
+
+  return useApiData(() => apiService.getMentionsTrend(params), deps, {
+    enableAutoRefresh: false
+  });
 }
 
 export function useSentimentAnalysis(params?: Record<string, any>) {
-  return useApiData(() => apiService.getSentimentAnalysis(params), [
-    params?.startDate,
-    params?.endDate,
-    params?.companyId
-  ]);
+  const deps = [
+    String(params?.startDate || ''),
+    String(params?.endDate || ''),
+    String(params?.companyId || '')
+  ];
+
+  return useApiData(() => apiService.getSentimentAnalysis(params), deps, {
+    enableAutoRefresh: false
+  });
 }
 
 export function useMediaChannelAnalysis(params?: Record<string, any>) {
-  return useApiData(() => apiService.getMediaChannelAnalysis(params), [
-    params?.startDate,
-    params?.endDate,
-    params?.companyId
-  ]);
+  const deps = [
+    String(params?.startDate || ''),
+    String(params?.endDate || ''),
+    String(params?.companyId || '')
+  ];
+
+  return useApiData(() => apiService.getMediaChannelAnalysis(params), deps, {
+    enableAutoRefresh: false
+  });
 }
 
-export function useCompanyComparison(params?: Record<string, any>) {
-  return useApiData(() => apiService.getCompanyComparison(params), [
-    params?.companyIds,
-    params?.startDate,
-    params?.endDate
-  ]);
+export function useCompanyComparison(params?: QueryParams) {
+  const deps = [
+    String(params?.companyIds || ''),
+    String(params?.startDate || ''),
+    String(params?.endDate || '')
+  ];
+
+  return useApiData(() => apiService.getCompanyComparison(params), deps, {
+    enableAutoRefresh: false
+  });
 }
 
 // File management hooks
-export function useFiles(params?: Record<string, any>) {
-  return useApiData(() => apiService.getFiles(params), [
-    params?.page,
-    params?.limit,
-    params?.search,
-    params?.type
-  ]);
+export function useFiles(params?: QueryParams) {
+  const deps = [
+    String(params?.page || 1),
+    String(params?.limit || 10),
+    String(params?.search || ''),
+    String(params?.type || '')
+  ];
+
+  return useApiData(() => apiService.getFiles(params), deps, {
+    enableAutoRefresh: false
+  });
 }
 
 export function useFile(id: string) {
@@ -321,23 +480,31 @@ export function useFile(id: string) {
 }
 
 // Audit logs hooks
-export function useAuditLogs(params?: Record<string, any>) {
-  return useApiData(() => apiService.getAuditLogs(params), [
-    params?.page,
-    params?.limit,
-    params?.search,
-    params?.action,
-    params?.userId,
-    params?.startDate,
-    params?.endDate
-  ]);
+export function useAuditLogs(params?: QueryParams) {
+  const deps = [
+    String(params?.page || 1),
+    String(params?.limit || 10),
+    String(params?.search || ''),
+    String(params?.action || ''),
+    String(params?.userId || ''),
+    String(params?.startDate || ''),
+    String(params?.endDate || '')
+  ];
+
+  return useApiData(() => apiService.getAuditLogs(params), deps, {
+    enableAutoRefresh: false
+  });
 }
 
 export function useAuditLogStats(params?: Record<string, any>) {
-  return useApiData(() => apiService.getAuditLogStats(params), [
-    params?.startDate,
-    params?.endDate
-  ]);
+  const deps = [
+    String(params?.startDate || ''),
+    String(params?.endDate || '')
+  ];
+
+  return useApiData(() => apiService.getAuditLogsStats(), deps, {
+    enableAutoRefresh: false
+  });
 }
 
 // Mutation hooks for create/update/delete operations
@@ -354,14 +521,17 @@ export function useApiMutation<T, P>(
       const response = await apiCall(params);
 
       // Handle the wrapped response structure
-      if (response.data?.success && response.data?.data !== undefined) {
-        return response.data.data;
-      } else if (response.data) {
-        // Fallback for direct data response
-        return response.data;
-      } else {
-        throw new Error('Invalid response from server');
+      if (response && typeof response === 'object' && 'data' in response) {
+        const apiResponse = response as any;
+        if (apiResponse.success && apiResponse.data !== undefined) {
+          return apiResponse.data;
+        } else if (apiResponse.data !== undefined) {
+          return apiResponse.data;
+        }
       }
+
+      // Fallback for direct response
+      return response as T;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An error occurred';
       setError(errorMessage);
@@ -432,14 +602,23 @@ export function useDeleteEditorial() {
 }
 
 export function useFileUpload() {
-  return useApiMutation((file: File) => apiService.uploadFile(file));
+  return useApiMutation((file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiService.uploadFile(formData);
+  });
 }
 
+// Note: Password reset endpoints don't exist on backend yet
 export function usePasswordReset() {
-  const forgotPassword = useApiMutation((email: string) => apiService.forgotPassword(email));
-  const resetPassword = useApiMutation(({ token, newPassword }: { token: string; newPassword: string }) => 
-    apiService.resetPassword(token, newPassword)
-  );
+  const forgotPassword = useApiMutation((_email: string) => {
+    // Placeholder - endpoint doesn't exist yet
+    return Promise.reject(new Error('Forgot password endpoint not implemented'));
+  });
+  const resetPassword = useApiMutation(({ token: _token, newPassword: _newPassword }: { token: string; newPassword: string }) => {
+    // Placeholder - endpoint doesn't exist yet
+    return Promise.reject(new Error('Reset password endpoint not implemented'));
+  });
 
   return { forgotPassword, resetPassword };
 }

@@ -18,7 +18,7 @@ export interface FilterOption {
 }
 
 export interface FilterValues {
-  [key: string]: any;
+  [key: string]: string | number | Date | string[] | boolean | null | undefined;
 }
 
 interface UniversalFilterProps {
@@ -40,7 +40,7 @@ export function UniversalFilter({
 }: UniversalFilterProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const updateFilter = (key: string, value: any) => {
+  const updateFilter = (key: string, value: string | number | Date | string[] | boolean | null | undefined) => {
     onChange({ ...values, [key]: value });
   };
 

@@ -45,22 +45,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const checkAuth = async () => {
       const token = localStorage.getItem('token');
-      if (token) {
-        try {
-          apiService.setToken(token);
-          const response = await apiService.getProfile();
+      const savedUser = localStorage.getItem('user');
 
-          if (response.data?.success && response.data?.data) {
-            setUser(response.data.data);
-          } else if (response.data) {
-            setUser(response.data);
-          }
+      if (token && savedUser) {
+        try {
+          // Since there's no profile endpoint, use saved user data
+          const userData = JSON.parse(savedUser);
+          apiService.setToken(token);
+          setUser(userData);
         } catch (error) {
-          console.error('Token validation failed:', error);
+          console.error('Failed to parse saved user data:', error);
           localStorage.removeItem('token');
           localStorage.removeItem('user');
           apiService.clearToken();
         }
+      } else if (token) {
+        // Token exists but no user data, clear everything
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        apiService.clearToken();
       }
       setIsLoading(false);
     };
@@ -86,8 +89,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       }
 
-      const {data} = response?.data;
-      console.log(data)
+      const data = response.data;
+      console.log('Login data:', data);
+
+      if (!data || !data.token) {
+        toast.error('Invalid response from server - missing token');
+        return;
+      }
 
 
 
@@ -96,12 +104,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       // Store token and user data
       localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data));
+      localStorage.setItem('user', JSON.stringify(data.user || data));
 
-      // apiService.setToken(userData.token);
-      setUser(data);
+      // Set token in apiService
+      apiService.setToken(data.token);
+      setUser(data.user || (data as User));
 
-      toast.success(`Welcome back, ${data.username  || 'User'}!`);
+      toast.success(`Welcome back, ${data.user?.name || data.user?.email || 'User'}!`);
       navigate('/dashboard');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';

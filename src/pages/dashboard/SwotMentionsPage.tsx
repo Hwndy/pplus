@@ -92,7 +92,7 @@ export function SwotMentionsPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
-  const [selectedSwot, setSelectedSwot] = useState<any>(null);
+  const [selectedSwot, setSelectedSwot] = useState<{ id: string; company: string; type: string; content: string; date: string; status: string } | null>(null);
 
   // Filter states
   const [showFilters, setShowFilters] = useState(false);

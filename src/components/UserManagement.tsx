@@ -29,6 +29,28 @@ import { toast } from 'sonner';
 interface UserFormData {
   name: string;
   email: string;
+  password: string;
+  role: string;
+  mobileContact: string;
+  countryCode: string;
+  supervisorId: string;
+  expirationDate: string;
+}
+
+// Helper function to safely render role/status
+const renderValue = (value: string | { id: string; name: string } | unknown): string => {
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (typeof value === 'object' && value !== null && 'name' in value) {
+    return (value as { name: string }).name;
+  }
+  return 'Unknown';
+};
+
+interface UserFormData {
+  name: string;
+  email: string;
   password?: string;
   role: 'ADMIN' | 'SUPERVISOR' | 'ANALYST' | 'CLIENT';
   mobileContact?: string;
@@ -41,7 +63,7 @@ export function UserManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<any>(null);
+  const [editingUser, setEditingUser] = useState<UserFormData & { id?: string } | null>(null);
   const [formData, setFormData] = useState<UserFormData>({
     name: '',
     email: '',
@@ -138,7 +160,7 @@ export function UserManagement() {
     });
   };
 
-  const openEditDialog = (user: any) => {
+  const openEditDialog = (user: UserFormData & { id?: string }) => {
     setEditingUser(user);
     setFormData({
       name: user.name || '',
@@ -194,10 +216,11 @@ export function UserManagement() {
   };
 
   const selectAllUsers = () => {
-    if (selectedUsers.length === users?.length) {
+    const usersArray = Array.isArray(users) ? users : [];
+    if (selectedUsers.length === usersArray.length) {
       setSelectedUsers([]);
     } else {
-      setSelectedUsers(users?.map((user: any) => user.id) || []);
+      setSelectedUsers(usersArray.map((user: any) => user.id) || []);
     }
   };
 
@@ -349,11 +372,11 @@ export function UserManagement() {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />
-              Users ({users?.length || 0})
+              Users ({Array.isArray(users) ? users.length : 0})
             </CardTitle>
             <div className="flex items-center gap-2">
               <Checkbox
-                checked={selectedUsers.length === users?.length && users?.length > 0}
+                checked={Array.isArray(users) && selectedUsers.length === users.length && users.length > 0}
                 onCheckedChange={selectAllUsers}
               />
               <span className="text-sm text-muted-foreground">Select All</span>
@@ -367,15 +390,15 @@ export function UserManagement() {
             </div>
           )}
 
-          {users && users.length === 0 && !loading && (
+          {Array.isArray(users) && users.length === 0 && !loading && (
             <div className="text-center py-8">
               <p className="text-muted-foreground">No users found</p>
             </div>
           )}
 
-          {users && users.length > 0 && (
+          {Array.isArray(users) && users.length > 0 && (
             <div className="space-y-2">
-              {users.map((user: any) => (
+              {users.map((user: UserFormData & { id: string; status: string }) => (
                 <div
                   key={user.id}
                   className="flex items-center gap-4 p-4 border rounded-lg hover:bg-muted/50 transition-colors"
@@ -389,10 +412,10 @@ export function UserManagement() {
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="font-medium">{user.name}</h3>
                       <Badge className={getRoleColor(user.role)}>
-                        {user.role}
+                        {renderValue(user.role)}
                       </Badge>
                       <Badge className={getStatusColor(user.status)}>
-                        {user.status}
+                        {renderValue(user.status)}
                       </Badge>
                     </div>
                     

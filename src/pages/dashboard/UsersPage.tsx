@@ -32,22 +32,22 @@ import { CreateUserForm } from '@/components/admin/CreateUserForm';
 import { EditUserForm } from '@/components/admin/EditUserForm';
 import { useUsers, useDeleteUser } from '@/hooks/useApi';
 import { FileUpload } from '@/components/FileUpload';
-import { apiService } from '@/services/apiService';
+import { apiService, User } from '@/services/apiService';
+
+// Helper function to safely render role
+const renderRole = (role: string | { id: string; name: string } | unknown): string => {
+  if (typeof role === 'string') {
+    return role;
+  }
+  if (typeof role === 'object' && role !== null && 'name' in role) {
+    return (role as { name: string }).name;
+  }
+  return 'Unknown';
+};
 import { toast } from 'sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-// Define the User interface
-interface User {
-  id: number | string;
-  name: string;
-  email: string;
-  role: string;
-  status: 'active' | 'inactive';
-  lastLogin: string;
-  mobileContact?: string;
-  supervisorId?: string;
-  expirationDate?: Date | string;
-}
+
 
 // Mock data for users
 const mockUsers: User[] = [
@@ -143,11 +143,14 @@ const UsersPage = () => {
   const searchTimeout = useRef<NodeJS.Timeout>();
   const usersPerPage = 10;
 
-  // API hooks
-  const { data: usersResponse, loading, error, refetch } = useUsers({
+  // API hooks with conservative auto-refresh (DISABLED by default)
+  const { data: usersResponse, loading, error, refetch, lastFetch } = useUsers({
     page: currentPage,
     limit: usersPerPage,
     search: searchTerm
+  }, {
+    enableAutoRefresh: false, // DISABLED - only manual refresh
+    refreshInterval: 900000 // 15 minutes if enabled
   });
 
   // Handle search with debounce
@@ -181,7 +184,7 @@ const UsersPage = () => {
   const totalItems = pagination?.total || 0;
 
   // Handle save new user
-  const handleSaveUser = (newUser: any) => {
+  const handleSaveUser = (newUser: User) => {
     setIsCreateDialogOpen(false);
     refetch(); // Refresh the list
     toast.success("User created successfully");
@@ -216,7 +219,7 @@ const UsersPage = () => {
   };
 
   // Handle file upload
-  const handleFileUpload = (files: any[]) => {
+  const handleFileUpload = (files: File[]) => {
     toast.success(`Uploaded ${files.length} files successfully`);
     setIsUploadDialogOpen(false);
     refetch(); // Refresh data after upload
@@ -233,8 +236,18 @@ const UsersPage = () => {
   };
 
   // Format date
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) {
+      return 'Never';
+    }
+
     const date = new Date(dateString);
+
+    // Check if the date is valid
+    if (isNaN(date.getTime())) {
+      return 'Invalid Date';
+    }
+
     return new Intl.DateTimeFormat('en-US', {
       year: 'numeric',
       month: 'short',
@@ -378,12 +391,12 @@ const UsersPage = () => {
           </TableCell>
         </TableRow>
       ) : (
-        users.map((user: any, index: number) => (
+        users.map((user: User, index: number) => (
           <TableRow key={user.id}>
             <TableCell>{(currentPage - 1) * usersPerPage + index + 1}</TableCell>
             <TableCell>{user.name}</TableCell>
             <TableCell>{user.email}</TableCell>
-            <TableCell>{user.role}</TableCell>
+            <TableCell>{renderRole(user.role)}</TableCell>
             <TableCell>
               <span
                 className={`px-2 py-1 rounded-full text-xs ${
