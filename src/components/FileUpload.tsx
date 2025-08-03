@@ -159,80 +159,130 @@ export function FileUpload({
     ));
 
     try {
-      let result;
+      console.log(`Starting upload for file: ${uploadFile.file.name}, type: ${uploadType}`);
 
       // Simulate progress for better UX
       const progressInterval = setInterval(() => {
-        setFiles(prev => prev.map(f => 
+        setFiles(prev => prev.map(f =>
           f.id === uploadFile.id && f.progress < 90
             ? { ...f, progress: f.progress + 10 }
             : f
         ));
       }, 200);
 
-      switch (uploadType) {
-        case 'avatar':
-          result = await apiService.uploadAvatar(uploadFile.file);
-          break;
-        case 'logo':
-          result = await apiService.uploadLogo(uploadFile.file);
-          break;
-        case 'document':
-          result = await apiService.uploadDocument(uploadFile.file);
-          break;
-        case 'data':
-          result = await apiService.uploadDataFile(uploadFile.file);
-          break;
-        default:
-          result = await apiService.uploadFile(uploadFile.file);
-          break;
-      }
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('file', uploadFile.file);
+      formData.append('type', uploadType || 'general');
+      formData.append('category', uploadType || 'general');
+
+      console.log('Uploading file with FormData:', {
+        fileName: uploadFile.file.name,
+        fileSize: uploadFile.file.size,
+        fileType: uploadFile.file.type,
+        uploadType: uploadType || 'general'
+      });
+
+      // Use the existing uploadFile method for all upload types
+      const result = await apiService.uploadFile(formData);
+
+      console.log('Upload successful:', result);
 
       clearInterval(progressInterval);
 
-      setFiles(prev => prev.map(f => 
-        f.id === uploadFile.id 
+      setFiles(prev => prev.map(f =>
+        f.id === uploadFile.id
           ? { ...f, status: 'success', progress: 100, result }
           : f
       ));
 
       toast.success(`${uploadFile.file.name} uploaded successfully`);
     } catch (error) {
-      setFiles(prev => prev.map(f => 
-        f.id === uploadFile.id 
-          ? { 
-              ...f, 
-              status: 'error', 
+      console.error(`Upload failed for file: ${uploadFile.file.name}`, error);
+
+      const errorMessage = error instanceof Error ? error.message : 'Upload failed';
+
+      setFiles(prev => prev.map(f =>
+        f.id === uploadFile.id
+          ? {
+              ...f,
+              status: 'error',
               progress: 0,
-              error: error instanceof Error ? error.message : 'Upload failed'
+              error: errorMessage
             }
           : f
       ));
 
-      toast.error(`Failed to upload ${uploadFile.file.name}`);
+      toast.error(`Failed to upload ${uploadFile.file.name}: ${errorMessage}`);
     }
   };
 
   const uploadAll = async () => {
     const pendingFiles = files.filter(f => f.status === 'pending');
-    
-    if (multiple) {
-      // Upload multiple files concurrently
-      await Promise.all(pendingFiles.map(file => uploadFile(file)));
-    } else {
-      // Upload single file
-      if (pendingFiles.length > 0) {
-        await uploadFile(pendingFiles[0]);
-      }
+
+    if (pendingFiles.length === 0) {
+      return;
     }
 
-    // Call completion callback
-    const successfulUploads = files
-      .filter(f => f.status === 'success')
-      .map(f => f.result);
-    
-    if (successfulUploads.length > 0) {
-      onUploadComplete?.(successfulUploads);
+    try {
+      if (multiple && pendingFiles.length > 1) {
+        console.log(`Uploading ${pendingFiles.length} files using batch upload`);
+
+        // Use batch upload for multiple files
+        const formData = new FormData();
+        pendingFiles.forEach((uploadFile, index) => {
+          formData.append(`files`, uploadFile.file);
+        });
+        formData.append('type', uploadType || 'general');
+        formData.append('category', uploadType || 'general');
+
+        // Set all files to uploading status
+        setFiles(prev => prev.map(f =>
+          pendingFiles.some(pf => pf.id === f.id)
+            ? { ...f, status: 'uploading', progress: 50 }
+            : f
+        ));
+
+        const result = await apiService.uploadMultipleFiles(formData);
+        console.log('Batch upload successful:', result);
+
+        // Set all files to success status
+        setFiles(prev => prev.map(f =>
+          pendingFiles.some(pf => pf.id === f.id)
+            ? { ...f, status: 'success', progress: 100, result }
+            : f
+        ));
+
+        toast.success(`${pendingFiles.length} files uploaded successfully`);
+      } else {
+        // Upload files individually
+        await Promise.all(pendingFiles.map(file => uploadFile(file)));
+      }
+
+      // Call completion callback
+      const successfulUploads = files
+        .filter(f => f.status === 'success')
+        .map(f => f.result);
+
+      if (successfulUploads.length > 0) {
+        onUploadComplete?.(successfulUploads);
+      }
+    } catch (error) {
+      console.error('Batch upload failed:', error);
+
+      // Set all pending files to error status
+      setFiles(prev => prev.map(f =>
+        pendingFiles.some(pf => pf.id === f.id)
+          ? {
+              ...f,
+              status: 'error',
+              progress: 0,
+              error: error instanceof Error ? error.message : 'Batch upload failed'
+            }
+          : f
+      ));
+
+      toast.error('Batch upload failed. Please try uploading files individually.');
     }
   };
 

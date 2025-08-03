@@ -45,6 +45,7 @@ import {
   Search,
   TrendingUp,
   Inbox,
+  LogOut,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -168,7 +169,7 @@ export function Sidebar({ className, isOpen = true, onClose }: SidebarProps) {
     }
   }, []);
 
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const location = useLocation();
   const isMobile = useIsMobile();
 
@@ -322,8 +323,35 @@ export function Sidebar({ className, isOpen = true, onClose }: SidebarProps) {
         </nav>
       </ScrollArea>
 
+      {/* Logout Button */}
+      <div className="mt-auto border-t py-3 px-4">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={logout}
+                className={cn(
+                  "w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                  "hover:bg-red-50 hover:text-red-600 text-gray-700",
+                  isCollapsed && "justify-center px-2"
+                )}
+                aria-label="Log out"
+              >
+                <LogOut size={20} className="shrink-0" />
+                {!isCollapsed && <span>Log out</span>}
+              </button>
+            </TooltipTrigger>
+            {isCollapsed && (
+              <TooltipContent side="right">
+                Log out
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+
       {!isMobile && (
-        <div className="mt-auto border-t py-3 px-4 flex justify-center">
+        <div className="border-t py-3 px-4 flex justify-center">
           <Tooltip>
             <TooltipTrigger asChild>
               <button

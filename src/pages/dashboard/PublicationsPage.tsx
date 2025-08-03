@@ -25,43 +25,38 @@ import {
   PaginationNext,
   PaginationPrevious
 } from '@/components/ui/pagination';
-import { Pencil, Trash2, Search } from 'lucide-react';
+import { Pencil, Trash2, Search, Loader2, RefreshCw } from 'lucide-react';
 import { CreatePublicationForm } from '@/components/admin/CreatePublicationForm';
 import { toast } from 'sonner';
+import { usePublications, useDeletePublication } from '@/hooks/useApi';
+import { apiService } from '@/services/apiService';
 
-// Define the Publication interface
+// Define the Publication interface to match API response
 interface Publication {
-  id: number;
+  id: string;
   name: string;
+  type: string;
+  website?: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
-// Mock data for publications
-const mockPublications: Publication[] = [
-  { id: 1, name: 'ThisDay' },
-  { id: 2, name: 'BusinessDay' },
-  { id: 3, name: 'Vanguard' },
-  { id: 4, name: 'The Guardian' },
-  { id: 5, name: 'The Punch' },
-  { id: 6, name: 'The Nation' },
-  { id: 7, name: 'Independent' },
-  { id: 8, name: 'BusinessNews' },
-  { id: 9, name: 'Leadership' },
-  { id: 10, name: 'Blueprint' },
-  { id: 11, name: 'Daily Trust' },
-  { id: 12, name: 'Tribune' },
-  { id: 13, name: 'The Sun' },
-  { id: 14, name: 'Daily Times' },
-  { id: 15, name: 'New Telegraph' },
-  { id: 16, name: 'National Mirror' },
-  { id: 17, name: 'The Authority' }
-];
-
 const PublicationsPage = () => {
-  const [publications, setPublications] = useState<Publication[]>(mockPublications);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingPublication, setEditingPublication] = useState<Publication | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const publicationsPerPage = 10;
+
+  // API hooks
+  const { data: publications = [], loading, error, refetch } = usePublications({
+    page: currentPage,
+    limit: publicationsPerPage,
+    search: searchTerm
+  });
+  const { mutate: deletePublication, loading: deleting } = useDeletePublication();
 
   // Handle search
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -69,39 +64,72 @@ const PublicationsPage = () => {
     setCurrentPage(1);
   };
 
-  // Filter publications based on search term
-  const filteredPublications = publications.filter(publication => 
-    publication.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   // Calculate pagination
+  const totalPages = Math.ceil((publications?.length || 0) / publicationsPerPage);
   const indexOfLastPublication = currentPage * publicationsPerPage;
   const indexOfFirstPublication = indexOfLastPublication - publicationsPerPage;
-  const currentPublications = filteredPublications.slice(indexOfFirstPublication, indexOfLastPublication);
-  const totalPages = Math.ceil(filteredPublications.length / publicationsPerPage);
+  const currentPublications = publications?.slice(indexOfFirstPublication, indexOfLastPublication) || [];
 
   // Handle edit
-  const handleEdit = (id: number) => {
-    console.log('Edit publication with id:', id);
-    // Implement edit functionality here
+  const handleEdit = (publication: Publication) => {
+    try {
+      console.log('Edit publication with id:', publication.id);
+      setEditingPublication(publication);
+      setIsEditDialogOpen(true);
+      // TODO: Implement edit functionality when form is updated
+      toast.info(`Edit functionality for ${publication.name} - Opening edit form...`);
+    } catch (error) {
+      console.error('Error opening edit form:', error);
+      toast.error('Failed to open edit form');
+    }
   };
 
   // Handle delete
-  const handleDelete = (id: number) => {
-    setPublications(publications.filter(publication => publication.id !== id));
-    toast.success("Publication deleted successfully");
+  const handleDelete = async (id: string) => {
+    try {
+      console.log('Deleting publication with id:', id);
+      await deletePublication(id);
+      toast.success("Publication deleted successfully");
+      refetch(); // Refresh the list
+    } catch (error) {
+      console.error('Error deleting publication:', error);
+      toast.error("Failed to delete publication");
+    }
   };
 
   // Handle save for new publication
-  const handleSavePublication = (publication: Publication) => {
-    setPublications([...publications, publication]);
-    setIsDialogOpen(false);
-    toast.success("Publication created successfully");
+  const handleSavePublication = async (publicationData: { name: string; type?: string; website?: string; description?: string }) => {
+    try {
+      console.log('Creating publication:', publicationData);
+
+      // Call API to create publication
+      const response = await apiService.createPublication({
+        name: publicationData.name,
+        type: publicationData.type || 'print',
+        website: publicationData.website,
+        description: publicationData.description
+      });
+
+      console.log('Publication created successfully:', response);
+      setIsDialogOpen(false);
+      toast.success("Publication created successfully");
+      refetch(); // Refresh the list
+    } catch (error) {
+      console.error('Error creating publication:', error);
+      toast.error("Failed to create publication");
+    }
   };
 
   // Handle cancel for publication form
   const handleCancelPublication = () => {
     setIsDialogOpen(false);
+    setEditingPublication(null);
+  };
+
+  // Handle edit cancel
+  const handleEditCancel = () => {
+    setIsEditDialogOpen(false);
+    setEditingPublication(null);
   };
 
   // Generate page numbers for pagination
@@ -113,8 +141,27 @@ const PublicationsPage = () => {
   return (
     <div className="p-6 h-full">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Publications</h1>
+        <div>
+          <h1 className="text-2xl font-bold">Publications</h1>
+          <p className="text-gray-600 mt-1">Manage publication sources and media outlets</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => refetch()} disabled={loading}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
       </div>
+
+      {/* Error State */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <p className="text-red-600">Failed to load publications. Please try again.</p>
+          <Button variant="outline" size="sm" onClick={() => refetch()} className="mt-2">
+            Retry
+          </Button>
+        </div>
+      )}
 
       <div className="flex justify-between mb-4">
         <div className="relative w-64">
@@ -151,34 +198,83 @@ const PublicationsPage = () => {
             <TableRow>
               <TableHead className="w-14">Sn.</TableHead>
               <TableHead>Name</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Website</TableHead>
+              <TableHead>Created</TableHead>
               <TableHead className="text-right">Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {currentPublications.map((publication, index) => (
-              <TableRow key={publication.id}>
-                <TableCell>{indexOfFirstPublication + index + 1}</TableCell>
-                <TableCell>{publication.name}</TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleEdit(publication.id)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(publication.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-8">
+                  <div className="flex items-center justify-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading publications...
                   </div>
                 </TableCell>
               </TableRow>
-            ))}
+            ) : currentPublications.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-8">
+                  <div className="text-gray-500">
+                    {searchTerm ? 'No publications found matching your search.' : 'No publications found.'}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : (
+              currentPublications.map((publication, index) => (
+                <TableRow key={publication.id}>
+                  <TableCell>{indexOfFirstPublication + index + 1}</TableCell>
+                  <TableCell className="font-medium">{publication.name}</TableCell>
+                  <TableCell>
+                    <span className="capitalize">{publication.type || 'N/A'}</span>
+                  </TableCell>
+                  <TableCell>
+                    {publication.website ? (
+                      <a
+                        href={publication.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline"
+                      >
+                        {publication.website}
+                      </a>
+                    ) : (
+                      'N/A'
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {publication.createdAt ? new Date(publication.createdAt).toLocaleDateString() : 'N/A'}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEdit(publication)}
+                        title="Edit publication"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDelete(publication.id)}
+                        disabled={deleting}
+                        title="Delete publication"
+                      >
+                        {deleting ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>
@@ -217,7 +313,7 @@ const PublicationsPage = () => {
       )}
 
       <div className="mt-4 text-sm text-gray-500">
-        Showing {indexOfFirstPublication + 1} to {Math.min(indexOfLastPublication, filteredPublications.length)} of {filteredPublications.length} results
+        Showing {indexOfFirstPublication + 1} to {Math.min(indexOfLastPublication, publications.length)} of {publications.length} results
       </div>
     </div>
   );

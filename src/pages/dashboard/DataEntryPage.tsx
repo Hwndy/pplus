@@ -2,24 +2,30 @@
 import { useState } from 'react';
 import { DataCard } from '@/components/ui/DataCard';
 import { Button } from '@/components/ui/button';
-import { FileInput, Save, SendHorizontal } from 'lucide-react';
+import { FileInput, Save, SendHorizontal, Loader2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { clients, dataParameters, mediaChannels } from '@/utils/mockData';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/components/auth/AuthContext';
+import { useCompanies, useCreateDataEntry } from '@/hooks/useApi';
+import { apiService } from '@/services/apiService';
 
 export default function DataEntryPage() {
   const { user } = useAuth();
-  
+
+  // API hooks
+  const { data: companies = [], loading: companiesLoading, refetch: refetchCompanies } = useCompanies();
+  const { mutate: createDataEntry, loading: creating } = useCreateDataEntry();
+
   // New entry form state
   const [newEntry, setNewEntry] = useState({
     clientId: '',
@@ -48,39 +54,77 @@ export default function DataEntryPage() {
   };
 
   // Submit new entry
-  const submitEntry = (asDraft: boolean = false) => {
-    // Validate form
-    if (!newEntry.clientId || !newEntry.parameterId || !newEntry.channelId || !newEntry.value) {
-      toast.error('Please fill in all required fields');
-      return;
-    }
+  const submitEntry = async (asDraft: boolean = false) => {
+    try {
+      // Validate form
+      if (!newEntry.clientId || !newEntry.parameterId || !newEntry.channelId || !newEntry.value) {
+        toast.error('Please fill in all required fields');
+        return;
+      }
 
-    // In a real app, we'd make an API call here
-    toast.success(asDraft 
-      ? 'Entry saved as draft' 
-      : 'Entry submitted successfully for review'
-    );
-    
-    // Reset form
-    setNewEntry({
-      clientId: '',
-      parameterId: '',
-      channelId: '',
-      value: '',
-      date: new Date().toISOString().split('T')[0],
-    });
+      console.log('Submitting data entry:', { ...newEntry, status: asDraft ? 'DRAFT' : 'PENDING' });
+
+      // Prepare data entry payload
+      const entryData = {
+        companyId: newEntry.clientId,
+        parameter: newEntry.parameterId,
+        channel: newEntry.channelId,
+        value: parseFloat(newEntry.value) || 0,
+        date: newEntry.date,
+        status: asDraft ? 'DRAFT' : 'PENDING',
+        createdBy: user?.id || 'current-user'
+      };
+
+      // Call API to create data entry
+      await createDataEntry(entryData);
+
+      toast.success(asDraft
+        ? 'Entry saved as draft'
+        : 'Entry submitted successfully for review'
+      );
+
+      // Reset form
+      setNewEntry({
+        clientId: '',
+        parameterId: '',
+        channelId: '',
+        value: '',
+        date: new Date().toISOString().split('T')[0],
+      });
+    } catch (error) {
+      console.error('Error submitting data entry:', error);
+      toast.error('Failed to submit entry. Please try again.');
+    }
   };
   
   // Submit batch upload
-  const submitBatch = () => {
+  const submitBatch = async () => {
     if (!batchFile) {
       toast.error('Please select a file to upload');
       return;
     }
-    
-    // In a real app, we'd make an API call here
-    toast.success('File uploaded successfully. Processing data...');
-    setBatchFile(null);
+
+    try {
+      console.log('Uploading batch file:', batchFile.name);
+
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('file', batchFile);
+      formData.append('uploadedBy', user?.id || 'current-user');
+
+      // Call API to upload batch file
+      const response = await apiService.uploadBatchDataEntries(formData);
+
+      console.log('Batch upload response:', response);
+      toast.success('File uploaded successfully. Processing data...');
+      setBatchFile(null);
+
+      // Optionally refresh data or show processing status
+      // You could add a polling mechanism here to check processing status
+    } catch (error) {
+      console.error('Error uploading batch file:', error);
+      toast.error('Failed to upload file. Please try again.');
+    }
   };
 
   return (
@@ -105,21 +149,28 @@ export default function DataEntryPage() {
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="client">Client</Label>
-                  <Select 
-                    value={newEntry.clientId} 
+                  <Select
+                    value={newEntry.clientId}
                     onValueChange={(value) => handleInputChange('clientId', value)}
+                    disabled={companiesLoading}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select client" />
+                      <SelectValue placeholder={companiesLoading ? "Loading companies..." : "Select client"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {clients.map(client => (
-                        <SelectItem key={client.id} value={client.id}>
-                          {client.name}
+                      {companies.map(company => (
+                        <SelectItem key={company.id} value={company.id}>
+                          {company.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {companiesLoading && (
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Loading companies...
+                    </div>
+                  )}
                 </div>
                 
                 <div className="space-y-2">
@@ -185,13 +236,38 @@ export default function DataEntryPage() {
               </div>
               
               <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => submitEntry(true)}>
-                  <Save className="mr-2 h-4 w-4" />
-                  Save as Draft
+                <Button
+                  variant="outline"
+                  onClick={() => submitEntry(true)}
+                  disabled={creating}
+                >
+                  {creating ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Save as Draft
+                    </>
+                  )}
                 </Button>
-                <Button onClick={() => submitEntry(false)}>
-                  <SendHorizontal className="mr-2 h-4 w-4" />
-                  Submit for Review
+                <Button
+                  onClick={() => submitEntry(false)}
+                  disabled={creating}
+                >
+                  {creating ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <SendHorizontal className="mr-2 h-4 w-4" />
+                      Submit for Review
+                    </>
+                  )}
                 </Button>
               </div>
             </div>
@@ -214,9 +290,21 @@ export default function DataEntryPage() {
                     accept=".csv,.xlsx,.xls"
                     onChange={handleFileChange}
                   />
-                  <Button onClick={submitBatch} disabled={!batchFile}>
-                    <FileInput className="mr-2 h-4 w-4" />
-                    Upload
+                  <Button
+                    onClick={submitBatch}
+                    disabled={!batchFile || creating}
+                  >
+                    {creating ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <FileInput className="mr-2 h-4 w-4" />
+                        Upload
+                      </>
+                    )}
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">

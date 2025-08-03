@@ -601,6 +601,72 @@ export function useDeleteEditorial() {
   return useApiMutation((id: string) => apiService.deleteEditorial(id));
 }
 
+// SWOT Analysis mutation hooks
+export function useCreateSwotAnalysis() {
+  return useApiMutation((swotData: any) => apiService.createSwotAnalysis(swotData));
+}
+
+export function useUpdateSwotAnalysis() {
+  return useApiMutation(({ id, data }: { id: string; data: any }) =>
+    apiService.updateSwotAnalysis(id, data)
+  );
+}
+
+export function useDeleteSwotAnalysis() {
+  return useApiMutation((id: string) => apiService.deleteSwotAnalysis(id));
+}
+
+export function useSwotAnalysisById(id: string) {
+  return useApiData(() => apiService.getSwotAnalysisById(id), [id]);
+}
+
+// Outcome Insights mutation hooks
+export function useOutcomeInsights(params?: Record<string, any>) {
+  const deps = [
+    String(params?.page || 1),
+    String(params?.limit || 10),
+    String(params?.search || ''),
+    String(params?.companyId || ''),
+  ];
+
+  return useApiData(() => apiService.getOutcomeInsights(params), deps, {
+    enableAutoRefresh: false
+  });
+}
+
+export function useCreateOutcomeInsight() {
+  return useApiMutation((outcomeData: any) => apiService.createOutcomeInsight(outcomeData));
+}
+
+export function useUpdateOutcomeInsight() {
+  return useApiMutation(({ id, data }: { id: string; data: any }) =>
+    apiService.updateOutcomeInsight(id, data)
+  );
+}
+
+export function useDeleteOutcomeInsight() {
+  return useApiMutation((id: string) => apiService.deleteOutcomeInsight(id));
+}
+
+export function useOutcomeInsightById(id: string) {
+  return useApiData(() => apiService.getOutcomeInsightById(id), [id]);
+}
+
+// Data Entry mutation hooks
+export function useCreateDataEntry() {
+  return useApiMutation((entryData: any) => apiService.createDataEntry(entryData));
+}
+
+export function useUpdateDataEntry() {
+  return useApiMutation(({ id, data }: { id: string; data: any }) =>
+    apiService.updateDataEntry(id, data)
+  );
+}
+
+export function useDeleteDataEntry() {
+  return useApiMutation((id: string) => apiService.deleteDataEntry(id));
+}
+
 export function useFileUpload() {
   return useApiMutation((file: File) => {
     const formData = new FormData();

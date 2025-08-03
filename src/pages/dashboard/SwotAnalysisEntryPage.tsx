@@ -2,18 +2,13 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Save, FileText, ArrowLeft, Plus } from 'lucide-react';
+import { Save, FileText, ArrowLeft, Plus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { SwotForm, SwotAnalysis } from '@/components/admin/SwotMentionForm';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
-
-// Mock data for companies
-const companies = [
-  { id: '1', name: 'VFD Group' },
-  { id: '2', name: 'ABC Corporation' },
-  { id: '3', name: 'XYZ Enterprises' }
-];
+import { useCompanies, useCreateSwotAnalysis, useUpdateSwotAnalysis, useSwotAnalysisById } from '@/hooks/useApi';
+import { apiService } from '@/services/apiService';
 
 // Default form data
 const defaultFormData: SwotAnalysis = {
@@ -34,11 +29,16 @@ export default function SwotAnalysisEntryPage() {
   const queryParams = new URLSearchParams(location.search);
   const companyIdFromQuery = queryParams.get('companyId') || '';
 
+  // API hooks
+  const { data: companiesData = [], loading: companiesLoading } = useCompanies();
+  const { mutate: createSwotAnalysis, loading: creating } = useCreateSwotAnalysis();
+  const { mutate: updateSwotAnalysis, loading: updating } = useUpdateSwotAnalysis();
+
   // State management
   const [swotAnalyses, setSwotAnalyses] = useState<SwotAnalysis[]>([
     {
       ...defaultFormData,
-      company: companies.find(c => c.id === companyIdFromQuery)?.name || ''
+      company: ''
     }
   ]);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -47,6 +47,18 @@ export default function SwotAnalysisEntryPage() {
 
   // User role (mock - in real app this would come from auth context)
   const userRole = 'analyst';
+
+  // Update company name when companies data loads
+  useEffect(() => {
+    if (companiesData.length > 0 && companyIdFromQuery) {
+      const selectedCompany = companiesData.find(c => c.id === companyIdFromQuery);
+      if (selectedCompany) {
+        setSwotAnalyses(prev => prev.map((swot, index) =>
+          index === 0 ? { ...swot, company: selectedCompany.name } : swot
+        ));
+      }
+    }
+  }, [companiesData, companyIdFromQuery]);
 
   // Form handlers
   const handleSwotChange = (updatedSwotAnalyses: SwotAnalysis[]) => {
@@ -131,12 +143,37 @@ export default function SwotAnalysisEntryPage() {
 
     setIsSubmitting(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const currentSwot = swotAnalyses[activeIndex];
+      const selectedCompany = companiesData.find(c => c.name === currentSwot.company);
+
+      if (!selectedCompany) {
+        toast.error('Please select a valid company.');
+        return;
+      }
+
+      // Prepare SWOT analysis data for API
+      const swotData = {
+        companyId: selectedCompany.id,
+        title: `SWOT Analysis - ${currentSwot.company} - ${format(new Date(currentSwot.date), 'MMM dd, yyyy')}`,
+        date: currentSwot.date,
+        strengths: currentSwot.currentCategory === 'strengths' ? [currentSwot.currentAnalysis] : [],
+        weaknesses: currentSwot.currentCategory === 'weaknesses' ? [currentSwot.currentAnalysis] : [],
+        opportunities: currentSwot.currentCategory === 'opportunities' ? [currentSwot.currentAnalysis] : [],
+        threats: currentSwot.currentCategory === 'threats' ? [currentSwot.currentAnalysis] : [],
+        analystNote: currentSwot.analystNote,
+        supervisorNote: currentSwot.supervisorNote,
+        status: currentSwot.status || 'PENDING'
+      };
+
+      console.log('Submitting SWOT analysis:', swotData);
+
+      // Call the API to create SWOT analysis
+      await createSwotAnalysis(swotData);
 
       toast.success('SWOT analysis saved successfully!');
       navigate('/dashboard/swot-analysis');
     } catch (error) {
+      console.error('Error saving SWOT analysis:', error);
       toast.error('Failed to save SWOT analysis. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -146,14 +183,36 @@ export default function SwotAnalysisEntryPage() {
   const handleSaveAsDraft = async () => {
     setIsSubmitting(true);
     try {
-      // Update status to draft
-      handleFieldChange('status', 'DRAFT');
+      const currentSwot = swotAnalyses[activeIndex];
+      const selectedCompany = companiesData.find(c => c.name === currentSwot.company);
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (!selectedCompany) {
+        toast.error('Please select a valid company.');
+        return;
+      }
+
+      // Prepare SWOT analysis data for API with DRAFT status
+      const swotData = {
+        companyId: selectedCompany.id,
+        title: `SWOT Analysis - ${currentSwot.company} - ${format(new Date(currentSwot.date), 'MMM dd, yyyy')} (Draft)`,
+        date: currentSwot.date,
+        strengths: currentSwot.currentCategory === 'strengths' ? [currentSwot.currentAnalysis] : [],
+        weaknesses: currentSwot.currentCategory === 'weaknesses' ? [currentSwot.currentAnalysis] : [],
+        opportunities: currentSwot.currentCategory === 'opportunities' ? [currentSwot.currentAnalysis] : [],
+        threats: currentSwot.currentCategory === 'threats' ? [currentSwot.currentAnalysis] : [],
+        analystNote: currentSwot.analystNote,
+        supervisorNote: currentSwot.supervisorNote,
+        status: 'DRAFT'
+      };
+
+      console.log('Saving SWOT analysis as draft:', swotData);
+
+      // Call the API to create SWOT analysis as draft
+      await createSwotAnalysis(swotData);
 
       toast.success('SWOT analysis saved as draft!');
     } catch (error) {
+      console.error('Error saving SWOT analysis as draft:', error);
       toast.error('Failed to save draft. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -195,18 +254,36 @@ export default function SwotAnalysisEntryPage() {
           <Button
             variant="outline"
             onClick={handleSaveAsDraft}
-            disabled={isSubmitting}
+            disabled={isSubmitting || creating}
           >
-            <FileText className="mr-2 h-4 w-4" />
-            Save as Draft
+            {creating ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving Draft...
+              </>
+            ) : (
+              <>
+                <FileText className="mr-2 h-4 w-4" />
+                Save as Draft
+              </>
+            )}
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={isSubmitting}
+            disabled={isSubmitting || creating}
             className="bg-primary hover:bg-primary/90 text-primary-foreground"
           >
-            <Save className="mr-2 h-4 w-4" />
-            {isSubmitting ? 'Saving...' : 'Save Analysis'}
+            {creating ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" />
+                Save Analysis
+              </>
+            )}
           </Button>
         </div>
       </div>
@@ -217,7 +294,7 @@ export default function SwotAnalysisEntryPage() {
           swotAnalyses={swotAnalyses}
           activeIndex={activeIndex}
           errors={errors}
-          apiCompanies={companies}
+          apiCompanies={companiesData}
           userRole={userRole}
           onSwotChange={handleSwotChange}
           onAddSwot={handleAddSwot}
