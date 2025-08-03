@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { ThumbsUp, ThumbsDown, ArrowUpRight, AlertTriangle, Plus, Filter, Calendar, Edit, Trash2 } from "lucide-react";
+import { ThumbsUp, ThumbsDown, ArrowUpRight, AlertTriangle, Plus, Filter, Calendar, Edit, Trash2, Eye, MoreHorizontal } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { SwotMentionForm } from '../../components/admin/SwotMentionForm';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +14,7 @@ import { Combobox } from "@/components/ui/combobox";
 import { toast } from 'sonner';
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 // Mock SWOT data
 const mockSwotData = [
@@ -22,6 +23,12 @@ const mockSwotData = [
     company: 'company-a',
     companyName: 'Company A',
     date: new Date('2023-10-15'),
+    swotCategory: 'Strengths',
+    analysis: 'VFD Group gained media attention when the brand restated its commitment to the NGX Group after the appointment of Kwairanga as new chairman.',
+    creationDate: new Date('2023-10-15'),
+    lastEdited: new Date('2023-10-16'),
+    createdBy: 'John Analyst',
+    approvedBy: 'Sarah Manager',
     strengths: [
       { content: 'VFD Group gained media attention when the brand restated its commitment to the NGX Group after the appointment of Kwairanga as new chairman.' },
       { content: 'Vbank got positive reviews on its V App.' },
@@ -49,6 +56,12 @@ const mockSwotData = [
     company: 'company-b',
     companyName: 'Company B',
     date: new Date('2023-11-05'),
+    swotCategory: 'Weaknesses',
+    analysis: 'Customer service issues reported in social media and declining market share in the youth segment',
+    creationDate: new Date('2023-11-05'),
+    lastEdited: new Date('2023-11-06'),
+    createdBy: 'Jane Smith',
+    approvedBy: '',
     strengths: [
       { content: 'Strong brand recognition in the market.' },
       { content: 'Innovative product launches in Q3.' }
@@ -69,6 +82,68 @@ const mockSwotData = [
     createdAt: new Date('2023-11-05'),
     updatedAt: null,
     analystNote: 'Company B is facing challenges but has strong opportunities for growth.',
+    supervisorNote: ''
+  },
+  {
+    id: '3',
+    company: 'company-c',
+    companyName: 'GTBank',
+    date: new Date('2023-11-10'),
+    swotCategory: 'Opportunities',
+    analysis: 'Digital transformation opportunities in mobile banking and fintech partnerships',
+    creationDate: new Date('2023-11-10'),
+    lastEdited: new Date('2023-11-12'),
+    createdBy: 'Mike Johnson',
+    approvedBy: 'David Wilson',
+    strengths: [
+      { content: 'Excellent customer service' },
+      { content: 'Strong financial performance' }
+    ],
+    weaknesses: [
+      { content: 'Limited international presence' }
+    ],
+    opportunities: [
+      { content: 'Digital transformation opportunities' },
+      { content: 'Mobile banking expansion' }
+    ],
+    threats: [
+      { content: 'Competition from fintechs' }
+    ],
+    status: 'approved',
+    createdAt: new Date('2023-11-10'),
+    updatedAt: new Date('2023-11-12'),
+    analystNote: 'Strong opportunities for digital growth',
+    supervisorNote: 'Approved for implementation'
+  },
+  {
+    id: '4',
+    company: 'company-d',
+    companyName: 'First Bank',
+    date: new Date('2023-11-15'),
+    swotCategory: 'Threats',
+    analysis: 'Increasing regulatory pressure and new market entrants pose significant challenges',
+    creationDate: new Date('2023-11-15'),
+    lastEdited: new Date('2023-11-15'),
+    createdBy: 'Lisa Brown',
+    approvedBy: '',
+    strengths: [
+      { content: 'Historical brand trust' },
+      { content: 'Wide branch network' }
+    ],
+    weaknesses: [
+      { content: 'Outdated technology systems' }
+    ],
+    opportunities: [
+      { content: 'Digital transformation' }
+    ],
+    threats: [
+      { content: 'Regulatory pressure' },
+      { content: 'New market entrants' }
+    ],
+    status: 'draft',
+    createdAt: new Date('2023-11-15'),
+    updatedAt: new Date('2023-11-15'),
+    analystNote: 'Initial threat analysis complete',
     supervisorNote: ''
   }
 ];
@@ -264,108 +339,100 @@ export function SwotMentionsPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {getFilteredSwotData().map((swot) => (
-                <Card key={swot.id} className="overflow-hidden">
-                  <CardHeader className="pb-3">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle className="text-lg">{swot.companyName}</CardTitle>
-                        <p className="text-sm text-muted-foreground">
-                          {format(swot.date, 'MMMM d, yyyy')}
-                        </p>
-                      </div>
-                      <Badge
-                        variant={swot.status === 'approved' ? 'success' : 'outline'}
-                        className="capitalize"
-                      >
-                        {swot.status}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pb-3">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <div className="rounded-full bg-green-100 p-1.5">
-                            <ThumbsUp className="h-3.5 w-3.5 text-green-500" />
+            <Card>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12">Sn.</TableHead>
+                      <TableHead>Company</TableHead>
+                      <TableHead>SWOT</TableHead>
+                      <TableHead>Analysis</TableHead>
+                      <TableHead>Creation Date</TableHead>
+                      <TableHead>Last Edited</TableHead>
+                      <TableHead>Created By</TableHead>
+                      <TableHead>Approved By</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {getFilteredSwotData().map((swot, index) => (
+                      <TableRow key={swot.id}>
+                        <TableCell className="font-medium text-center">
+                          {index + 1}
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {swot.companyName}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="capitalize">
+                            {swot.swotCategory || 'N/A'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="max-w-[300px]">
+                          <div className="text-sm text-muted-foreground truncate">
+                            {swot.analysis || 'No analysis provided'}
                           </div>
-                          <h3 className="text-sm font-medium">Strengths</h3>
-                        </div>
-                        <p className="text-xs text-muted-foreground line-clamp-3">
-                          {swot.strengths[0]?.content}
-                          {swot.strengths.length > 1 && ` (+${swot.strengths.length - 1} more)`}
-                        </p>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <div className="rounded-full bg-red-100 p-1.5">
-                            <ThumbsDown className="h-3.5 w-3.5 text-red-500" />
+                        </TableCell>
+                        <TableCell>
+                          {format(swot.creationDate || swot.date, 'MMM d, yyyy')}
+                        </TableCell>
+                        <TableCell>
+                          {format(swot.lastEdited || swot.updatedAt || swot.date, 'MMM d, yyyy')}
+                        </TableCell>
+                        <TableCell>
+                          {swot.createdBy || 'Unknown'}
+                        </TableCell>
+                        <TableCell>
+                          {swot.approvedBy || '-'}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={swot.status === 'approved' ? 'success' : 'outline'}
+                            className="capitalize"
+                          >
+                            {swot.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleView(swot)}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleEdit(swot)}>
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleDelete(swot)}
+                                  className="text-red-600 focus:text-red-600"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
-                          <h3 className="text-sm font-medium">Weaknesses</h3>
-                        </div>
-                        <p className="text-xs text-muted-foreground line-clamp-3">
-                          {swot.weaknesses[0]?.content}
-                          {swot.weaknesses.length > 1 && ` (+${swot.weaknesses.length - 1} more)`}
-                        </p>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <div className="rounded-full bg-blue-100 p-1.5">
-                            <ArrowUpRight className="h-3.5 w-3.5 text-blue-500" />
-                          </div>
-                          <h3 className="text-sm font-medium">Opportunities</h3>
-                        </div>
-                        <p className="text-xs text-muted-foreground line-clamp-3">
-                          {swot.opportunities[0]?.content}
-                          {swot.opportunities.length > 1 && ` (+${swot.opportunities.length - 1} more)`}
-                        </p>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <div className="rounded-full bg-yellow-100 p-1.5">
-                            <AlertTriangle className="h-3.5 w-3.5 text-yellow-500" />
-                          </div>
-                          <h3 className="text-sm font-medium">Threats</h3>
-                        </div>
-                        <p className="text-xs text-muted-foreground line-clamp-3">
-                          {swot.threats[0]?.content}
-                          {swot.threats.length > 1 && ` (+${swot.threats.length - 1} more)`}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                  <CardFooter className="flex justify-between pt-0">
-                    <Button variant="ghost" size="sm" onClick={() => handleView(swot)}>
-                      View Details
-                    </Button>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          Actions
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEdit(swot)}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleDelete(swot)}
-                          className="text-red-600 focus:text-red-600"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
           )}
         </TabsContent>
       </Tabs>

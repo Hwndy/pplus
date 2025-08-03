@@ -813,6 +813,51 @@ class ApiService {
     }
   }
 
+  async batchUploadEditorials(file: File): Promise<ApiResponse<any>> {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await post(`${this.baseUrl}/editorials/batch-upload`, formData, {
+        headers: this.getAuthHeaders(false), // Don't include Content-Type for FormData
+      });
+      return this.extractApiResponse<any>(response);
+    } catch (error) {
+      console.error('Batch upload editorials error:', error);
+      throw error;
+    }
+  }
+
+  async downloadEditorialTemplate(): Promise<Blob> {
+    try {
+      const response = await get(`${this.baseUrl}/editorials/template`, {
+        headers: this.getAuthHeaders(false),
+        responseType: 'blob'
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Download editorial template error:', error);
+      // Return a fallback template if the API endpoint doesn't exist
+      return this.generateFallbackTemplate();
+    }
+  }
+
+  private generateFallbackTemplate(): Blob {
+    // Create a simple CSV template with all the editorial fields
+    const headers = [
+      'Date', 'Company', 'Industry', 'Brand', 'Sub-Industry', 'Source', 'Placement',
+      'Title', 'Print/Web Clips', 'Reporter', 'Country', 'Language', 'Spokesperson',
+      'CEO Media Presence', 'CEO Thought Leadership', 'Activity', 'Circulation',
+      'Audience Reach', 'Media Type', 'Online Channel', 'Sentiment',
+      'Sentiment Classification', 'Sentiment Score', 'Advert Spend', 'Page Size',
+      'Status', 'Analyst Note', 'Supervisor Note', 'Admin Note'
+    ];
+
+    const csvContent = headers.join(',') + '\n';
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    return blob;
+  }
+
   // SWOT ANALYSIS
   async getSwotAnalyses(params?: QueryParams): Promise<ApiResponse<SwotAnalysis[]>> {
     try {

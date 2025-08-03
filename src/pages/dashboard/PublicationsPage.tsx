@@ -149,7 +149,7 @@ const PublicationsPage = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-14">Sr.</TableHead>
+              <TableHead className="w-14">Sn.</TableHead>
               <TableHead>Name</TableHead>
               <TableHead className="text-right">Action</TableHead>
             </TableRow>

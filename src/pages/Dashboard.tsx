@@ -1,12 +1,6 @@
 
 import { useAuth } from '@/components/auth/AuthContext';
 import { AdminDashboard } from '@/components/dashboard/AdminDashboard';
-
-// Helper function to check user roles (case-insensitive)
-const hasRole = (userRole: string, allowedRoles: string | string[]): boolean => {
-  const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
-  return roles.some(role => userRole.toLowerCase() === role.toLowerCase());
-};
 import { AnalystDashboard } from '@/components/dashboard/AnalystDashboard';
 import { ClientDashboard } from '@/components/dashboard/ClientDashboard';
 import { ClientMediaDashboard } from '@/components/dashboard/ClientMediaDashboard';
@@ -29,6 +23,12 @@ import { DailyMentionsInboxPage } from '@/components/dashboard/DailyMentionsInbo
 import { PlaceholderPage } from '@/components/dashboard/PlaceholderPage';
 import { Spinner } from '@/components/ui/spinner';
 import { Route, Routes, Navigate, useLocation } from 'react-router-dom';
+
+// Helper function to check user roles (case-insensitive)
+const hasRole = (userRole: string, allowedRoles: string | string[]): boolean => {
+  const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
+  return roles.some(role => userRole.toLowerCase() === role.toLowerCase());
+};
 
 // Import all our page components
 import UsersPage from './dashboard/UsersPage';

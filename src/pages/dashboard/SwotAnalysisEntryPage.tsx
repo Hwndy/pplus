@@ -2,14 +2,11 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ThumbsUp, ThumbsDown, ArrowUpRight, AlertTriangle, Save, FileText } from 'lucide-react';
+import { Save, FileText, ArrowLeft, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { SwotForm, SwotAnalysis } from '@/components/admin/SwotMentionForm';
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
 
 // Mock data for companies
 const companies = [
@@ -18,368 +15,260 @@ const companies = [
   { id: '3', name: 'XYZ Enterprises' }
 ];
 
-interface SwotItem {
-  description: string;
-  bullets: string[];
-}
-
-interface SwotFormData {
-  companyId: string;
-  title: string;
-  date: string;
-  strengths: SwotItem;
-  weaknesses: SwotItem;
-  opportunities: SwotItem;
-  threats: SwotItem;
-}
+// Default form data
+const defaultFormData: SwotAnalysis = {
+  id: 1,
+  date: new Date().toISOString().split('T')[0],
+  company: '',
+  currentCategory: 'strengths',
+  currentAnalysis: '',
+  analystNote: '',
+  supervisorNote: '',
+  adminNote: '',
+  status: 'DRAFT'
+};
 
 export default function SwotAnalysisEntryPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
-  const companyIdFromQuery = queryParams.get('companyId') || '1';
-  
-  // Initialize with current date and company from query param
-  const [formData, setFormData] = useState<SwotFormData>({
-    companyId: companyIdFromQuery,
-    title: '',
-    date: format(new Date(), 'yyyy-MM-dd'),
-    strengths: { description: '', bullets: [''] },
-    weaknesses: { description: '', bullets: [''] },
-    opportunities: { description: '', bullets: [''] },
-    threats: { description: '', bullets: [''] }
-  });
+  const companyIdFromQuery = queryParams.get('companyId') || '';
 
-  // Handle company change
-  const handleCompanyChange = (value: string) => {
-    setFormData({
-      ...formData,
-      companyId: value
+  // State management
+  const [swotAnalyses, setSwotAnalyses] = useState<SwotAnalysis[]>([
+    {
+      ...defaultFormData,
+      company: companies.find(c => c.id === companyIdFromQuery)?.name || ''
+    }
+  ]);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // User role (mock - in real app this would come from auth context)
+  const userRole = 'analyst';
+
+  // Form handlers
+  const handleSwotChange = (updatedSwotAnalyses: SwotAnalysis[]) => {
+    setSwotAnalyses(updatedSwotAnalyses);
+  };
+
+  const handleAddSwot = () => {
+    const newSwot: SwotAnalysis = {
+      ...defaultFormData,
+      id: Date.now(),
+    };
+    setSwotAnalyses([...swotAnalyses, newSwot]);
+    setActiveIndex(swotAnalyses.length);
+  };
+
+  const handleCloneSwot = () => {
+    const currentSwot = swotAnalyses[activeIndex];
+    const clonedSwot: SwotAnalysis = {
+      ...currentSwot,
+      id: Date.now(),
+      currentAnalysis: `${currentSwot.currentAnalysis} (Copy)`,
+    };
+    setSwotAnalyses([...swotAnalyses, clonedSwot]);
+    setActiveIndex(swotAnalyses.length);
+  };
+
+  const handleSwitchSwot = (index: number) => {
+    setActiveIndex(index);
+  };
+
+  const handleFieldChange = (name: string, value: string | string[]) => {
+    const updatedSwotAnalyses = [...swotAnalyses];
+    updatedSwotAnalyses[activeIndex] = {
+      ...updatedSwotAnalyses[activeIndex],
+      [name]: value
+    };
+    setSwotAnalyses(updatedSwotAnalyses);
+
+    // Clear error for this field
+    if (errors[name]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
+  };
+
+  const handleClearError = (fieldName: string) => {
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[fieldName];
+      return newErrors;
     });
   };
 
-  // Handle title change
-  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      title: e.target.value
-    });
+  // Validation
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    const currentSwot = swotAnalyses[activeIndex];
+
+    if (!currentSwot.company.trim()) {
+      newErrors.company = 'Company is required';
+    }
+    if (!currentSwot.date) {
+      newErrors.date = 'Date is required';
+    }
+    if (!currentSwot.currentAnalysis?.trim()) {
+      newErrors.currentAnalysis = 'Analysis is required';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
-  // Handle form input changes for descriptions
-  const handleDescriptionChange = (category: keyof Omit<SwotFormData, 'companyId' | 'title' | 'date'>, value: string) => {
-    setFormData({
-      ...formData,
-      [category]: {
-        ...formData[category],
-        description: value
-      }
-    });
-  };
-
-  // Handle changes to bullet points
-  const handleBulletChange = (
-    category: keyof Omit<SwotFormData, 'companyId' | 'title' | 'date'>, 
-    index: number, 
-    value: string
-  ) => {
-    const updatedBullets = [...formData[category].bullets];
-    updatedBullets[index] = value;
-    
-    setFormData({
-      ...formData,
-      [category]: {
-        ...formData[category],
-        bullets: updatedBullets
-      }
-    });
-  };
-
-  // Add a new bullet point to a category
-  const addBullet = (category: keyof Omit<SwotFormData, 'companyId' | 'title' | 'date'>) => {
-    setFormData({
-      ...formData,
-      [category]: {
-        ...formData[category],
-        bullets: [...formData[category].bullets, '']
-      }
-    });
-  };
-
-  // Remove a bullet point from a category
-  const removeBullet = (category: keyof Omit<SwotFormData, 'companyId' | 'title' | 'date'>, index: number) => {
-    const updatedBullets = formData[category].bullets.filter((_, i) => i !== index);
-    
-    setFormData({
-      ...formData,
-      [category]: {
-        ...formData[category],
-        bullets: updatedBullets.length ? updatedBullets : ['']
-      }
-    });
-  };
-
-  // Handle date change
-  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      date: e.target.value
-    });
-  };
-
-  // Handle form submission
-  const handleSubmit = (e: React.FormEvent, isDraft: boolean = false) => {
-    e.preventDefault();
-    
-    // Basic validation
-    if (!formData.date) {
-      toast.error('Please select a date');
+  // Submit handlers
+  const handleSubmit = async () => {
+    if (!validateForm()) {
+      toast.error('Please fix the validation errors before submitting.');
       return;
     }
 
-    if (!formData.title) {
-      toast.error('Please enter a title for the analysis');
-      return;
+    setIsSubmitting(true);
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      toast.success('SWOT analysis saved successfully!');
+      navigate('/dashboard/swot-analysis');
+    } catch (error) {
+      toast.error('Failed to save SWOT analysis. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
-    
-    // In a real app, we would save the data to the server
-    // For now, we'll just show a success message and navigate back
-    
-    toast.success(
-      isDraft 
-        ? 'SWOT analysis saved as draft' 
-        : 'SWOT analysis submitted successfully'
-    );
-    
-    // Navigate back to the SWOT analysis page
-    navigate('/dashboard/swot');
+  };
+
+  const handleSaveAsDraft = async () => {
+    setIsSubmitting(true);
+    try {
+      // Update status to draft
+      handleFieldChange('status', 'DRAFT');
+
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      toast.success('SWOT analysis saved as draft!');
+    } catch (error) {
+      toast.error('Failed to save draft. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleBack = () => {
+    navigate('/dashboard/swot-analysis');
   };
 
   return (
-    <div className="space-y-6 animate-fade-in pb-8">
+    <div className="h-full flex flex-col animate-fade-in max-w-full overflow-hidden">
+      {/* Breadcrumb */}
+      <Breadcrumb className="mb-6">
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/dashboard/swot-analysis">SWOT Analysis</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbLink>Create Analysis</BreadcrumbLink>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Create SWOT Analysis</h1>
-      </div>
-
-      <form onSubmit={(e) => handleSubmit(e, false)}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="company">Company</Label>
-              <Select 
-                value={formData.companyId} 
-                onValueChange={handleCompanyChange}
-              >
-                <SelectTrigger id="company">
-                  <SelectValue placeholder="Select a company" />
-                </SelectTrigger>
-                <SelectContent>
-                  {companies.map(company => (
-                    <SelectItem key={company.id} value={company.id}>{company.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div>
-              <Label htmlFor="title">Analysis Title</Label>
-              <Input
-                id="title"
-                value={formData.title}
-                onChange={handleTitleChange}
-                placeholder="e.g. Q4 2023 Analysis"
-                required
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="date">Date</Label>
-              <Input
-                id="date"
-                type="date"
-                value={formData.date}
-                onChange={handleDateChange}
-                required
-              />
-            </div>
-          </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" onClick={handleBack}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <h1 className="text-2xl font-bold">Create SWOT Analysis</h1>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Strengths */}
-          <SwotCategoryCard
-            title="Strengths"
-            description="Positive attributes or resources that give an advantage"
-            icon={ThumbsUp}
-            color="text-teal-500"
-            borderColor="border-teal-200"
-            bgColor="bg-teal-50"
-            data={formData.strengths}
-            onChange={(value) => handleDescriptionChange('strengths', value)}
-            onBulletChange={(index, value) => handleBulletChange('strengths', index, value)}
-            onAddBullet={() => addBullet('strengths')}
-            onRemoveBullet={(index) => removeBullet('strengths', index)}
-          />
-          
-          {/* Weaknesses */}
-          <SwotCategoryCard
-            title="Weaknesses"
-            description="Negative attributes or limitations that could be improved"
-            icon={ThumbsDown}
-            color="text-red-500"
-            borderColor="border-red-200"
-            bgColor="bg-red-50"
-            data={formData.weaknesses}
-            onChange={(value) => handleDescriptionChange('weaknesses', value)}
-            onBulletChange={(index, value) => handleBulletChange('weaknesses', index, value)}
-            onAddBullet={() => addBullet('weaknesses')}
-            onRemoveBullet={(index) => removeBullet('weaknesses', index)}
-          />
-          
-          {/* Opportunities */}
-          <SwotCategoryCard
-            title="Opportunities"
-            description="External factors that could be beneficial"
-            icon={ArrowUpRight}
-            color="text-blue-500"
-            borderColor="border-blue-200"
-            bgColor="bg-blue-50"
-            data={formData.opportunities}
-            onChange={(value) => handleDescriptionChange('opportunities', value)}
-            onBulletChange={(index, value) => handleBulletChange('opportunities', index, value)}
-            onAddBullet={() => addBullet('opportunities')}
-            onRemoveBullet={(index) => removeBullet('opportunities', index)}
-          />
-          
-          {/* Threats */}
-          <SwotCategoryCard
-            title="Threats"
-            description="External factors that could be harmful"
-            icon={AlertTriangle}
-            color="text-amber-500"
-            borderColor="border-amber-200"
-            bgColor="bg-amber-50"
-            data={formData.threats}
-            onChange={(value) => handleDescriptionChange('threats', value)}
-            onBulletChange={(index, value) => handleBulletChange('threats', index, value)}
-            onAddBullet={() => addBullet('threats')}
-            onRemoveBullet={(index) => removeBullet('threats', index)}
-          />
-        </div>
-        
-        <div className="flex justify-end space-x-3 mt-6">
-          <Button 
-            type="button" 
-            variant="outline" 
-            onClick={(e) => handleSubmit(e, true)}
-            className="gap-2"
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={handleSaveAsDraft}
+            disabled={isSubmitting}
           >
-            <Save size={18} />
+            <FileText className="mr-2 h-4 w-4" />
             Save as Draft
           </Button>
-          <Button type="submit" className="gap-2">
-            <FileText size={18} />
-            Submit Analysis
+          <Button
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground"
+          >
+            <Save className="mr-2 h-4 w-4" />
+            {isSubmitting ? 'Saving...' : 'Save Analysis'}
           </Button>
         </div>
-      </form>
+      </div>
+
+      {/* SWOT Form */}
+      <div className="flex-1 overflow-hidden">
+        <SwotForm
+          swotAnalyses={swotAnalyses}
+          activeIndex={activeIndex}
+          errors={errors}
+          apiCompanies={companies}
+          userRole={userRole}
+          onSwotChange={handleSwotChange}
+          onAddSwot={handleAddSwot}
+          onCloneSwot={handleCloneSwot}
+          onSwitchSwot={handleSwitchSwot}
+          onFieldChange={handleFieldChange}
+          onClearError={handleClearError}
+          onSave={handleSubmit}
+          onCancel={handleBack}
+        />
+      </div>
+
+      {/* Multiple SWOT Analyses Navigation */}
+      {swotAnalyses.length > 1 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              SWOT Analyses ({swotAnalyses.length})
+            </CardTitle>
+            <CardDescription>
+              Switch between multiple SWOT analyses or add new ones
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {swotAnalyses.map((swot, index) => (
+                <Button
+                  key={swot.id}
+                  variant={index === activeIndex ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleSwitchSwot(index)}
+                  className="flex items-center gap-2"
+                >
+                  <span>Analysis {index + 1}</span>
+                  {swot.currentAnalysis && <span className="text-xs opacity-70">({swot.currentAnalysis.substring(0, 20)}...)</span>}
+                </Button>
+              ))}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleAddSwot}
+                className="flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Add New
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
-
-interface SwotCategoryCardProps {
-  title: string;
-  description: string;
-  icon: React.FC<{ className?: string }>;
-  color: string;
-  borderColor: string;
-  bgColor: string;
-  data: SwotItem;
-  onChange: (value: string) => void;
-  onBulletChange: (index: number, value: string) => void;
-  onAddBullet: () => void;
-  onRemoveBullet: (index: number) => void;
-}
-
-const SwotCategoryCard = ({ 
-  title, 
-  description, 
-  icon: Icon, 
-  color, 
-  borderColor, 
-  bgColor,
-  data,
-  onChange,
-  onBulletChange,
-  onAddBullet,
-  onRemoveBullet
-}: SwotCategoryCardProps) => {
-  return (
-    <Card className="border shadow-sm">
-      <CardHeader className="pb-2">
-        <div className="flex items-center gap-3">
-          <div className={`rounded-full p-2 ${bgColor} border ${borderColor} dashed inline-flex items-center justify-center`}>
-            <Icon className={`h-5 w-5 ${color}`} />
-          </div>
-          <div>
-            <CardTitle className="text-lg">{title}</CardTitle>
-            <CardDescription>{description}</CardDescription>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="pt-4 space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor={`${title.toLowerCase()}-description`}>Description</Label>
-          <Textarea
-            id={`${title.toLowerCase()}-description`}
-            value={data.description}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={`Describe the ${title.toLowerCase()}`}
-            className="min-h-[100px]"
-          />
-        </div>
-        
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <Label>Key Points</Label>
-            <Button 
-              type="button" 
-              variant="ghost" 
-              size="sm" 
-              onClick={onAddBullet}
-              className="h-8 px-2 text-xs"
-            >
-              + Add Point
-            </Button>
-          </div>
-          
-          {data.bullets.map((bullet, index) => (
-            <div key={index} className="flex gap-2 items-start">
-              <div className="pt-2">
-                <Checkbox id={`${title.toLowerCase()}-bullet-${index}`} />
-              </div>
-              <div className="flex-1">
-                <Input
-                  value={bullet}
-                  onChange={(e) => onBulletChange(index, e.target.value)}
-                  placeholder="Enter key point"
-                />
-              </div>
-              {data.bullets.length > 1 && (
-                <Button 
-                  type="button" 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => onRemoveBullet(index)}
-                  className="h-10 px-2 text-red-500 hover:text-red-700 hover:bg-red-50"
-                >
-                  ✕
-                </Button>
-              )}
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
-  );
-};

@@ -65,7 +65,7 @@ const EditorialBatchUploadPage = () => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = 'editorial_template.xlsx';
+      link.download = 'editorial_template.csv';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -165,10 +165,10 @@ const EditorialBatchUploadPage = () => {
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2">
                   <FileSpreadsheet className="h-5 w-5" />
-                  Upload Excel File
+                  Upload Data File
                 </CardTitle>
                 <CardDescription>
-                  Upload multiple editorials at once using an Excel file.
+                  Upload multiple editorials at once using an Excel or CSV file.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -179,12 +179,12 @@ const EditorialBatchUploadPage = () => {
                       <Input
                         id="file-upload"
                         type="file"
-                        accept=".xlsx,.xls"
+                        accept=".xlsx,.xls,.csv"
                         onChange={handleFileChange}
                       />
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Accepted formats: Excel (.xlsx, .xls)
+                      Accepted formats: Excel (.xlsx, .xls) or CSV (.csv)
                     </p>
                   </div>
                 </div>
@@ -218,7 +218,7 @@ const EditorialBatchUploadPage = () => {
               <CardHeader className="pb-3">
                 <CardTitle>File Format Requirements</CardTitle>
                 <CardDescription>
-                  Your Excel file must contain the following columns:
+                  Your Excel or CSV file must contain the following columns:
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -268,11 +268,12 @@ const EditorialBatchUploadPage = () => {
                   <div className="bg-amber-50 p-4 rounded-md border border-amber-200">
                     <p className="font-medium text-amber-800 mb-2">Tips for successful upload:</p>
                     <ul className="list-disc pl-5 space-y-1 text-amber-700">
-                      <li>Make sure your Excel file has a header row with the column names</li>
+                      <li>Make sure your file has a header row with the column names</li>
                       <li>Dates should be in YYYY-MM-DD format (e.g., 2023-05-15)</li>
                       <li>Use consistent naming for companies, publications, etc.</li>
                       <li>For mediaType, use only "Print" or "Online"</li>
                       <li>For sentiment, use only "Positive", "Negative", or "Neutral"</li>
+                      <li>CSV files should use comma separators</li>
                     </ul>
                   </div>
                 </div>
