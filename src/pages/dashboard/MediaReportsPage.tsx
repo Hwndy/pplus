@@ -1,12 +1,11 @@
 
 import { DataCard } from '@/components/ui/DataCard';
 import { Button } from '@/components/ui/button';
-import { Calendar, Download, Filter, BarChart } from 'lucide-react';
+import { Calendar, Download, Filter, BarChart, TrendingUp, Users, Eye } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 import { dashboardSummary } from '@/utils/mockData';
-
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
 export default function MediaReportsPage() {
   return (
@@ -38,62 +37,77 @@ export default function MediaReportsPage() {
         
         <TabsContent value="overview">
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <DataCard title="Media Mentions by Month" variant="glass" icon={<BarChart size={24} />}>
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart
-                    data={dashboardSummary.mentionTrend}
-                    margin={{ top: 10, right: 20, left: 0, bottom: 0 }}
-                  >
-                    <defs>
-                      <linearGradient id="colorMentions" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#0088FE" stopOpacity={0.8} />
-                        <stop offset="95%" stopColor="#0088FE" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <XAxis dataKey="date" />
-                    <YAxis />
-                    <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(4px)' }} 
-                      formatter={(value) => [`${value} mentions`, 'Media Mentions']}
-                      labelFormatter={(label) => `Month: ${label}`}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="value"
-                      stroke="#0088FE"
-                      strokeWidth={2}
-                      fillOpacity={1}
-                      fill="url(#colorMentions)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+            <DataCard title="Media Mentions by Month" variant="glass" icon={<TrendingUp size={24} />}>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Month</TableHead>
+                      <TableHead className="text-right">Mentions</TableHead>
+                      <TableHead className="text-right">Growth</TableHead>
+                      <TableHead className="text-right">Trend</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {dashboardSummary.mentionTrend.map((item, index) => {
+                      const prevValue = index > 0 ? dashboardSummary.mentionTrend[index - 1].value : item.value;
+                      const growth = index > 0 ? ((item.value - prevValue) / prevValue * 100).toFixed(1) : '0.0';
+                      const isPositive = parseFloat(growth) >= 0;
+
+                      return (
+                        <TableRow key={item.date}>
+                          <TableCell className="font-medium">{item.date}</TableCell>
+                          <TableCell className="text-right">{item.value.toLocaleString()}</TableCell>
+                          <TableCell className="text-right">
+                            <span className={isPositive ? 'text-green-600' : 'text-red-600'}>
+                              {isPositive ? '+' : ''}{growth}%
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Badge variant={isPositive ? 'default' : 'destructive'}>
+                              {isPositive ? '↗' : '↘'}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
               </div>
             </DataCard>
 
-            <DataCard title="Media Channel Distribution" variant="glass" icon={<BarChart size={24} />}>
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={dashboardSummary.mediaBreakdown}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {dashboardSummary.mediaBreakdown.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
+            <DataCard title="Media Channel Distribution" variant="glass" icon={<Users size={24} />}>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Channel</TableHead>
+                      <TableHead className="text-right">Mentions</TableHead>
+                      <TableHead className="text-right">Percentage</TableHead>
+                      <TableHead className="text-right">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {dashboardSummary.mediaBreakdown.map((item, index) => {
+                      const total = dashboardSummary.mediaBreakdown.reduce((sum, channel) => sum + channel.value, 0);
+                      const percentage = ((item.value / total) * 100).toFixed(1);
+                      const isHighPerforming = parseFloat(percentage) > 20;
+
+                      return (
+                        <TableRow key={item.name}>
+                          <TableCell className="font-medium">{item.name}</TableCell>
+                          <TableCell className="text-right">{item.value.toLocaleString()}</TableCell>
+                          <TableCell className="text-right">{percentage}%</TableCell>
+                          <TableCell className="text-right">
+                            <Badge variant={isHighPerforming ? 'default' : 'secondary'}>
+                              {isHighPerforming ? 'High' : 'Normal'}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
               </div>
             </DataCard>
           </div>
@@ -218,67 +232,54 @@ export default function MediaReportsPage() {
                 </div>
               </div>
               
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart
-                    data={[
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Month</TableHead>
+                      <TableHead className="text-right">Positive</TableHead>
+                      <TableHead className="text-right">Neutral</TableHead>
+                      <TableHead className="text-right">Negative</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                      <TableHead className="text-right">Sentiment Score</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {[
                       { date: 'Jan', positive: 350, neutral: 150, negative: 50 },
                       { date: 'Feb', positive: 320, neutral: 120, negative: 60 },
                       { date: 'Mar', positive: 380, neutral: 130, negative: 40 },
                       { date: 'Apr', positive: 420, neutral: 140, negative: 45 },
                       { date: 'May', positive: 400, neutral: 130, negative: 50 },
                       { date: 'Jun', positive: 450, neutral: 140, negative: 30 },
-                    ]}
-                    margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-                  >
-                    <defs>
-                      <linearGradient id="colorPositive" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#4ade80" stopOpacity={0.8} />
-                        <stop offset="95%" stopColor="#4ade80" stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="colorNeutral" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.8} />
-                        <stop offset="95%" stopColor="#94a3b8" stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="colorNegative" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#f87171" stopOpacity={0.8} />
-                        <stop offset="95%" stopColor="#f87171" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <XAxis dataKey="date" />
-                    <YAxis />
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <Tooltip />
-                    <Legend />
-                    <Area
-                      type="monotone"
-                      dataKey="positive"
-                      stroke="#4ade80"
-                      fillOpacity={1}
-                      fill="url(#colorPositive)"
-                      stackId="1"
-                      name="Positive"
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="neutral"
-                      stroke="#94a3b8"
-                      fillOpacity={1}
-                      fill="url(#colorNeutral)"
-                      stackId="1"
-                      name="Neutral"
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="negative"
-                      stroke="#f87171"
-                      fillOpacity={1}
-                      fill="url(#colorNegative)"
-                      stackId="1"
-                      name="Negative"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+                    ].map((item) => {
+                      const total = item.positive + item.neutral + item.negative;
+                      const sentimentScore = ((item.positive - item.negative) / total * 100).toFixed(1);
+                      const isPositiveOverall = parseFloat(sentimentScore) > 0;
+
+                      return (
+                        <TableRow key={item.date}>
+                          <TableCell className="font-medium">{item.date}</TableCell>
+                          <TableCell className="text-right">
+                            <span className="text-green-600">{item.positive}</span>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <span className="text-gray-600">{item.neutral}</span>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <span className="text-red-600">{item.negative}</span>
+                          </TableCell>
+                          <TableCell className="text-right font-medium">{total}</TableCell>
+                          <TableCell className="text-right">
+                            <Badge variant={isPositiveOverall ? 'default' : 'destructive'}>
+                              {sentimentScore}%
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
               </div>
             </div>
           </DataCard>

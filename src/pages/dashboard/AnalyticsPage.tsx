@@ -1,13 +1,11 @@
 
 import { DataCard } from '@/components/ui/DataCard';
 import { Button } from '@/components/ui/button';
-import { Download, Filter, Calendar, BarChart2, PieChart as PieChartIcon } from 'lucide-react';
+import { Download, Filter, Calendar, BarChart2, TrendingUp, Users, Eye, ThumbsUp } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend } from 'recharts';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 import { dashboardSummary } from '@/utils/mockData';
-
-// Enhanced color palette for better visual appeal
-const COLORS = ['#4F46E5', '#06B6D4', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
 
 // Sample sentiment data
 const sentimentData = [
@@ -62,77 +60,80 @@ export default function AnalyticsPage() {
         <TabsContent value="overview">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <DataCard title="Media Mentions Trend" variant="glass" className="border-indigo-100 hover:border-indigo-300 transition-all shadow-sm hover:shadow-md">
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart
-                    data={dashboardSummary.mentionTrend}
-                    margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-                  >
-                    <defs>
-                      <linearGradient id="colorMentions" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={COLORS[0]} stopOpacity={0.8} />
-                        <stop offset="95%" stopColor={COLORS[0]} stopOpacity={0.1} />
-                      </linearGradient>
-                    </defs>
-                    <XAxis dataKey="date" />
-                    <YAxis />
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <Tooltip contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)', border: 'none' }} />
-                    <Area
-                      type="monotone"
-                      dataKey="value"
-                      stroke={COLORS[0]}
-                      strokeWidth={2}
-                      fillOpacity={1}
-                      fill="url(#colorMentions)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Month</TableHead>
+                      <TableHead className="text-right">Mentions</TableHead>
+                      <TableHead className="text-right">Growth</TableHead>
+                      <TableHead className="text-right">Performance</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {dashboardSummary.mentionTrend.map((item, index) => {
+                      const prevValue = index > 0 ? dashboardSummary.mentionTrend[index - 1].value : item.value;
+                      const growth = index > 0 ? ((item.value - prevValue) / prevValue * 100).toFixed(1) : '0.0';
+                      const isPositive = parseFloat(growth) >= 0;
+                      const isHighPerforming = item.value > 150;
+
+                      return (
+                        <TableRow key={item.date}>
+                          <TableCell className="font-medium">{item.date}</TableCell>
+                          <TableCell className="text-right">{item.value.toLocaleString()}</TableCell>
+                          <TableCell className="text-right">
+                            <span className={isPositive ? 'text-green-600' : 'text-red-600'}>
+                              {isPositive ? '+' : ''}{growth}%
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Badge variant={isHighPerforming ? 'default' : 'secondary'}>
+                              {isHighPerforming ? 'High' : 'Normal'}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
               </div>
             </DataCard>
 
-            <DataCard title="Media Channel Distribution" variant="glass" icon={<PieChartIcon size={24} className="text-indigo-600" />} className="border-indigo-100 hover:border-indigo-300 transition-all shadow-sm hover:shadow-md">
-              <div className="h-80 relative p-2">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={dashboardSummary.mediaBreakdown}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      outerRadius="90%"
-                      innerRadius="50%"
-                      fill="#8884d8"
-                      dataKey="value"
-                      paddingAngle={3}
-                      startAngle={90}
-                      endAngle={450}
-                    >
-                      {dashboardSummary.mediaBreakdown.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      formatter={(value) => [`${value}%`, 'Percentage']}
-                      contentStyle={{
-                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                        borderRadius: '8px',
-                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                        border: 'none'
-                      }}
-                    />
-                    <Legend
-                      verticalAlign="bottom"
-                      height={36}
-                      iconType="circle"
-                      wrapperStyle={{ paddingTop: '10px', fontSize: '12px' }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
-                  <div className="text-2xl font-bold text-gray-800">100%</div>
-                  <div className="text-xs text-gray-500 font-medium">Coverage</div>
-                </div>
+            <DataCard title="Media Channel Distribution" variant="glass" icon={<Users size={24} className="text-indigo-600" />} className="border-indigo-100 hover:border-indigo-300 transition-all shadow-sm hover:shadow-md">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Channel</TableHead>
+                      <TableHead className="text-right">Mentions</TableHead>
+                      <TableHead className="text-right">Percentage</TableHead>
+                      <TableHead className="text-right">Reach</TableHead>
+                      <TableHead className="text-right">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {dashboardSummary.mediaBreakdown.map((item, index) => {
+                      const total = dashboardSummary.mediaBreakdown.reduce((sum, channel) => sum + channel.value, 0);
+                      const percentage = ((item.value / total) * 100).toFixed(1);
+                      const isHighPerforming = parseFloat(percentage) > 20;
+                      const estimatedReach = item.value * (Math.random() * 1000 + 500); // Mock reach calculation
+
+                      return (
+                        <TableRow key={item.name}>
+                          <TableCell className="font-medium">{item.name}</TableCell>
+                          <TableCell className="text-right">{item.value.toLocaleString()}</TableCell>
+                          <TableCell className="text-right">{percentage}%</TableCell>
+                          <TableCell className="text-right">{estimatedReach.toLocaleString()}</TableCell>
+                          <TableCell className="text-right">
+                            <Badge variant={isHighPerforming ? 'default' : 'secondary'}>
+                              {isHighPerforming ? 'High' : 'Normal'}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
               </div>
             </DataCard>
           </div>
@@ -145,29 +146,47 @@ export default function AnalyticsPage() {
             className="border-indigo-100 hover:border-indigo-300 transition-all shadow-sm hover:shadow-md"
             description="Tracking sentiment trends across months"
           >
-            <div className="h-96">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={sentimentData}
-                  margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="month" />
-                  <YAxis />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                      border: 'none'
-                    }}
-                  />
-                  <Legend iconType="circle" />
-                  <Bar dataKey="positive" stackId="a" fill={COLORS[2]} name="Positive" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="neutral" stackId="a" fill={COLORS[3]} name="Neutral" />
-                  <Bar dataKey="negative" stackId="a" fill={COLORS[4]} name="Negative" />
-                </BarChart>
-              </ResponsiveContainer>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Month</TableHead>
+                    <TableHead className="text-right">Positive</TableHead>
+                    <TableHead className="text-right">Neutral</TableHead>
+                    <TableHead className="text-right">Negative</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                    <TableHead className="text-right">Sentiment Score</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sentimentData.map((item) => {
+                    const total = item.positive + item.neutral + item.negative;
+                    const sentimentScore = ((item.positive - item.negative) / total * 100).toFixed(1);
+                    const isPositiveOverall = parseFloat(sentimentScore) > 0;
+
+                    return (
+                      <TableRow key={item.month}>
+                        <TableCell className="font-medium">{item.month}</TableCell>
+                        <TableCell className="text-right">
+                          <span className="text-green-600">{item.positive}</span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <span className="text-gray-600">{item.neutral}</span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <span className="text-red-600">{item.negative}</span>
+                        </TableCell>
+                        <TableCell className="text-right font-medium">{total}</TableCell>
+                        <TableCell className="text-right">
+                          <Badge variant={isPositiveOverall ? 'default' : 'destructive'}>
+                            {sentimentScore}%
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </div>
           </DataCard>
         </TabsContent>
@@ -179,36 +198,39 @@ export default function AnalyticsPage() {
             className="border-indigo-100 hover:border-indigo-300 transition-all shadow-sm hover:shadow-md"
             description="Comparing performance across different media channels"
           >
-            <div className="h-96">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={channelData}
-                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                  layout="vertical"
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis type="number" />
-                  <YAxis type="category" dataKey="name" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                      border: 'none'
-                    }}
-                  />
-                  <Legend iconType="circle" />
-                  <Bar
-                    dataKey="value"
-                    name="Mentions"
-                    radius={[0, 4, 4, 0]}
-                  >
-                    {channelData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Channel</TableHead>
+                    <TableHead className="text-right">Mentions</TableHead>
+                    <TableHead className="text-right">Engagement Rate</TableHead>
+                    <TableHead className="text-right">Reach</TableHead>
+                    <TableHead className="text-right">Performance</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {channelData.map((item, index) => {
+                    const engagementRate = (Math.random() * 10 + 2).toFixed(1); // Mock engagement rate
+                    const reach = item.value * (Math.random() * 2000 + 1000); // Mock reach calculation
+                    const isHighPerforming = item.value > 80;
+
+                    return (
+                      <TableRow key={item.name}>
+                        <TableCell className="font-medium">{item.name}</TableCell>
+                        <TableCell className="text-right">{item.value.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">{engagementRate}%</TableCell>
+                        <TableCell className="text-right">{reach.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">
+                          <Badge variant={isHighPerforming ? 'default' : 'secondary'}>
+                            {isHighPerforming ? 'High' : 'Normal'}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </div>
           </DataCard>
         </TabsContent>
@@ -222,7 +244,7 @@ export default function AnalyticsPage() {
           >
             <div className="p-8 text-center bg-gradient-to-br from-indigo-50 to-blue-50 rounded-lg">
               <div className="mb-6">
-                <PieChartIcon size={48} className="mx-auto text-indigo-400 opacity-50" />
+                <TrendingUp size={48} className="mx-auto text-indigo-400 opacity-50" />
               </div>
               <p className="text-gray-600 mb-6">Our trend analysis and forecasting features are currently in development. Be among the first to access these powerful tools.</p>
               <Button className="bg-gradient-to-r from-indigo-600 to-blue-500 hover:from-indigo-700 hover:to-blue-600 transition-all">

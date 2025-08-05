@@ -51,12 +51,15 @@ const PublicationsPage = () => {
   const publicationsPerPage = 10;
 
   // API hooks
-  const { data: publications = [], loading, error, refetch } = usePublications({
+  const { data: publicationsData, loading, error, refetch } = usePublications({
     page: currentPage,
     limit: publicationsPerPage,
     search: searchTerm
   });
   const { mutate: deletePublication, loading: deleting } = useDeletePublication();
+
+  // Ensure publications is always an array
+  const publications = Array.isArray(publicationsData) ? publicationsData : [];
 
   // Handle search
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -65,10 +68,10 @@ const PublicationsPage = () => {
   };
 
   // Calculate pagination
-  const totalPages = Math.ceil((publications?.length || 0) / publicationsPerPage);
+  const totalPages = Math.ceil(publications.length / publicationsPerPage);
   const indexOfLastPublication = currentPage * publicationsPerPage;
   const indexOfFirstPublication = indexOfLastPublication - publicationsPerPage;
-  const currentPublications = publications?.slice(indexOfFirstPublication, indexOfLastPublication) || [];
+  const currentPublications = publications.slice(indexOfFirstPublication, indexOfLastPublication);
 
   // Handle edit
   const handleEdit = (publication: Publication) => {
@@ -312,9 +315,11 @@ const PublicationsPage = () => {
         </div>
       )}
 
-      <div className="mt-4 text-sm text-gray-500">
-        Showing {indexOfFirstPublication + 1} to {Math.min(indexOfLastPublication, publications.length)} of {publications.length} results
-      </div>
+      {publications.length > 0 && (
+        <div className="mt-4 text-sm text-gray-500">
+          Showing {indexOfFirstPublication + 1} to {Math.min(indexOfLastPublication, publications.length)} of {publications.length} results
+        </div>
+      )}
     </div>
   );
 };
