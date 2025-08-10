@@ -81,7 +81,7 @@ export default function ApiDemoPage() {
         name: 'Test User API Demo',
         email: `testuser${Date.now()}@example.com`,
         password: 'testpass123',
-        role: 'ANALYST',
+        role: 'Analyst',
         mobileContact: '+1234567890',
       });
       toast.success('Test user created successfully');
