@@ -30,7 +30,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 
 // Sample supervisors for the demo
-const MOCK_SUPERVISORS = [
+const MOCK_SupervisorS = [
   { id: 'sup-1', name: 'John Supervisor' },
   { id: 'sup-2', name: 'Sarah Manager' },
   { id: 'sup-3', name: 'Michael Team Lead' },
@@ -289,7 +289,7 @@ export function EditUserForm({ user, onSave, onCancel }: EditUserFormProps) {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {MOCK_SUPERVISORS.map(supervisor => (
+                      {MOCK_SupervisorS.map(supervisor => (
                         <SelectItem key={supervisor.id} value={supervisor.id}>
                           {supervisor.name}
                         </SelectItem>

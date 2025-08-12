@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { apiService } from '@/services/apiService';
 
-export type UserRole = 'ADMIN' | 'SUPERVISOR' | 'ANALYST' | 'CLIENT';
+export type UserRole = 'Admin' | 'Supervisor' | 'Analyst' | 'Client';
 
 export interface User {
   id: string;

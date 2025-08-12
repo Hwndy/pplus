@@ -52,7 +52,7 @@ interface UserFormData {
   name: string;
   email: string;
   password?: string;
-  role: 'ADMIN' | 'SUPERVISOR' | 'ANALYST' | 'CLIENT';
+  role: 'Admin' | 'Supervisor' | 'Analyst' | 'Client';
   mobileContact?: string;
   countryCode?: string;
   supervisorId?: string;
@@ -68,7 +68,7 @@ export function UserManagement() {
     name: '',
     email: '',
     password: '',
-    role: 'ANALYST',
+    role: 'Analyst',
     mobileContact: '',
     countryCode: '',
     supervisorId: '',
@@ -152,7 +152,7 @@ export function UserManagement() {
       name: '',
       email: '',
       password: '',
-      role: 'ANALYST',
+      role: 'Analyst',
       mobileContact: '',
       countryCode: '',
       supervisorId: '',
@@ -166,7 +166,7 @@ export function UserManagement() {
       name: user.name || '',
       email: user.email || '',
       password: '', // Always start with empty password for editing
-      role: user.role || 'ANALYST',
+      role: user.role || 'Analyst',
       mobileContact: user.mobileContact || '',
       countryCode: user.countryCode || '',
       supervisorId: user.supervisorId || '',
@@ -181,13 +181,13 @@ export function UserManagement() {
 
   const getRoleColor = (role: string) => {
     switch (role) {
-      case 'ADMIN':
+      case 'Admin':
         return 'bg-red-100 text-red-800';
-      case 'SUPERVISOR':
+      case 'Supervisor':
         return 'bg-blue-100 text-blue-800';
-      case 'ANALYST':
+      case 'Analyst':
         return 'bg-green-100 text-green-800';
-      case 'CLIENT':
+      case 'Client':
         return 'bg-purple-100 text-purple-800';
       default:
         return 'bg-gray-100 text-gray-800';
@@ -306,10 +306,10 @@ export function UserManagement() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="ADMIN">Admin</SelectItem>
-                      <SelectItem value="SUPERVISOR">Supervisor</SelectItem>
-                      <SelectItem value="ANALYST">Analyst</SelectItem>
-                      <SelectItem value="CLIENT">Client</SelectItem>
+                      <SelectItem value="Admin">Admin</SelectItem>
+                      <SelectItem value="Supervisor">Supervisor</SelectItem>
+                      <SelectItem value="Analyst">Analyst</SelectItem>
+                      <SelectItem value="Client">Client</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -514,10 +514,10 @@ export function UserManagement() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ADMIN">Admin</SelectItem>
-                  <SelectItem value="SUPERVISOR">Supervisor</SelectItem>
-                  <SelectItem value="ANALYST">Analyst</SelectItem>
-                  <SelectItem value="CLIENT">Client</SelectItem>
+                  <SelectItem value="Admin">Admin</SelectItem>
+                  <SelectItem value="Supervisor">Supervisor</SelectItem>
+                  <SelectItem value="Analyst">Analyst</SelectItem>
+                  <SelectItem value="Client">Client</SelectItem>
                 </SelectContent>
               </Select>
             </div>

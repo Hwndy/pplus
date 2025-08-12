@@ -2,32 +2,32 @@
 
 ## 📋 Available User Accounts
 
-### 🔴 **ADMIN Users**
+### 🔴 **Admin Users**
 | Name | Email | Password | Role | Description |
 |------|-------|----------|------|-------------|
-| Admin User | `admin@mediamonitor.com` | `admin123` | ADMIN | System administrator (existing) |
-| David Manager | `manager@mediamonitor.com` | `manager123` | ADMIN | Manager with admin privileges |
-| Lisa Admin | `admin2@mediamonitor.com` | `admin123` | ADMIN | Additional admin user |
+| Admin User | `admin@mediamonitor.com` | `admin123` | Admin | System administrator (existing) |
+| David Manager | `manager@mediamonitor.com` | `manager123` | Admin | Manager with admin privileges |
+| Lisa Admin | `admin2@mediamonitor.com` | `admin123` | Admin | Additional admin user |
 
-### 🟡 **SUPERVISOR Users**
+### 🟡 **Supervisor Users**
 | Name | Email | Password | Role | Description |
 |------|-------|----------|------|-------------|
-| Mike Supervisor | `supervisor1@mediamonitor.com` | `supervisor123` | SUPERVISOR | Content supervisor |
-| Sarah Supervisor | `supervisor2@mediamonitor.com` | `supervisor123` | SUPERVISOR | Content supervisor |
-| Tom Supervisor | `supervisor3@mediamonitor.com` | `supervisor123` | SUPERVISOR | Content supervisor |
+| Mike Supervisor | `supervisor1@mediamonitor.com` | `supervisor123` | Supervisor | Content supervisor |
+| Sarah Supervisor | `supervisor2@mediamonitor.com` | `supervisor123` | Supervisor | Content supervisor |
+| Tom Supervisor | `supervisor3@mediamonitor.com` | `supervisor123` | Supervisor | Content supervisor |
 
-### 🟢 **ANALYST Users**
+### 🟢 **Analyst Users**
 | Name | Email | Password | Role | Description |
 |------|-------|----------|------|-------------|
-| John Analyst | `analyst1@mediamonitor.com` | `analyst123` | ANALYST | Content analyst |
-| Jane Analyst | `analyst2@mediamonitor.com` | `analyst123` | ANALYST | Content analyst |
-| Emma Analyst | `analyst3@mediamonitor.com` | `analyst123` | ANALYST | Content analyst |
+| John Analyst | `analyst1@mediamonitor.com` | `analyst123` | Analyst | Content analyst |
+| Jane Analyst | `analyst2@mediamonitor.com` | `analyst123` | Analyst | Content analyst |
+| Emma Analyst | `analyst3@mediamonitor.com` | `analyst123` | Analyst | Content analyst |
 
-### 🔵 **CLIENT Users**
+### 🔵 **Client Users**
 | Name | Email | Password | Role | Description |
 |------|-------|----------|------|-------------|
-| Client User 1 | `client1@company.com` | `client123` | CLIENT | Client dashboard access |
-| Client User 2 | `client2@company.com` | `client123` | CLIENT | Client dashboard access |
+| Client User 1 | `client1@company.com` | `client123` | Client | Client dashboard access |
+| Client User 2 | `client2@company.com` | `client123` | Client | Client dashboard access |
 
 ## 🎯 **Recommended Test Accounts**
 

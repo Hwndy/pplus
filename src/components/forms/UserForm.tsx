@@ -16,7 +16,7 @@ const userSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters').optional(),
-  role: z.enum(['ADMIN', 'SUPERVISOR', 'ANALYST', 'CLIENT'], {
+  role: z.enum(['Admin', 'Supervisor', 'Analyst', 'Client'], {
     required_error: 'Role is required',
   }),
   mobileContact: z.string().optional(),
@@ -36,10 +36,10 @@ interface UserFormProps {
 }
 
 const roles = [
-  { value: 'ADMIN', label: 'Administrator' },
-  { value: 'SUPERVISOR', label: 'Supervisor' },
-  { value: 'ANALYST', label: 'Analyst' },
-  { value: 'CLIENT', label: 'Client' },
+  { value: 'Admin', label: 'Administrator' },
+  { value: 'Supervisor', label: 'Supervisor' },
+  { value: 'Analyst', label: 'Analyst' },
+  { value: 'Client', label: 'Client' },
 ];
 
 const countryCodes = [
@@ -65,7 +65,7 @@ export function UserForm({ user, onSuccess, onCancel, mode = 'create' }: UserFor
       name: user?.name || '',
       email: user?.email || '',
       password: '',
-      role: user?.role || 'ANALYST',
+      role: user?.role || 'Analyst',
       mobileContact: user?.mobileContact || '',
       countryCode: user?.countryCode || '+234',
       supervisorId: user?.supervisorId || '',
@@ -228,7 +228,7 @@ export function UserForm({ user, onSuccess, onCancel, mode = 'create' }: UserFor
                 )}
               />
 
-              {(selectedRole === 'ANALYST' || selectedRole === 'CLIENT') && supervisors && (
+              {(selectedRole === 'Analyst' || selectedRole === 'Client') && supervisors && (
                 <FormField
                   control={form.control}
                   name="supervisorId"
@@ -301,7 +301,7 @@ export function UserForm({ user, onSuccess, onCancel, mode = 'create' }: UserFor
             </div>
 
             {/* Expiration Date for Clients */}
-            {selectedRole === 'CLIENT' && (
+            {selectedRole === 'Client' && (
               <FormField
                 control={form.control}
                 name="expirationDate"

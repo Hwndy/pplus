@@ -50,7 +50,7 @@ export function CreateUserForm({ onSave, onCancel }: CreateUserFormProps) {
     defaultValues: {
       name: '',
       email: '',
-      role: 'ADMIN',
+      role: 'Admin',
       mobileContact: '',
       countryCode: '+234',
       joinDate: new Date(),
@@ -65,11 +65,11 @@ export function CreateUserForm({ onSave, onCancel }: CreateUserFormProps) {
   const selectedRole = form.watch('role');
   
   useEffect(() => {
-    // Show supervisor field only when 'ANALYST' or 'CLIENT' role is selected
-    setShowSupervisorField(selectedRole === 'ANALYST' || selectedRole === 'CLIENT');
+    // Show supervisor field only when 'Analyst' or 'Client' role is selected
+    setShowSupervisorField(selectedRole === 'Analyst' || selectedRole === 'Client');
 
     // Reset supervisor value when role changes to non-analyst/client
-    if (selectedRole !== 'ANALYST' && selectedRole !== 'CLIENT') {
+    if (selectedRole !== 'Analyst' && selectedRole !== 'Client') {
       form.setValue('supervisorId', '');
     }
   }, [selectedRole, form]);
@@ -87,7 +87,7 @@ export function CreateUserForm({ onSave, onCancel }: CreateUserFormProps) {
     }
 
     // Validate that analyst/client has a supervisor
-    if ((values.role === 'ANALYST' || values.role === 'CLIENT') && !values.supervisorId) {
+    if ((values.role === 'Analyst' || values.role === 'Client') && !values.supervisorId) {
       form.setError('supervisorId', {
         type: 'manual',
         message: "Supervisor is required for analysts and clients"
@@ -106,7 +106,7 @@ export function CreateUserForm({ onSave, onCancel }: CreateUserFormProps) {
         mobileContact: values.mobileContact,
         countryCode: values.countryCode,
         supervisorId: values.supervisorId || undefined,
-        expirationDate: values.role === 'CLIENT' ? values.expirationDate.toISOString() : undefined,
+        expirationDate: values.role === 'Client' ? values.expirationDate.toISOString() : undefined,
         avatar,
       };
 
@@ -255,10 +255,10 @@ export function CreateUserForm({ onSave, onCancel }: CreateUserFormProps) {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="ADMIN">Admin</SelectItem>
-                    <SelectItem value="SUPERVISOR">Supervisor</SelectItem>
-                    <SelectItem value="ANALYST">Analyst</SelectItem>
-                    <SelectItem value="CLIENT">Client</SelectItem>
+                    <SelectItem value="Admin">Admin</SelectItem>
+                    <SelectItem value="Supervisor">Supervisor</SelectItem>
+                    <SelectItem value="Analyst">Analyst</SelectItem>
+                    <SelectItem value="Client">Client</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />

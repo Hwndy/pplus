@@ -5,7 +5,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  role: 'ADMIN' | 'SUPERVISOR' | 'ANALYST' | 'CLIENT';
+  role: 'Admin' | 'Supervisor' | 'Analyst' | 'Client';
   status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
   avatar?: string;
   mobileContact?: string;
@@ -487,7 +487,7 @@ class ApiService {
   async createUser(data: Partial<User>) {
     try {
       console.log('Creating user with data:', data);
-      const response = await post(`${this.baseUrl}/users`, data, {
+      const response = await post(`${this.baseUrl}/auth/create-user`, data, {
         headers: this.getAuthHeaders(),
       });
       console.log('Create user API response:', response);
@@ -544,7 +544,7 @@ class ApiService {
   async exportUsers(params?: QueryParams): Promise<ApiResponse<unknown>> {
     try {
       // Handle export with proper error handling for 400 responses
-      const axiosResponse = await get(`${this.baseUrl}/users/export${this.buildQuery(params)}`, {
+      const axiosResponse = await get(`${this.baseUrl}/export/users${this.buildQuery(params)}`, {
         headers: this.getAuthHeaders(false),
       });
       return this.extractApiResponse<unknown>(axiosResponse);
