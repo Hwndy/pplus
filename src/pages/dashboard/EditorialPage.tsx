@@ -177,6 +177,11 @@ const EditorialPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const editorialsPerPage = 10;
 
+  // Check if we're in review mode
+  const searchParams = new URLSearchParams(location.search);
+  const reviewId = searchParams.get('review');
+  const isReviewMode = !!reviewId;
+
   // API hooks
   const { data: editorialsResponse, loading, error, refetch } = useEditorials({
     page: currentPage,

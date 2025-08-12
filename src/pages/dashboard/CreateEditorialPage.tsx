@@ -5,6 +5,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Copy, Save, Send, Loader2 } from 'lucide-react';
 import { useCreateEditorial, useUpdateEditorial, useCompanies, usePublications } from '@/hooks/useApi';
+import { useAuth } from '@/components/auth/AuthContext';
 import { toast } from 'sonner';
 import EditorialForm from '@/components/EditorialForm';
 
@@ -18,6 +19,11 @@ const CreateEditorialPage = () => {
   const location = useLocation();
   const isEditMode = !!location.state?.editorialData;
 
+  // Check if we're in review mode
+  const searchParams = new URLSearchParams(location.search);
+  const reviewId = searchParams.get('review');
+  const isReviewMode = !!reviewId;
+
   // API hooks
   const createEditorial = useCreateEditorial();
   const updateEditorial = useUpdateEditorial();
@@ -25,12 +31,12 @@ const CreateEditorialPage = () => {
   const { data: publicationsResponse } = usePublications({ limit: 100 });
 
   // Extract real data from API
-  const apiCompanies = companiesResponse?.data || [];
-  const apiPublications = publicationsResponse?.data || [];
+  const apiCompanies = companiesResponse || [];
+  const apiPublications = publicationsResponse || [];
 
-  // Detect user role - this would normally come from authentication
-  // For demo purposes, we'll use a hardcoded role
-  const userRole = 'analyst'; // Options: 'analyst', 'supervisor', 'admin'
+  // Get user role from authentication context
+  const { user } = useAuth();
+  const userRole = user?.role?.toLowerCase() || 'analyst';
 
   // State for form submission
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -117,8 +123,16 @@ const CreateEditorialPage = () => {
     [initialFormData.date ? new Date(initialFormData.date) : new Date()]
   );
 
-  // Load saved data from session storage
+  // Load saved data from session storage or fetch review data
   useEffect(() => {
+    if (isReviewMode && reviewId) {
+      // In review mode, fetch the editorial data from API
+      // For now, we'll use the existing data loading mechanism
+      // In a real implementation, you'd fetch the specific editorial by ID
+      console.log('Review mode: loading editorial', reviewId);
+      return;
+    }
+
     const savedData = sessionStorage.getItem(sessionKey);
     if (savedData && !location.state?.editorialData) {
       try {
@@ -146,7 +160,7 @@ const CreateEditorialPage = () => {
         console.error('Error loading saved editorial data:', error);
       }
     }
-  }, [sessionKey, location.state, toast]);
+  }, [sessionKey, location.state, toast, isReviewMode, reviewId]);
 
   // Save data to session storage whenever it changes
   useEffect(() => {
@@ -393,8 +407,21 @@ const CreateEditorialPage = () => {
     }
   };
 
-  // Determine if a field should be read-only based on user role
+  // Determine if a field should be read-only based on user role and review mode
   const isFieldReadOnly = (fieldName: string): boolean => {
+    // In review mode, only allow editing of role-specific note fields
+    if (isReviewMode) {
+      if (fieldName === 'supervisorNote' && userRole === 'supervisor') {
+        return false; // Supervisors can edit their notes in review mode
+      }
+      if (fieldName === 'adminNote' && userRole === 'admin') {
+        return false; // Admins can edit their notes in review mode
+      }
+      // All other fields are read-only in review mode
+      return true;
+    }
+
+    // In normal mode (not review), apply standard note field restrictions
     if (fieldName === 'analystNote' && userRole !== 'analyst') {
       return true;
     }
@@ -404,36 +431,88 @@ const CreateEditorialPage = () => {
     if (fieldName === 'adminNote' && userRole !== 'admin') {
       return true;
     }
+
+    // All other fields are editable in normal mode for all roles
     return false;
   };
 
+  // Handle review actions (approve/reject)
+  const handleReviewAction = async (action: 'approve' | 'reject') => {
+    if (!isReviewMode || !reviewId) return;
+
+    try {
+      const currentEditorial = editorials[activeIndex];
+
+      // Validate supervisor note if rejecting
+      if (action === 'reject' && !currentEditorial.supervisorNote?.trim()) {
+        toast({
+          title: "Validation Error",
+          description: "Please add a supervisor note before rejecting.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Update the editorial with review status
+      const updateData = {
+        status: action === 'approve' ? 'approved' : 'rejected',
+        supervisorNote: currentEditorial.supervisorNote,
+        reviewedBy: userRole, // Current user
+        reviewedAt: new Date().toISOString()
+      };
+
+      // Call the update API
+      await updateEditorial.mutate({
+        id: reviewId,
+        data: updateData
+      });
+
+      toast({
+        title: "Success",
+        description: `Editorial ${action}d successfully`,
+      });
+
+      // Navigate back to review page
+      navigate('/dashboard/review');
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: `Failed to ${action} editorial`,
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
-    <div className="p-6 w-full">
+    <div className="w-full h-full flex flex-col">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">
-          {isEditMode ? 'Edit Editorial' : 'Create Editorial'}
+          {isReviewMode ? 'Review Editorial' : isEditMode ? 'Edit Editorial' : 'Create Editorial'}
         </h1>
-        <div className="flex space-x-2">
-          <Button
-            onClick={cloneEditorial}
-            variant="outline"
-            className="flex items-center gap-1"
-          >
-            <Copy className="h-4 w-4" />
-            Clone
-          </Button>
-          <Button
-            onClick={addEditorial}
-            variant="outline"
-            className="flex items-center gap-1"
-          >
-            <Plus className="h-4 w-4" />
-            New
-          </Button>
-        </div>
+        {!isReviewMode && (
+          <div className="flex space-x-2">
+            <Button
+              onClick={cloneEditorial}
+              variant="outline"
+              className="flex items-center gap-1"
+            >
+              <Copy className="h-4 w-4" />
+              Clone
+            </Button>
+            <Button
+              onClick={addEditorial}
+              variant="outline"
+              className="flex items-center gap-1"
+            >
+              <Plus className="h-4 w-4" />
+              New
+            </Button>
+          </div>
+        )}
       </div>
 
-      <EditorialForm
+      <div className="flex-1 min-h-0">
+        <EditorialForm
         editorials={editorials}
         activeIndex={activeIndex}
         errors={errors}
@@ -450,10 +529,14 @@ const CreateEditorialPage = () => {
         onSelectChange={handleSelectChange}
         onDateSelect={handleDateChange}
         onClearError={handleClearError}
+        onReviewAction={isReviewMode ? handleReviewAction : undefined}
+        isFieldReadOnly={isFieldReadOnly}
       />
+      </div>
 
-      {/* Form Actions */}
-      <div className="flex justify-end space-x-2 mt-6">
+      {/* Form Actions - Hidden in review mode */}
+      {!isReviewMode && (
+        <div className="flex justify-end space-x-2 mt-6">
         <Button
           type="button"
           variant="outline"
@@ -499,7 +582,8 @@ const CreateEditorialPage = () => {
             </>
           )}
         </Button>
-      </div>
+        </div>
+      )}
     </div>
   );
 };

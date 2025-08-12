@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,101 +10,142 @@ import { toast } from 'sonner';
 import { DataTable } from '@/components/ui/DataTable';
 import { ColumnDef } from '@tanstack/react-table';
 import { CheckCircle, XCircle, Eye, Filter, Newspaper, FileText, Target, LineChart } from 'lucide-react';
+import { apiService } from '@/services/apiService';
+import type { Editorial, DailyMention, SwotAnalysis, OutcomeInsight } from '@/services/apiService';
 
-// Mock data - in a real app, this would come from an API
-const mockEditorials = [
-  {
-    id: '1',
-    title: 'Q1 Market Analysis',
-    content: 'This quarter showed significant growth in the tech sector...',
-    author: 'John Doe',
-    date: '2023-04-15',
-    status: 'pending',
-    type: 'editorial',
-    comments: '',
-    history: []
-  },
-  {
-    id: '2',
-    title: 'Brand Perception Study',
-    content: 'Our recent study indicates a positive shift in brand perception...',
-    author: 'Jane Smith',
-    date: '2023-04-10',
-    status: 'pending',
-    type: 'editorial',
-    comments: '',
-    history: []
-  }
-];
+// Define unified content entry type
+interface ContentEntry {
+  id: string;
+  title: string;
+  type: 'editorial' | 'daily-mention' | 'swot-analysis' | 'outcome-insight';
+  status: 'pending' | 'approved' | 'rejected' | 'draft';
+  date: string;
+  authorName?: string;
+  companyName?: string;
+  content?: string;
+  comments?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  originalData: Editorial | DailyMention | SwotAnalysis | OutcomeInsight;
+  history?: {
+    status: string;
+    timestamp: string;
+    comment: string;
+    userId: string;
+  }[];
+}
 
-const mockDailyMentions = [
-  {
-    id: '1',
-    title: 'Tech Company Daily Mentions',
-    date: '2023-04-15',
-    sections: [
-      {
-        title: 'Company A',
-        mentions: [
-          {
-            id: 'm1',
-            publication: 'Tech Today',
-            publicationDate: '15th April',
-            headline: 'Company A Launches New Product',
-            summary: 'Company A has launched a revolutionary new product...',
-            url: 'https://example.com/article1'
-          }
-        ]
+export default function ContentReviewListPage() {
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('all');
+  const [content, setContent] = useState<ContentEntry[]>([]);
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [viewDetailsDialogOpen, setViewDetailsDialogOpen] = useState(false);
+  const [selectedContent, setSelectedContent] = useState<ContentEntry | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
+
+  // Companies and users data for lookups
+  const [companies, setCompanies] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+
+  // Fetch all content data on component mount
+  useEffect(() => {
+    const fetchContentData = async () => {
+      try {
+        setLoading(true);
+
+        // Fetch all data types in parallel
+        const [editorialsRes, dailyMentionsRes, swotAnalysesRes, outcomeInsightsRes, companiesRes, usersRes] = await Promise.all([
+          apiService.getEditorials(),
+          apiService.getDailyMentions(),
+          apiService.getSwotAnalyses(),
+          apiService.getOutcomeInsights(),
+          apiService.getCompanies(),
+          apiService.getUsers()
+        ]);
+
+        // Store lookup data
+        const companiesData = companiesRes.data || [];
+        const usersData = usersRes.data || [];
+        setCompanies(companiesData);
+        setUsers(usersData);
+
+        // Transform function with available lookup data
+        const transformToContentEntry = (data: any, type: ContentEntry['type']): ContentEntry => {
+          const company = companiesData.find((c: any) => c.id === data.companyId);
+          const author = usersData.find((u: any) => u.id === data.authorId);
+
+          return {
+            id: data.id,
+            title: data.title || data.headline || `${type} - ${data.id}`,
+            type,
+            status: data.status?.toLowerCase() || 'pending',
+            date: data.date || data.createdAt,
+            authorName: author?.name || 'Unknown Author',
+            companyName: company?.name || 'Unknown Company',
+            content: data.content || data.insights || data.strengths?.join(', ') || '',
+            comments: data.comments || '',
+            reviewedBy: data.reviewedBy,
+            reviewedAt: data.reviewedAt,
+            createdAt: data.createdAt,
+            updatedAt: data.updatedAt,
+            originalData: data,
+            history: data.history || []
+          };
+        };
+
+        // Transform data into unified content entries
+        const allEntries: ContentEntry[] = [];
+
+        // Process editorials - handle both array and object responses
+        const editorialsData = Array.isArray(editorialsRes.data) ? editorialsRes.data : (editorialsRes.data?.editorials || []);
+        if (editorialsData.length > 0) {
+          editorialsData.forEach((editorial: Editorial) => {
+            allEntries.push(transformToContentEntry(editorial, 'editorial'));
+          });
+        }
+
+        // Process daily mentions - handle both array and object responses
+        const dailyMentionsData = Array.isArray(dailyMentionsRes.data) ? dailyMentionsRes.data : (dailyMentionsRes.data?.mentions || []);
+        if (dailyMentionsData.length > 0) {
+          dailyMentionsData.forEach((mention: DailyMention) => {
+            allEntries.push(transformToContentEntry(mention, 'daily-mention'));
+          });
+        }
+
+        // Process SWOT analyses - handle both array and object responses
+        const swotAnalysesData = Array.isArray(swotAnalysesRes.data) ? swotAnalysesRes.data : (swotAnalysesRes.data?.analyses || []);
+        if (swotAnalysesData.length > 0) {
+          swotAnalysesData.forEach((swot: SwotAnalysis) => {
+            allEntries.push(transformToContentEntry(swot, 'swot-analysis'));
+          });
+        }
+
+        // Process outcome insights - handle both array and object responses
+        const outcomeInsightsData = Array.isArray(outcomeInsightsRes.data) ? outcomeInsightsRes.data : (outcomeInsightsRes.data?.insights || []);
+        if (outcomeInsightsData.length > 0) {
+          outcomeInsightsData.forEach((insight: OutcomeInsight) => {
+            allEntries.push(transformToContentEntry(insight, 'outcome-insight'));
+          });
+        }
+
+        setContent(allEntries);
+
+      } catch (error) {
+        console.error('Error fetching content data:', error);
+        toast.error('Failed to load content data');
+      } finally {
+        setLoading(false);
       }
-    ],
-    author: 'John Doe',
-    status: 'pending',
-    type: 'daily-mention',
-    comments: '',
-    history: []
-  }
-];
+    };
 
-const mockSwotMentions = [
-  {
-    id: '1',
-    title: 'Q1 SWOT Analysis',
-    company: 'Company A',
-    date: '2023-04-15',
-    strengths: 'Strong market position, innovative products...',
-    weaknesses: 'Limited international presence...',
-    opportunities: 'Expanding into new markets...',
-    threats: 'Increasing competition, regulatory changes...',
-    author: 'Jane Smith',
-    status: 'pending',
-    type: 'swot-mention',
-    comments: '',
-    history: []
-  }
-];
+    fetchContentData();
+  }, []);
 
-const mockOutcomeInsights = [
-  {
-    id: '1',
-    title: 'Q1 Performance Insights',
-    date: '2023-04-15',
-    insights: 'Our analysis shows a 15% increase in market share...',
-    recommendations: 'We recommend focusing on digital marketing...',
-    author: 'John Doe',
-    status: 'pending',
-    type: 'outcome-insight',
-    comments: '',
-    history: []
-  }
-];
 
-// Combine all content types
-const allContent = [
-  ...mockEditorials,
-  ...mockDailyMentions,
-  ...mockSwotMentions,
-  ...mockOutcomeInsights
-];
 
 // Status badge component
 function StatusBadge({ status }: { status: string }) {
@@ -154,58 +195,75 @@ function TypeIcon({ type }: { type: string }) {
   }
 }
 
-export default function ContentReviewListPage() {
-  const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('all');
-  const [content, setContent] = useState(allContent);
-  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
-  const [viewDetailsDialogOpen, setViewDetailsDialogOpen] = useState(false);
-  const [selectedContent, setSelectedContent] = useState<{ id: string; title: string; type: string; status: string; content: string; author: string; date: string } | null>(null);
-  const [rejectReason, setRejectReason] = useState('');
-
   // Handle direct approval
-  const handleApprove = (item: any) => {
-    const now = new Date();
-    const timestamp = now.toISOString();
+  const handleApprove = async (item: ContentEntry) => {
+    try {
+      const now = new Date();
+      const timestamp = now.toISOString();
 
-    // Create a history entry
-    const historyEntry = {
-      status: 'approve',
-      timestamp,
-      comment: 'Approved directly from review list',
-      userId: 'supervisor-1' // In a real app, this would be the actual user ID
-    };
+      // Create a history entry
+      const historyEntry = {
+        status: 'approve',
+        timestamp,
+        comment: 'Approved directly from review list',
+        userId: 'supervisor-1' // In a real app, this would be the actual user ID
+      };
 
-    // Update the content with new status and history
-    const updatedContent = {
-      ...item,
-      status: 'approved',
-      reviewedBy: 'supervisor-1',
-      reviewedAt: timestamp,
-      history: [...(item.history || []), historyEntry]
-    };
+      // Prepare update data
+      const updateData = {
+        status: 'approved',
+        reviewedBy: 'supervisor-1',
+        reviewedAt: timestamp,
+        history: [...(item.history || []), historyEntry]
+      };
 
-    // Update the content in our state
-    setContent(content.map(c => c.id === item.id ? updatedContent : c));
+      // Call appropriate API endpoint based on content type
+      switch (item.type) {
+        case 'editorial':
+          await apiService.updateEditorial(item.id, updateData);
+          break;
+        case 'daily-mention':
+          await apiService.updateDailyMention(item.id, updateData);
+          break;
+        case 'swot-analysis':
+          await apiService.updateSwotAnalysis(item.id, updateData);
+          break;
+        case 'outcome-insight':
+          await apiService.updateOutcomeInsight(item.id, updateData);
+          break;
+      }
 
-    toast.success('Content approved successfully');
+      // Update the content in our state
+      const updatedContent = { ...item, ...updateData };
+      setContent(content.map(c => c.id === item.id ? updatedContent : c));
+
+      toast.success(`${item.type.replace('-', ' ')} approved successfully`);
+    } catch (error) {
+      console.error('Error approving content:', error);
+      toast.error('Failed to approve content');
+    }
   };
 
   // Open reject dialog
-  const handleReject = (item: any) => {
+  const handleReject = (item: ContentEntry) => {
     setSelectedContent(item);
     setRejectReason('');
     setRejectDialogOpen(true);
   };
 
   // Open view details dialog
-  const handleViewDetails = (item: any) => {
+  const handleViewDetails = (item: ContentEntry) => {
     setSelectedContent(item);
     setViewDetailsDialogOpen(true);
   };
 
+  // Navigate to detailed review page
+  const navigateToDetailedReview = (item: ContentEntry) => {
+    navigate(`/dashboard/content-review/${item.type}/${item.id}`);
+  };
+
   // Submit rejection
-  const submitRejection = () => {
+  const submitRejection = async () => {
     if (!selectedContent) return;
 
     if (!rejectReason.trim()) {
@@ -213,32 +271,53 @@ export default function ContentReviewListPage() {
       return;
     }
 
-    const now = new Date();
-    const timestamp = now.toISOString();
+    try {
+      const now = new Date();
+      const timestamp = now.toISOString();
 
-    // Create a history entry
-    const historyEntry = {
-      status: 'reject',
-      timestamp,
-      comment: rejectReason,
-      userId: 'supervisor-1' // In a real app, this would be the actual user ID
-    };
+      // Create a history entry
+      const historyEntry = {
+        status: 'reject',
+        timestamp,
+        comment: rejectReason,
+        userId: 'supervisor-1' // In a real app, this would be the actual user ID
+      };
 
-    // Update the content with new status and history
-    const updatedContent = {
-      ...selectedContent,
-      status: 'rejected',
-      comments: rejectReason,
-      reviewedBy: 'supervisor-1',
-      reviewedAt: timestamp,
-      history: [...(selectedContent.history || []), historyEntry]
-    };
+      // Prepare update data
+      const updateData = {
+        status: 'rejected',
+        comments: rejectReason,
+        reviewedBy: 'supervisor-1',
+        reviewedAt: timestamp,
+        history: [...(selectedContent.history || []), historyEntry]
+      };
 
-    // Update the content in our state
-    setContent(content.map(c => c.id === selectedContent.id ? updatedContent : c));
+      // Call appropriate API endpoint based on content type
+      switch (selectedContent.type) {
+        case 'editorial':
+          await apiService.updateEditorial(selectedContent.id, updateData);
+          break;
+        case 'daily-mention':
+          await apiService.updateDailyMention(selectedContent.id, updateData);
+          break;
+        case 'swot-analysis':
+          await apiService.updateSwotAnalysis(selectedContent.id, updateData);
+          break;
+        case 'outcome-insight':
+          await apiService.updateOutcomeInsight(selectedContent.id, updateData);
+          break;
+      }
 
-    toast.success('Content rejected successfully');
-    setRejectDialogOpen(false);
+      // Update the content in our state
+      const updatedContent = { ...selectedContent, ...updateData };
+      setContent(content.map(c => c.id === selectedContent.id ? updatedContent : c));
+
+      toast.success(`${selectedContent.type.replace('-', ' ')} rejected successfully`);
+      setRejectDialogOpen(false);
+    } catch (error) {
+      console.error('Error rejecting content:', error);
+      toast.error('Failed to reject content');
+    }
   };
 
   // Filter content based on active tab
@@ -250,7 +329,7 @@ export default function ContentReviewListPage() {
   };
 
   // Define columns for content table
-  const contentColumns: ColumnDef<any>[] = [
+  const contentColumns: ColumnDef<ContentEntry>[] = [
     {
       accessorKey: 'type',
       header: 'Type',
@@ -267,10 +346,21 @@ export default function ContentReviewListPage() {
     {
       accessorKey: 'title',
       header: 'Title',
+      cell: ({ row }) => (
+        <div className="max-w-xs truncate" title={row.getValue('title')}>
+          {row.getValue('title')}
+        </div>
+      ),
     },
     {
-      accessorKey: 'author',
+      accessorKey: 'authorName',
       header: 'Author',
+      cell: ({ row }) => row.getValue('authorName') || 'Unknown',
+    },
+    {
+      accessorKey: 'companyName',
+      header: 'Company',
+      cell: ({ row }) => row.getValue('companyName') || 'Unknown',
     },
     {
       accessorKey: 'date',
@@ -307,9 +397,9 @@ export default function ContentReviewListPage() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => navigate(`/dashboard/content-review/${type}/${id}`)}
+              onClick={() => navigateToDetailedReview(row.original)}
             >
-              Full Page
+              Full Review
             </Button>
 
             {status === 'pending' && (
@@ -345,9 +435,20 @@ export default function ContentReviewListPage() {
     all: content.filter(item => item.status === 'pending').length,
     editorial: content.filter(item => item.type === 'editorial' && item.status === 'pending').length,
     'daily-mention': content.filter(item => item.type === 'daily-mention' && item.status === 'pending').length,
-    'swot-mention': content.filter(item => item.type === 'swot-mention' && item.status === 'pending').length,
+    'swot-analysis': content.filter(item => item.type === 'swot-analysis' && item.status === 'pending').length,
     'outcome-insight': content.filter(item => item.type === 'outcome-insight' && item.status === 'pending').length,
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Loading content for review...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -394,7 +495,7 @@ export default function ContentReviewListPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats['swot-mention']}</div>
+            <div className="text-2xl font-bold">{stats['swot-analysis']}</div>
             <p className="text-sm text-muted-foreground">Pending review</p>
           </CardContent>
         </Card>
@@ -418,7 +519,7 @@ export default function ContentReviewListPage() {
           <TabsTrigger value="all">All Content ({stats.all})</TabsTrigger>
           <TabsTrigger value="editorial">Editorials ({stats.editorial})</TabsTrigger>
           <TabsTrigger value="daily-mention">Daily Mentions ({stats['daily-mention']})</TabsTrigger>
-          <TabsTrigger value="swot-mention">SWOT Mentions ({stats['swot-mention']})</TabsTrigger>
+          <TabsTrigger value="swot-analysis">SWOT Analysis ({stats['swot-analysis']})</TabsTrigger>
           <TabsTrigger value="outcome-insight">Outcome & Insights ({stats['outcome-insight']})</TabsTrigger>
         </TabsList>
 
@@ -463,7 +564,7 @@ export default function ContentReviewListPage() {
                 </div>
                 <div className="space-y-2">
                   <p className="text-sm font-medium">Author</p>
-                  <p className="text-sm">{selectedContent.author}</p>
+                  <p className="text-sm">{selectedContent.authorName}</p>
                 </div>
                 <div className="space-y-2">
                   <p className="text-sm font-medium">Date</p>

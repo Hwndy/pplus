@@ -237,7 +237,7 @@ export interface ApiResponse<T = unknown> {
 // API Service Class
 class ApiService {
   private token: string | null = null;
-  private baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://backend-py8p.onrender.com/api';
+  private baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://p-backend-nhe0.onrender.com/api';
 
   constructor() {
     console.log('ApiService initialized with baseUrl:', this.baseUrl);
@@ -919,66 +919,66 @@ class ApiService {
     }
   }
 
-  // MEDIA CHANNELS
-  async getMediaChannels(params?: QueryParams): Promise<ApiResponse<MediaChannel[]>> {
-    try {
-      const axiosResponse = await get(`${this.baseUrl}/media-channels${this.buildQuery(params)}`, {
-        headers: this.getAuthHeaders(false),
-      });
-      return this.extractApiResponse<MediaChannel[]>(axiosResponse);
-    } catch (error) {
-      console.error('Get media channels error:', error);
-      throw error;
-    }
-  }
+  // // MEDIA CHANNELS
+  // async getMediaChannels(params?: QueryParams): Promise<ApiResponse<MediaChannel[]>> {
+  //   try {
+  //     const axiosResponse = await get(`${this.baseUrl}/media-channels${this.buildQuery(params)}`, {
+  //       headers: this.getAuthHeaders(false),
+  //     });
+  //     return this.extractApiResponse<MediaChannel[]>(axiosResponse);
+  //   } catch (error) {
+  //     console.error('Get media channels error:', error);
+  //     throw error;
+  //   }
+  // }
 
-  async getMediaChannelById(id: string) {
-    try {
-      const response = await get(`${this.baseUrl}/media-channels/${id}`, {
-        headers: this.getAuthHeaders(false),
-      });
-      return response;
-    } catch (error) {
-      console.error('Get media channel by ID error:', error);
-      throw error;
-    }
-  }
+  // async getMediaChannelById(id: string) {
+  //   try {
+  //     const response = await get(`${this.baseUrl}/media-channels/${id}`, {
+  //       headers: this.getAuthHeaders(false),
+  //     });
+  //     return response;
+  //   } catch (error) {
+  //     console.error('Get media channel by ID error:', error);
+  //     throw error;
+  //   }
+  // }
 
-  async createMediaChannel(data: Partial<MediaChannel>) {
-    try {
-      const response = await post(`${this.baseUrl}/media-channels`, data, {
-        headers: this.getAuthHeaders(),
-      });
-      return response;
-    } catch (error) {
-      console.error('Create media channel error:', error);
-      throw error;
-    }
-  }
+  // async createMediaChannel(data: Partial<MediaChannel>) {
+  //   try {
+  //     const response = await post(`${this.baseUrl}/media-channels`, data, {
+  //       headers: this.getAuthHeaders(),
+  //     });
+  //     return response;
+  //   } catch (error) {
+  //     console.error('Create media channel error:', error);
+  //     throw error;
+  //   }
+  // }
 
-  async updateMediaChannel(id: string, data: Partial<MediaChannel>) {
-    try {
-      const response = await put(`${this.baseUrl}/media-channels/${id}`, data, {
-        headers: this.getAuthHeaders(),
-      });
-      return response;
-    } catch (error) {
-      console.error('Update media channel error:', error);
-      throw error;
-    }
-  }
+  // async updateMediaChannel(id: string, data: Partial<MediaChannel>) {
+  //   try {
+  //     const response = await put(`${this.baseUrl}/media-channels/${id}`, data, {
+  //       headers: this.getAuthHeaders(),
+  //     });
+  //     return response;
+  //   } catch (error) {
+  //     console.error('Update media channel error:', error);
+  //     throw error;
+  //   }
+  // }
 
-  async deleteMediaChannel(id: string) {
-    try {
-      const response = await del(`${this.baseUrl}/media-channels/${id}`, {
-        headers: this.getAuthHeaders(),
-      });
-      return response;
-    } catch (error) {
-      console.error('Delete media channel error:', error);
-      throw error;
-    }
-  }
+  // async deleteMediaChannel(id: string) {
+  //   try {
+  //     const response = await del(`${this.baseUrl}/media-channels/${id}`, {
+  //       headers: this.getAuthHeaders(),
+  //     });
+  //     return response;
+  //   } catch (error) {
+  //     console.error('Delete media channel error:', error);
+  //     throw error;
+  //   }
+  // }
 
   // ANALYTICS
   async getDashboardSummary(params?: QueryParams): Promise<ApiResponse<unknown>> {

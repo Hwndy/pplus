@@ -37,8 +37,6 @@ import ReportsPage from './dashboard/ReportsPage';
 import AnalyticsPage from './dashboard/AnalyticsPage';
 import AuditPage from './dashboard/AuditPage';
 import ReviewPage from './dashboard/ReviewPage';
-import ContentReviewListPage from './dashboard/ContentReviewListPage';
-import ContentReviewPage from './dashboard/ContentReviewPage';
 import DataEntryPage from './dashboard/DataEntryPage';
 import SubmissionsPage from './dashboard/SubmissionsPage';
 import MediaReportsPage from './dashboard/MediaReportsPage';
@@ -56,6 +54,7 @@ import EditorialPage from './dashboard/EditorialPage';
 import CreateEditorialPage from './dashboard/CreateEditorialPage';
 import EditorialBatchUploadPage from './dashboard/EditorialBatchUploadPage';
 import DailyMentionsPage from './dashboard/DailyMentionsPage';
+import DailyMentionsTablePage from './dashboard/DailyMentionsTablePage';
 import DailyMentionsViewPage from './dashboard/DailyMentionsViewPage';
 import ApiDemoPage from './dashboard/ApiDemoPage';
 
@@ -105,10 +104,10 @@ const Dashboard = () => {
           hasRole(user.role, 'admin') ? <ParametersPage /> : <Navigate to="/dashboard" replace />
         } />
         <Route path="reports" element={
-          hasRole(user.role, ['admin', 'supervisor']) ? <ReportsPage /> : <Navigate to="/dashboard" replace />
+          hasRole(user.role, 'admin') ? <ReportsPage /> : <Navigate to="/dashboard" replace />
         } />
         <Route path="analytics" element={
-          hasRole(user.role, ['admin', 'supervisor']) ? <AnalyticsPage /> : <Navigate to="/dashboard" replace />
+          hasRole(user.role, 'admin') ? <AnalyticsPage /> : <Navigate to="/dashboard" replace />
         } />
         <Route path="audit" element={
           hasRole(user.role, 'admin') ? <AuditPage /> : <Navigate to="/dashboard" replace />
@@ -130,10 +129,10 @@ const Dashboard = () => {
           hasRole(user.role, ['admin', 'analyst', 'supervisor']) ? <EditorialPage /> : <Navigate to="/dashboard" replace />
         } />
         <Route path="editorial/create" element={
-          hasRole(user.role, ['admin', 'analyst']) ? <CreateEditorialPage /> : <Navigate to="/dashboard" replace />
+          hasRole(user.role, ['admin', 'analyst', 'supervisor']) ? <CreateEditorialPage /> : <Navigate to="/dashboard" replace />
         } />
         <Route path="editorial/batch-upload" element={
-          hasRole(user.role, ['admin', 'analyst']) ? <EditorialBatchUploadPage /> : <Navigate to="/dashboard" replace />
+          hasRole(user.role, ['admin', 'analyst', 'supervisor']) ? <EditorialBatchUploadPage /> : <Navigate to="/dashboard" replace />
         } />
 
         <Route path="channels" element={
@@ -159,7 +158,7 @@ const Dashboard = () => {
 
         {/* Daily Mentions routes - accessible to admin, analyst, and supervisor */}
         <Route path="daily-mentions" element={
-          hasRole(user.role, ['admin', 'analyst', 'supervisor']) ? <DailyMentionsViewPage /> : <Navigate to="/dashboard" replace />
+          hasRole(user.role, ['admin', 'analyst', 'supervisor']) ? <DailyMentionsTablePage /> : <Navigate to="/dashboard" replace />
         } />
         <Route path="daily-mentions/create" element={
           hasRole(user.role, ['admin', 'analyst', 'supervisor']) ? <DailyMentionsPage /> : <Navigate to="/dashboard" replace />
@@ -184,12 +183,6 @@ const Dashboard = () => {
         {/* Supervisor routes */}
         <Route path="review" element={
           hasRole(user.role, ['admin', 'supervisor']) ? <ReviewPage /> : <Navigate to="/dashboard" replace />
-        } />
-        <Route path="content-review" element={
-          hasRole(user.role, ['admin', 'supervisor']) ? <ContentReviewListPage /> : <Navigate to="/dashboard" replace />
-        } />
-        <Route path="content-review/:contentType/:id" element={
-          hasRole(user.role, ['admin', 'supervisor']) ? <ContentReviewPage /> : <Navigate to="/dashboard" replace />
         } />
 
         {/* Analyst routes */}

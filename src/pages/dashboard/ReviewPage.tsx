@@ -2,9 +2,8 @@
 import { useState, useEffect } from 'react';
 import { DataCard } from '@/components/ui/DataCard';
 import { DataTable } from '@/components/ui/DataTable';
-import { allDataEntries, clients, dataParameters, mediaChannels, users } from '@/utils/mockData';
 import { Button } from '@/components/ui/button';
-import { Filter, CheckCircle, XCircle, MessageSquare, Clock, AlertTriangle, CheckSquare, History, Eye } from 'lucide-react';
+import { Filter, CheckCircle, XCircle, MessageSquare, Clock, AlertTriangle, CheckSquare, History, Eye, FileText, Target, LineChart, Newspaper } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -22,6 +21,9 @@ import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { Stat } from '@/components/ui/Stat';
+import { apiService } from '@/services/apiService';
+import type { Editorial, DailyMention, SwotAnalysis, OutcomeInsight } from '@/services/apiService';
+import { useNavigate } from 'react-router-dom';
 
 // Status badge component
 function StatusBadge({ status }: { status: string }) {
@@ -62,19 +64,24 @@ function StatusBadge({ status }: { status: string }) {
   }
 }
 
-// Define the data entry type
-interface DataEntry {
+// Define unified review entry type
+interface ReviewEntry {
   id: string;
-  clientId: string;
-  parameterId: string;
-  channelId: string;
-  value: number;
-  date: string;
-  analystId: string;
+  title: string;
+  type: 'editorial' | 'daily-mention' | 'swot-analysis' | 'outcome-insight';
   status: 'pending' | 'approved' | 'rejected' | 'draft';
-  comments: string;
+  date: string;
+  authorId?: string;
+  authorName?: string;
+  companyId?: string;
+  companyName?: string;
+  content?: string;
+  comments?: string;
   reviewedBy?: string;
   reviewedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  originalData: Editorial | DailyMention | SwotAnalysis | OutcomeInsight;
   history?: {
     status: string;
     timestamp: string;
@@ -84,19 +91,16 @@ interface DataEntry {
 }
 
 export default function ReviewPage() {
+  const navigate = useNavigate();
+
   // State for different entry categories
-  const [pendingEntries, setPendingEntries] = useState<DataEntry[]>(
-    allDataEntries.filter(entry => entry.status === 'pending') as DataEntry[]
-  );
-  const [approvedEntries, setApprovedEntries] = useState<DataEntry[]>(
-    allDataEntries.filter(entry => entry.status === 'approved') as DataEntry[]
-  );
-  const [rejectedEntries, setRejectedEntries] = useState<DataEntry[]>(
-    allDataEntries.filter(entry => entry.status === 'rejected') as DataEntry[]
-  );
+  const [pendingEntries, setPendingEntries] = useState<ReviewEntry[]>([]);
+  const [approvedEntries, setApprovedEntries] = useState<ReviewEntry[]>([]);
+  const [rejectedEntries, setRejectedEntries] = useState<ReviewEntry[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // State for review dialog
-  const [selectedEntry, setSelectedEntry] = useState<DataEntry | null>(null);
+  const [selectedEntry, setSelectedEntry] = useState<ReviewEntry | null>(null);
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [reviewComment, setReviewComment] = useState('');
   const [reviewAction, setReviewAction] = useState<'approve' | 'reject' | null>(null);
@@ -115,6 +119,111 @@ export default function ReviewPage() {
     totalReviewed: 0
   });
 
+  // Companies and users data for lookups
+  const [companies, setCompanies] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+
+  // Fetch all review data on component mount
+  useEffect(() => {
+    const fetchReviewData = async () => {
+      try {
+        setLoading(true);
+
+        // Fetch all data types in parallel
+        const [editorialsRes, dailyMentionsRes, swotAnalysesRes, outcomeInsightsRes, companiesRes, usersRes] = await Promise.all([
+          apiService.getEditorials(),
+          apiService.getDailyMentions(),
+          apiService.getSwotAnalyses(),
+          apiService.getOutcomeInsights(),
+          apiService.getCompanies(),
+          apiService.getUsers()
+        ]);
+
+        // Store lookup data
+        const companiesData = companiesRes.data || [];
+        const usersData = usersRes.data || [];
+        setCompanies(companiesData);
+        setUsers(usersData);
+
+        // Transform function with available lookup data
+        const transformToReviewEntry = (data: any, type: ReviewEntry['type']): ReviewEntry => {
+          const company = companiesData.find((c: any) => c.id === data.companyId);
+          const author = usersData.find((u: any) => u.id === data.authorId);
+
+          return {
+            id: data.id,
+            title: data.title || data.headline || `${type} - ${data.id}`,
+            type,
+            status: data.status?.toLowerCase() || 'pending',
+            date: data.date || data.createdAt,
+            authorId: data.authorId,
+            authorName: author?.name || 'Unknown Author',
+            companyId: data.companyId,
+            companyName: company?.name || 'Unknown Company',
+            content: data.content || data.insights || data.strengths?.join(', ') || '',
+            comments: data.comments || '',
+            reviewedBy: data.reviewedBy,
+            reviewedAt: data.reviewedAt,
+            createdAt: data.createdAt,
+            updatedAt: data.updatedAt,
+            originalData: data,
+            history: data.history || []
+          };
+        };
+
+        // Transform data into unified review entries
+        const allEntries: ReviewEntry[] = [];
+
+        // Process editorials - handle both array and object responses
+        const editorialsData = Array.isArray(editorialsRes.data) ? editorialsRes.data : (editorialsRes.data?.editorials || []);
+        if (editorialsData.length > 0) {
+          editorialsData.forEach((editorial: Editorial) => {
+            allEntries.push(transformToReviewEntry(editorial, 'editorial'));
+          });
+        }
+
+        // Process daily mentions - handle both array and object responses
+        const dailyMentionsData = Array.isArray(dailyMentionsRes.data) ? dailyMentionsRes.data : (dailyMentionsRes.data?.mentions || []);
+        if (dailyMentionsData.length > 0) {
+          dailyMentionsData.forEach((mention: DailyMention) => {
+            allEntries.push(transformToReviewEntry(mention, 'daily-mention'));
+          });
+        }
+
+        // Process SWOT analyses - handle both array and object responses
+        const swotAnalysesData = Array.isArray(swotAnalysesRes.data) ? swotAnalysesRes.data : (swotAnalysesRes.data?.analyses || []);
+        if (swotAnalysesData.length > 0) {
+          swotAnalysesData.forEach((swot: SwotAnalysis) => {
+            allEntries.push(transformToReviewEntry(swot, 'swot-analysis'));
+          });
+        }
+
+        // Process outcome insights - handle both array and object responses
+        const outcomeInsightsData = Array.isArray(outcomeInsightsRes.data) ? outcomeInsightsRes.data : (outcomeInsightsRes.data?.insights || []);
+        if (outcomeInsightsData.length > 0) {
+          outcomeInsightsData.forEach((insight: OutcomeInsight) => {
+            allEntries.push(transformToReviewEntry(insight, 'outcome-insight'));
+          });
+        }
+
+        // Categorize entries by status
+        setPendingEntries(allEntries.filter(entry => entry.status === 'pending'));
+        setApprovedEntries(allEntries.filter(entry => entry.status === 'approved'));
+        setRejectedEntries(allEntries.filter(entry => entry.status === 'rejected'));
+
+      } catch (error) {
+        console.error('Error fetching review data:', error);
+        toast.error('Failed to load review data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchReviewData();
+  }, []);
+
+
+
   // Calculate stats on component mount and when entries change
   useEffect(() => {
     const today = new Date().toISOString().split('T')[0];
@@ -132,51 +241,60 @@ export default function ReviewPage() {
   }, [pendingEntries, approvedEntries, rejectedEntries]);
 
   // Helper functions for getting names
-  const getAnalystName = (id: string) => {
-    return users.find(u => u.id === id)?.name || 'Unknown Analyst';
+  const getCompanyName = (id: string) => {
+    return companies.find(c => c.id === id)?.name || 'Unknown Company';
   };
 
-  const getClientName = (id: string) => {
-    return clients.find(c => c.id === id)?.name || 'Unknown';
+  const getUserName = (id: string) => {
+    return users.find(u => u.id === id)?.name || 'Unknown User';
   };
 
-  const getParameterName = (id: string) => {
-    return dataParameters.find(p => p.id === id)?.name || 'Unknown';
+  // Get type icon
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'editorial': return <Newspaper className="h-4 w-4" />;
+      case 'daily-mention': return <FileText className="h-4 w-4" />;
+      case 'swot-analysis': return <Target className="h-4 w-4" />;
+      case 'outcome-insight': return <LineChart className="h-4 w-4" />;
+      default: return <FileText className="h-4 w-4" />;
+    }
   };
 
-  const getChannelName = (id: string) => {
-    return mediaChannels.find(c => c.id === id)?.name || 'Unknown';
-  };
-
-  // Define columns for data entries table
-  const entriesColumns: ColumnDef<DataEntry>[] = [
+  // Define columns for review entries table
+  const entriesColumns: ColumnDef<ReviewEntry>[] = [
+    {
+      accessorKey: 'type',
+      header: 'Type',
+      cell: ({ row }) => (
+        <div className="flex items-center space-x-2">
+          {getTypeIcon(row.getValue('type'))}
+          <span className="capitalize">{(row.getValue('type') as string).replace('-', ' ')}</span>
+        </div>
+      ),
+    },
+    {
+      accessorKey: 'title',
+      header: 'Title',
+      cell: ({ row }) => (
+        <div className="max-w-xs truncate" title={row.getValue('title')}>
+          {row.getValue('title')}
+        </div>
+      ),
+    },
     {
       accessorKey: 'date',
       header: 'Date',
+      cell: ({ row }) => new Date(row.getValue('date')).toLocaleDateString(),
     },
     {
-      accessorKey: 'analystId',
-      header: 'Analyst',
-      cell: ({ row }) => getAnalystName(row.getValue('analystId')),
+      accessorKey: 'authorName',
+      header: 'Author',
+      cell: ({ row }) => row.getValue('authorName') || 'Unknown',
     },
     {
-      accessorKey: 'clientId',
-      header: 'Client',
-      cell: ({ row }) => getClientName(row.getValue('clientId')),
-    },
-    {
-      accessorKey: 'parameterId',
-      header: 'Parameter',
-      cell: ({ row }) => getParameterName(row.getValue('parameterId')),
-    },
-    {
-      accessorKey: 'channelId',
-      header: 'Channel',
-      cell: ({ row }) => getChannelName(row.getValue('channelId')),
-    },
-    {
-      accessorKey: 'value',
-      header: 'Value',
+      accessorKey: 'companyName',
+      header: 'Company',
+      cell: ({ row }) => row.getValue('companyName') || 'Unknown',
     },
     {
       accessorKey: 'status',
@@ -194,10 +312,17 @@ export default function ReviewPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => viewEntryDetails(row.original)}
+              onClick={() => navigateToForm(row.original)}
             >
               <Eye className="mr-2 h-4 w-4" />
-              View Details
+              Review Form
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => viewEntryDetails(row.original)}
+            >
+              Quick View
             </Button>
 
             {/* For pending entries, show approve/reject buttons */}
@@ -263,7 +388,7 @@ export default function ReviewPage() {
     },
   ];
 
-  const handleReviewRequest = (entry: DataEntry, action: 'approve' | 'reject' | null) => {
+  const handleReviewRequest = (entry: ReviewEntry, action: 'approve' | 'reject' | null) => {
     setSelectedEntry(entry);
     setReviewAction(action);
     setReviewComment('');
@@ -271,42 +396,74 @@ export default function ReviewPage() {
   };
 
   // View entry history
-  const viewEntryHistory = (entry: DataEntry) => {
+  const viewEntryHistory = (entry: ReviewEntry) => {
     setSelectedEntry(entry);
     setHistoryDialogOpen(true);
   };
 
   // View entry details
-  const viewEntryDetails = (entry: DataEntry) => {
+  const viewEntryDetails = (entry: ReviewEntry) => {
     setSelectedEntry(entry);
     setViewDetailsDialogOpen(true);
   };
 
-  const submitReview = () => {
-    // In a real app, we'd make an API call here
+  const submitReview = async () => {
     if (!selectedEntry) return;
 
-    const now = new Date();
-    const timestamp = now.toISOString();
-    const today = timestamp.split('T')[0];
+    if (reviewAction === 'reject' && !reviewComment.trim()) {
+      toast.error('Please provide a reason for rejection');
+      return;
+    }
 
-    // Create a history entry
-    const historyEntry = {
-      status: reviewAction || 'comment',
-      timestamp,
-      comment: reviewComment,
-      userId: '2' // Assuming supervisor ID is 2
-    };
+    try {
+      const now = new Date();
+      const timestamp = now.toISOString();
 
-    // Create updated entry with new status and history
-    const updatedEntry: DataEntry = {
-      ...selectedEntry,
-      status: reviewAction ? (reviewAction === 'approve' ? 'approved' : 'rejected') : selectedEntry.status,
-      comments: reviewComment || selectedEntry.comments,
-      reviewedBy: '2', // Supervisor ID
-      reviewedAt: timestamp,
-      history: [...(selectedEntry.history || []), historyEntry]
-    };
+      // Create a history entry
+      const historyEntry = {
+        status: reviewAction || 'comment',
+        timestamp,
+        comment: reviewComment,
+        userId: '2' // Assuming supervisor ID is 2
+      };
+
+      // Prepare update data based on entry type
+      const updateData = {
+        status: reviewAction ? (reviewAction === 'approve' ? 'approved' : 'rejected') : selectedEntry.status,
+        comments: reviewComment || selectedEntry.comments,
+        reviewedBy: '2', // Supervisor ID
+        reviewedAt: timestamp,
+        history: [...(selectedEntry.history || []), historyEntry]
+      };
+
+      // Call appropriate API endpoint based on entry type
+      let apiResponse;
+      switch (selectedEntry.type) {
+        case 'editorial':
+          apiResponse = await apiService.updateEditorial(selectedEntry.id, updateData);
+          break;
+        case 'daily-mention':
+          apiResponse = await apiService.updateDailyMention(selectedEntry.id, updateData);
+          break;
+        case 'swot-analysis':
+          apiResponse = await apiService.updateSwotAnalysis(selectedEntry.id, updateData);
+          break;
+        case 'outcome-insight':
+          apiResponse = await apiService.updateOutcomeInsight(selectedEntry.id, updateData);
+          break;
+        default:
+          throw new Error('Unknown entry type');
+      }
+
+      // Create updated entry for local state
+      const updatedEntry: ReviewEntry = {
+        ...selectedEntry,
+        status: updateData.status as any,
+        comments: updateData.comments,
+        reviewedBy: updateData.reviewedBy,
+        reviewedAt: updateData.reviewedAt,
+        history: updateData.history
+      };
 
     // Update the appropriate lists based on the action
     if (reviewAction === 'approve') {
@@ -319,7 +476,7 @@ export default function ReviewPage() {
       }
       // Add to approved
       setApprovedEntries([...approvedEntries.filter(entry => entry.id !== selectedEntry.id), updatedEntry]);
-      toast.success(`Entry approved successfully`);
+      toast.success(`${selectedEntry.type.replace('-', ' ')} approved successfully`);
     } else if (reviewAction === 'reject') {
       // Remove from pending if it was there
       if (selectedEntry.status === 'pending') {
@@ -330,7 +487,7 @@ export default function ReviewPage() {
       }
       // Add to rejected
       setRejectedEntries([...rejectedEntries.filter(entry => entry.id !== selectedEntry.id), updatedEntry]);
-      toast.success(`Entry rejected successfully`);
+      toast.success(`${selectedEntry.type.replace('-', ' ')} rejected successfully`);
     } else if (reviewComment) {
       // Just adding a comment, update the entry in its current list
       if (selectedEntry.status === 'pending') {
@@ -350,16 +507,51 @@ export default function ReviewPage() {
     }
 
     setReviewDialogOpen(false);
+    } catch (error) {
+      console.error('Error submitting review:', error);
+      toast.error('Failed to submit review. Please try again.');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Loading review data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Navigate to form for detailed review
+  const navigateToForm = (entry: ReviewEntry) => {
+    switch (entry.type) {
+      case 'editorial':
+        navigate(`/dashboard/editorial?review=${entry.id}`);
+        break;
+      case 'daily-mention':
+        navigate(`/dashboard/daily-mentions/view/${entry.id}?review=true`);
+        break;
+      case 'swot-analysis':
+        navigate(`/dashboard/swot-mentions?review=${entry.id}`);
+        break;
+      case 'outcome-insight':
+        navigate(`/dashboard/outcome-insights?review=${entry.id}`);
+        break;
+    }
   };
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Supervisor Dashboard</h1>
-        <Button variant="outline">
-          <Filter className="mr-2 h-4 w-4" />
-          Filter
-        </Button>
+        <h1 className="text-2xl font-bold">Content Review</h1>
+        <div className="flex space-x-2">
+          <Button variant="outline">
+            <Filter className="mr-2 h-4 w-4" />
+            Filter
+          </Button>
+        </div>
       </div>
 
       {/* Dashboard Overview */}
@@ -467,36 +659,36 @@ export default function ReviewPage() {
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Client</Label>
+                <Label>Company</Label>
                 <div className="text-sm mt-1">
-                  {selectedEntry ? getClientName(selectedEntry.clientId) : 'Unknown'}
+                  {selectedEntry ? selectedEntry.companyName : 'Unknown'}
                 </div>
               </div>
               <div>
-                <Label>Parameter</Label>
+                <Label>Type</Label>
                 <div className="text-sm mt-1">
-                  {selectedEntry ? getParameterName(selectedEntry.parameterId) : 'Unknown'}
+                  {selectedEntry ? selectedEntry.type.replace('-', ' ') : 'Unknown'}
                 </div>
               </div>
               <div>
-                <Label>Channel</Label>
+                <Label>Author</Label>
                 <div className="text-sm mt-1">
-                  {selectedEntry ? getChannelName(selectedEntry.channelId) : 'Unknown'}
+                  {selectedEntry ? selectedEntry.authorName : 'Unknown'}
                 </div>
               </div>
               <div>
-                <Label>Analyst</Label>
+                <Label>Title</Label>
                 <div className="text-sm mt-1">
-                  {selectedEntry ? getAnalystName(selectedEntry.analystId) : 'Unknown'}
+                  {selectedEntry ? selectedEntry.title : 'Unknown'}
                 </div>
               </div>
               <div>
-                <Label>Value</Label>
-                <div className="text-sm mt-1">{selectedEntry?.value}</div>
+                <Label>Status</Label>
+                <div className="text-sm mt-1">{selectedEntry?.status}</div>
               </div>
               <div>
                 <Label>Date</Label>
-                <div className="text-sm mt-1">{selectedEntry?.date}</div>
+                <div className="text-sm mt-1">{selectedEntry ? new Date(selectedEntry.date).toLocaleDateString() : 'Unknown'}</div>
               </div>
             </div>
 
@@ -549,15 +741,15 @@ export default function ReviewPage() {
           <div className="space-y-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Client</Label>
+                <Label>Company</Label>
                 <div className="text-sm mt-1">
-                  {selectedEntry ? getClientName(selectedEntry.clientId) : 'Unknown'}
+                  {selectedEntry ? selectedEntry.companyName : 'Unknown'}
                 </div>
               </div>
               <div>
-                <Label>Parameter</Label>
+                <Label>Type</Label>
                 <div className="text-sm mt-1">
-                  {selectedEntry ? getParameterName(selectedEntry.parameterId) : 'Unknown'}
+                  {selectedEntry ? selectedEntry.type.replace('-', ' ') : 'Unknown'}
                 </div>
               </div>
               <div>
@@ -595,7 +787,7 @@ export default function ReviewPage() {
                         {item.comment || <span className="text-muted-foreground italic">No comment provided</span>}
                       </div>
                       <div className="mt-1 text-xs text-muted-foreground">
-                        By: {getAnalystName(item.userId)}
+                        By: {getUserName(item.userId)}
                       </div>
                     </div>
                   ))
@@ -625,33 +817,33 @@ export default function ReviewPage() {
               <>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label>Client</Label>
+                    <Label>Company</Label>
                     <div className="text-sm mt-1 font-medium">
-                      {getClientName(selectedEntry.clientId)}
+                      {selectedEntry.companyName}
                     </div>
                   </div>
                   <div>
-                    <Label>Parameter</Label>
+                    <Label>Type</Label>
                     <div className="text-sm mt-1 font-medium">
-                      {getParameterName(selectedEntry.parameterId)}
+                      {selectedEntry.type.replace('-', ' ')}
                     </div>
                   </div>
                   <div>
-                    <Label>Channel</Label>
+                    <Label>Author</Label>
                     <div className="text-sm mt-1 font-medium">
-                      {getChannelName(selectedEntry.channelId)}
+                      {selectedEntry.authorName}
                     </div>
                   </div>
                   <div>
-                    <Label>Value</Label>
+                    <Label>Title</Label>
                     <div className="text-sm mt-1 font-medium">
-                      {selectedEntry.value}
+                      {selectedEntry.title}
                     </div>
                   </div>
                   <div>
                     <Label>Date</Label>
                     <div className="text-sm mt-1 font-medium">
-                      {selectedEntry.date}
+                      {new Date(selectedEntry.date).toLocaleDateString()}
                     </div>
                   </div>
                   <div>
@@ -668,11 +860,11 @@ export default function ReviewPage() {
                   <Label>Submitted By</Label>
                   <div className="flex items-center gap-2">
                     <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-                      {getAnalystName(selectedEntry.analystId).charAt(0)}
+                      {selectedEntry.authorName?.charAt(0) || 'U'}
                     </div>
                     <div>
-                      <div className="font-medium">{getAnalystName(selectedEntry.analystId)}</div>
-                      <div className="text-xs text-muted-foreground">Analyst</div>
+                      <div className="font-medium">{selectedEntry.authorName || 'Unknown'}</div>
+                      <div className="text-xs text-muted-foreground">Author</div>
                     </div>
                   </div>
                 </div>

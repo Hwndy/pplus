@@ -143,14 +143,11 @@ const adminRoutes: NavItem[] = [
 // Supervisor-specific navigation items
 const supervisorItems: NavItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Review Entries', href: '/dashboard/review', icon: CheckSquare },
-  { name: 'Content Review', href: '/dashboard/content-review', icon: ClipboardCheck },
+  { name: 'Review Content', href: '/dashboard/review', icon: CheckSquare },
   { name: 'Editorial', href: '/dashboard/editorial', icon: Newspaper },
   { name: 'Daily Mentions', href: '/dashboard/daily-mentions', icon: FileText },
   { name: 'SWOT Mentions', href: '/dashboard/swot-mentions', icon: Target },
   { name: 'Outcome & Insights', href: '/dashboard/outcome-insights', icon: LineChart },
-  { name: 'Reports', href: '/dashboard/reports', icon: FileText },
-  { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart },
 ];
 
 interface SidebarProps {

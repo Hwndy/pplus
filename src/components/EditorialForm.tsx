@@ -73,6 +73,8 @@ interface EditorialFormProps {
   onSelectChange: (name: string, value: string) => void;
   onDateSelect: (selectedDate: Date | undefined) => void;
   onClearError: (fieldName: string) => void;
+  onReviewAction?: (action: 'approve' | 'reject') => void;
+  isFieldReadOnly?: (fieldName: string) => boolean;
 }
 
 // Static data arrays
@@ -134,7 +136,9 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
   onFieldChange,
   onSelectChange,
   onDateSelect,
-  onClearError
+  onClearError,
+  onReviewAction,
+  isFieldReadOnly: propIsFieldReadOnly
 }) => {
   const [dynamicRows, setDynamicRows] = useState<Editorial[]>([]);
 
@@ -188,13 +192,22 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Determine if a field should be read-only based on user role
-  const isFieldReadOnly = (fieldName: string): boolean => {
-    if (fieldName === 'analystNote' && userRole !== 'analyst') return true;
-    if (fieldName === 'supervisorNote' && userRole !== 'supervisor') return true;
-    if (fieldName === 'adminNote' && userRole !== 'admin') return true;
+  // Use the prop function if provided, otherwise use default logic
+  const isFieldReadOnly = propIsFieldReadOnly || ((fieldName: string): boolean => {
+    // Default logic for when no prop is provided
+    // Note fields are restricted by role
+    if (fieldName === 'analystNote' && userRole !== 'analyst') {
+      return true;
+    }
+    if (fieldName === 'supervisorNote' && userRole !== 'supervisor') {
+      return true;
+    }
+    if (fieldName === 'adminNote' && userRole !== 'admin') {
+      return true;
+    }
+    // All other fields are editable by default
     return false;
-  };
+  });
 
   // Handle adding a new dynamic row
   const addDynamicRow = () => {
@@ -258,12 +271,14 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
         </div>
       )}
 
-      {/* Form - STRICTLY 2 ROWS */}
-      <Card className="w-full">
-        <CardContent className="p-6">
-          <div className="space-y-6">
+      {/* Form with sticky notes section */}
+      <Card className="w-full flex flex-col h-full">
+        <CardContent className="p-0 flex flex-col h-full">
+          {/* Scrollable form content */}
+          <div className="flex-1 overflow-y-auto p-6">
+            <div className="space-y-6">
 
-            {/* ROW 1: Static fields - ONLY Auto Date, Company (with search), Brand (with search) - NO SCROLL */}
+            {/* ROW 1: Static fields - ONLY Auto Date, Company (with search), Media Type - NO SCROLL */}
             <div className="flex gap-4 w-full">
               <div className="flex-1">
                 <Label htmlFor="date">Date (Auto-picked) <span className="text-red-500">*</span></Label>
@@ -274,13 +289,17 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                   value={editorials[activeIndex]?.date || new Date().toISOString().split('T')[0]}
                   onChange={(e) => onFieldChange('date', e.target.value)}
                   className={errors.date ? "border-red-500" : ""}
-                  readOnly
+                  readOnly={isFieldReadOnly('date')}
+                  disabled={isFieldReadOnly('date')}
                 />
                 {errors.date && <p className="text-red-500 text-sm">{errors.date}</p>}
               </div>
 
               <div className="flex-1">
-                <Label htmlFor="company">Company (Search) <span className="text-red-500">*</span></Label>
+                <Label htmlFor="company">
+                  Company (Search) <span className="text-red-500">*</span>
+                  {isFieldReadOnly('company') && <span className="ml-2 text-xs text-gray-500">(Read-only)</span>}
+                </Label>
                 <div className="relative">
                   <Input
                     id="company"
@@ -291,11 +310,13 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                       setCompanySearchTerm(e.target.value);
                       setShowCompanyDropdown(true);
                     }}
-                    onFocus={() => setShowCompanyDropdown(true)}
+                    onFocus={() => !isFieldReadOnly('company') && setShowCompanyDropdown(true)}
                     className={errors.company ? "border-red-500" : ""}
                     placeholder="Search or type company name..."
+                    readOnly={isFieldReadOnly('company')}
+                    disabled={isFieldReadOnly('company')}
                   />
-                  {showCompanyDropdown && (
+                  {showCompanyDropdown && !isFieldReadOnly('company') && (
                     <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
                       {filteredCompanies.length > 0 ? (
                         filteredCompanies.map((company, index) => (
@@ -322,44 +343,24 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
               </div>
 
               <div className="flex-1">
-                <Label htmlFor="brand">Brand (Search) <span className="text-red-500">*</span></Label>
-                <div className="relative">
-                  <Input
-                    id="brand"
-                    name="brand"
-                    value={editorials[activeIndex]?.brand || ''}
-                    onChange={(e) => {
-                      onFieldChange('brand', e.target.value);
-                      setBrandSearchTerm(e.target.value);
-                      setShowBrandDropdown(true);
-                    }}
-                    onFocus={() => setShowBrandDropdown(true)}
-                    className={errors.brand ? "border-red-500" : ""}
-                    placeholder="Search or type brand name..."
-                  />
-                  {showBrandDropdown && (
-                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                      {filteredBrands.length > 0 ? (
-                        filteredBrands.map((brand, index) => (
-                          <div
-                            key={brand}
-                            className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                            onClick={() => {
-                              onFieldChange('brand', brand);
-                              setShowBrandDropdown(false);
-                              setBrandSearchTerm('');
-                            }}
-                          >
-                            {brand}
-                          </div>
-                        ))
-                      ) : (
-                        <div className="px-3 py-2 text-gray-500">No brands found</div>
-                      )}
-                    </div>
-                  )}
-                </div>
-                {errors.brand && <p className="text-red-500 text-sm">{errors.brand}</p>}
+                <Label htmlFor="mediaType">Media Type <span className="text-red-500">*</span></Label>
+                <Select
+                  value={editorials[activeIndex]?.mediaType || ''}
+                  onValueChange={(value) => onFieldChange('mediaType', value)}
+                  disabled={isFieldReadOnly('mediaType')}
+                >
+                  <SelectTrigger className={errors.mediaType ? "border-red-500" : ""}>
+                    <SelectValue placeholder="Select media type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {mediaTypes.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.mediaType && <p className="text-red-500 text-sm">{errors.mediaType}</p>}
               </div>
             </div>
 
@@ -387,7 +388,7 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
 
                   {/* Industry field moved from row 1 */}
                   <div className="min-w-[160px]">
-                    <Label htmlFor="industry">Industry <span className="text-red-500">*</span></Label>
+                    {rowIndex === 0 && <Label htmlFor="industry">Industry <span className="text-red-500">*</span></Label>}
                     <Select
                       value={row.industry}
                       onValueChange={(value) => handleDynamicRowChange(rowIndex, 'industry', value)}
@@ -408,7 +409,7 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
 
                   {/* Sub-Industry field moved from row 1 */}
                   <div className="min-w-[160px]">
-                    <Label htmlFor="subIndustry">Sub-Industry</Label>
+                    {rowIndex === 0 && <Label htmlFor="subIndustry">Sub-Industry</Label>}
                     <Select
                       value={row.subIndustry}
                       onValueChange={(value) => handleDynamicRowChange(rowIndex, 'subIndustry', value)}
@@ -428,7 +429,7 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
 
                   {/* Source field moved from row 1 */}
                   <div className="min-w-[160px]">
-                    <Label htmlFor="source">Source <span className="text-red-500">*</span></Label>
+                    {rowIndex === 0 && <Label htmlFor="source">Source <span className="text-red-500">*</span></Label>}
                     <Select
                       value={row.source}
                       onValueChange={(value) => handleDynamicRowChange(rowIndex, 'source', value)}
@@ -454,10 +455,16 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
 
                   {/* Placement field moved from row 1 */}
                   <div className="min-w-[160px]">
-                    <Label htmlFor="placement">Placement</Label>
+                    {rowIndex === 0 && (
+                      <Label htmlFor="placement">
+                        Placement
+                        {isFieldReadOnly('placement') && <span className="ml-2 text-xs text-gray-500">(Read-only)</span>}
+                      </Label>
+                    )}
                     <Select
                       value={row.placement}
                       onValueChange={(value) => handleDynamicRowChange(rowIndex, 'placement', value)}
+                      disabled={isFieldReadOnly('placement')}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select placement" />
@@ -474,7 +481,12 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
 
                   {/* Title field moved from row 1 */}
                   <div className="min-w-[160px]">
-                    <Label htmlFor="title">Title <span className="text-red-500">*</span></Label>
+                    {rowIndex === 0 && (
+                      <Label htmlFor="title">
+                        Title <span className="text-red-500">*</span>
+                        {isFieldReadOnly('title') && <span className="ml-2 text-xs text-gray-500">(Read-only)</span>}
+                      </Label>
+                    )}
                     <Input
                       id="title"
                       name="title"
@@ -482,13 +494,15 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                       onChange={(e) => handleDynamicRowChange(rowIndex, 'title', e.target.value)}
                       className={rowIndex === 0 && errors.title ? "border-red-500" : ""}
                       placeholder="Enter article title"
+                      readOnly={isFieldReadOnly('title')}
+                      disabled={isFieldReadOnly('title')}
                     />
                     {rowIndex === 0 && errors.title && <p className="text-red-500 text-sm">{errors.title}</p>}
                   </div>
 
                   {/* Print/Web Clips field moved from row 1 */}
                   <div className="min-w-[160px]">
-                    <Label htmlFor="printWebClips">Print/Web Clips</Label>
+                    {rowIndex === 0 && <Label htmlFor="printWebClips">Print/Web Clips</Label>}
                     <Select
                       value={row.printWebClips}
                       onValueChange={(value) => handleDynamicRowChange(rowIndex, 'printWebClips', value)}
@@ -508,7 +522,7 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
 
                   {/* Reporter field moved from row 1 */}
                   <div className="min-w-[160px]">
-                    <Label htmlFor="reporter">Reporter</Label>
+                    {rowIndex === 0 && <Label htmlFor="reporter">Reporter</Label>}
                     <Select
                       value={row.reporter}
                       onValueChange={(value) => handleDynamicRowChange(rowIndex, 'reporter', value)}
@@ -528,7 +542,7 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
 
                   {/* Country field moved from row 1 */}
                   <div className="min-w-[160px]">
-                    <Label htmlFor="country">Country <span className="text-red-500">*</span></Label>
+                    {rowIndex === 0 && <Label htmlFor="country">Country <span className="text-red-500">*</span></Label>}
                     <Select
                       value={row.country}
                       onValueChange={(value) => handleDynamicRowChange(rowIndex, 'country', value)}
@@ -549,7 +563,7 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
 
                   {/* Language field moved from row 1 */}
                   <div className="min-w-[160px]">
-                    <Label htmlFor="language">Language <span className="text-red-500">*</span></Label>
+                    {rowIndex === 0 && <Label htmlFor="language">Language <span className="text-red-500">*</span></Label>}
                     <Input
                       id="language"
                       name="language"
@@ -563,7 +577,7 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
 
                   {/* Spokesperson field */}
                   <div className="min-w-[160px]">
-                    <Label htmlFor="spokesperson">Spokesperson</Label>
+                    {rowIndex === 0 && <Label htmlFor="spokesperson">Spokesperson</Label>}
                     <Select
                       value={row.spokesperson}
                       onValueChange={(value) => handleDynamicRowChange(rowIndex, 'spokesperson', value)}
@@ -582,7 +596,7 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                   </div>
 
                   <div className="min-w-[160px]">
-                    <Label htmlFor="ceoMediaPresence">CEO Media Presence</Label>
+                    {rowIndex === 0 && <Label htmlFor="ceoMediaPresence">CEO Media Presence</Label>}
                     <Select
                       value={row.ceoMediaPresence}
                       onValueChange={(value) => handleDynamicRowChange(rowIndex, 'ceoMediaPresence', value)}
@@ -601,7 +615,7 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                   </div>
 
                   <div className="min-w-[160px]">
-                    <Label htmlFor="ceoThoughtLeadership">CEO Thought Leadership</Label>
+                    {rowIndex === 0 && <Label htmlFor="ceoThoughtLeadership">CEO Thought Leadership</Label>}
                     <Select
                       value={row.ceoThoughtLeadership}
                       onValueChange={(value) => handleDynamicRowChange(rowIndex, 'ceoThoughtLeadership', value)}
@@ -620,7 +634,7 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                   </div>
 
                   <div className="min-w-[160px]">
-                    <Label htmlFor="activity">Activity</Label>
+                    {rowIndex === 0 && <Label htmlFor="activity">Activity</Label>}
                     <Select
                       value={row.activity}
                       onValueChange={(value) => handleDynamicRowChange(rowIndex, 'activity', value)}
@@ -639,7 +653,7 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                   </div>
 
                   <div className="min-w-[160px]">
-                    <Label htmlFor="circulation">Circulation</Label>
+                    {rowIndex === 0 && <Label htmlFor="circulation">Circulation</Label>}
                     <Input
                       id="circulation"
                       name="circulation"
@@ -651,7 +665,7 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                   </div>
 
                   <div className="min-w-[160px]">
-                    <Label htmlFor="audienceReach">Audience Reach</Label>
+                    {rowIndex === 0 && <Label htmlFor="audienceReach">Audience Reach</Label>}
                     <Input
                       id="audienceReach"
                       name="audienceReach"
@@ -663,7 +677,7 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                   </div>
 
                   <div className="min-w-[160px]">
-                    <Label htmlFor="mediaType">Media Type <span className="text-red-500">*</span></Label>
+                    {rowIndex === 0 && <Label htmlFor="mediaType">Media Type <span className="text-red-500">*</span></Label>}
                     <Select
                       value={row.mediaType}
                       onValueChange={(value) => handleDynamicRowChange(rowIndex, 'mediaType', value)}
@@ -683,7 +697,7 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                   </div>
 
                   <div className="min-w-[160px]">
-                    <Label htmlFor="onlineChannel">Online Channel</Label>
+                    {rowIndex === 0 && <Label htmlFor="onlineChannel">Online Channel</Label>}
                     <Select
                       value={row.onlineChannel || ''}
                       onValueChange={(value) => handleDynamicRowChange(rowIndex, 'onlineChannel', value)}
@@ -702,7 +716,7 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                   </div>
 
                   <div className="min-w-[160px]">
-                    <Label htmlFor="sentiment">Sentiment</Label>
+                    {rowIndex === 0 && <Label htmlFor="sentiment">Sentiment</Label>}
                     <Select
                       value={row.sentiment}
                       onValueChange={(value) => handleDynamicRowChange(rowIndex, 'sentiment', value)}
@@ -721,7 +735,7 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                   </div>
 
                   <div className="min-w-[160px]">
-                    <Label htmlFor="sentimentClassification">Sentiment Classification</Label>
+                    {rowIndex === 0 && <Label htmlFor="sentimentClassification">Sentiment Classification</Label>}
                     <Select
                       value={row.sentimentClassification}
                       onValueChange={(value) => handleDynamicRowChange(rowIndex, 'sentimentClassification', value)}
@@ -740,7 +754,7 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                   </div>
 
                   <div className="min-w-[160px]">
-                    <Label htmlFor="sentimentScore">Sentiment Score</Label>
+                    {rowIndex === 0 && <Label htmlFor="sentimentScore">Sentiment Score</Label>}
                     <Input
                       id="sentimentScore"
                       name="sentimentScore"
@@ -755,7 +769,7 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                   </div>
 
                   <div className="min-w-[160px]">
-                    <Label htmlFor="advertSpend">Advert Spend</Label>
+                    {rowIndex === 0 && <Label htmlFor="advertSpend">Advert Spend</Label>}
                     <Input
                       id="advertSpend"
                       name="advertSpend"
@@ -767,7 +781,7 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                   </div>
 
                   <div className="min-w-[160px]">
-                    <Label htmlFor="pageSize">Page Size</Label>
+                    {rowIndex === 0 && <Label htmlFor="pageSize">Page Size</Label>}
                     <Select
                       value={row.pageSize || ''}
                       onValueChange={(value) => handleDynamicRowChange(rowIndex, 'pageSize', value)}
@@ -786,7 +800,7 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                   </div>
 
                   <div className="min-w-[160px]">
-                    <Label htmlFor="status">Status</Label>
+                    {rowIndex === 0 && <Label htmlFor="status">Status</Label>}
                     <Select
                       value={row.status || 'DRAFT'}
                       onValueChange={(value) => handleDynamicRowChange(rowIndex, 'status', value)}
@@ -806,58 +820,90 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                 </div>
               ))}
 
-              {/* Notes section - Role-based access */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8 pt-6 border-t">
-                <div>
-                  <Label htmlFor="analystNote" className="flex items-center">
-                    Analyst Note
-                    {userRole !== 'analyst' && <span className="ml-2 text-xs text-gray-500">(Read-only)</span>}
-                  </Label>
-                  <Textarea
-                    id="analystNote"
-                    name="analystNote"
-                    value={editorials[activeIndex]?.analystNote || ''}
-                    onChange={(e) => onFieldChange('analystNote', e.target.value)}
-                    className="h-32"
-                    readOnly={userRole !== 'analyst'}
-                    disabled={userRole !== 'analyst'}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="supervisorNote" className="flex items-center">
-                    Supervisor Note
-                    {userRole !== 'supervisor' && <span className="ml-2 text-xs text-gray-500">(Read-only)</span>}
-                  </Label>
-                  <Textarea
-                    id="supervisorNote"
-                    name="supervisorNote"
-                    value={editorials[activeIndex]?.supervisorNote || ''}
-                    onChange={(e) => onFieldChange('supervisorNote', e.target.value)}
-                    className="h-32"
-                    readOnly={userRole !== 'supervisor'}
-                    disabled={userRole !== 'supervisor'}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="adminNote" className="flex items-center">
-                    Admin Note
-                    {userRole !== 'admin' && <span className="ml-2 text-xs text-gray-500">(Read-only)</span>}
-                  </Label>
-                  <Textarea
-                    id="adminNote"
-                    name="adminNote"
-                    value={editorials[activeIndex]?.adminNote || ''}
-                    onChange={(e) => onFieldChange('adminNote', e.target.value)}
-                    className="h-32"
-                    readOnly={userRole !== 'admin'}
-                    disabled={userRole !== 'admin'}
-                  />
-                </div>
-              </div>
               </div>
             </div>
+            </div>
+          </div>
+
+          {/* Sticky Notes Section */}
+          <div className="border-t border-gray-300 bg-gray-50 p-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div>
+                <Label htmlFor="analystNote" className="flex items-center mb-2">
+                  Analyst Note
+                  {isFieldReadOnly('analystNote') && <span className="ml-2 text-xs text-gray-500">(Read-only)</span>}
+                </Label>
+                <Textarea
+                  id="analystNote"
+                  name="analystNote"
+                  value={editorials[activeIndex]?.analystNote || ''}
+                  onChange={(e) => onFieldChange('analystNote', e.target.value)}
+                  className="h-32 resize-none"
+                  placeholder="Add analyst notes here..."
+                  readOnly={isFieldReadOnly('analystNote')}
+                  disabled={isFieldReadOnly('analystNote')}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="supervisorNote" className="flex items-center mb-2">
+                  Supervisor Note
+                  {isFieldReadOnly('supervisorNote') && <span className="ml-2 text-xs text-gray-500">(Read-only)</span>}
+                </Label>
+                <Textarea
+                  id="supervisorNote"
+                  name="supervisorNote"
+                  value={editorials[activeIndex]?.supervisorNote || ''}
+                  onChange={(e) => onFieldChange('supervisorNote', e.target.value)}
+                  className="h-32 resize-none"
+                  placeholder="Add supervisor notes here..."
+                  readOnly={isFieldReadOnly('supervisorNote')}
+                  disabled={isFieldReadOnly('supervisorNote')}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="adminNote" className="flex items-center mb-2">
+                  Admin Note
+                  {isFieldReadOnly('adminNote') && <span className="ml-2 text-xs text-gray-500">(Read-only)</span>}
+                </Label>
+                <Textarea
+                  id="adminNote"
+                  name="adminNote"
+                  value={editorials[activeIndex]?.adminNote || ''}
+                  onChange={(e) => onFieldChange('adminNote', e.target.value)}
+                  className="h-32 resize-none"
+                  placeholder="Add admin notes here..."
+                  readOnly={isFieldReadOnly('adminNote')}
+                  disabled={isFieldReadOnly('adminNote')}
+                />
+              </div>
+            </div>
+
+            {/* Review Actions for Supervisors */}
+            {onReviewAction && (
+              <div className="flex justify-center space-x-4 mt-6 pt-4 border-t border-gray-200">
+                <Button
+                  onClick={() => onReviewAction('reject')}
+                  variant="destructive"
+                  className="bg-red-600 hover:bg-red-700 text-white px-8 py-2"
+                >
+                  Reject
+                </Button>
+                <Button
+                  onClick={() => onReviewAction('approve')}
+                  className="bg-green-600 hover:bg-green-700 text-white px-8 py-2"
+                >
+                  Approve
+                </Button>
+              </div>
+            )}
+
+            {onReviewAction && (
+              <p className="text-sm text-gray-600 mt-2 text-center">
+                Review the content above and add your notes before approving or rejecting.
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
