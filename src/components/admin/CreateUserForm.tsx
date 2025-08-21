@@ -1,8 +1,7 @@
-
-import React, { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { format } from 'date-fns';
-import { CalendarIcon, Pencil, Image, Phone, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { format } from "date-fns";
+import { CalendarIcon, Pencil, Image, Loader2 } from "lucide-react";
 import {
   Form,
   FormControl,
@@ -10,36 +9,35 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { 
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/components/ui/popover';
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Calendar } from '@/components/ui/calendar';
-import { cn } from '@/lib/utils';
-import { User } from './EditUserForm';
-import { Textarea } from '@/components/ui/textarea';
-import { useCreateUser, useSupervisors } from '@/hooks/useApi';
-import { toast } from 'sonner';
+} from "@/components/ui/select";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+import { User } from "./EditUserForm";
+import { useCreateUser, useSupervisors } from "@/hooks/useApi";
+import { toast } from "sonner";
 
 interface CreateUserFormProps {
   onSave: (user: User) => void;
   onCancel: () => void;
 }
 
-export function CreateUserForm({ onSave, onCancel }: CreateUserFormProps) {
-  const [avatar, setAvatar] = useState('');
+export default function CreateUserForm({ onSave, onCancel }: CreateUserFormProps) {
+  const [avatar, setAvatar] = useState("");
   const [showSupervisorField, setShowSupervisorField] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -48,77 +46,90 @@ export function CreateUserForm({ onSave, onCancel }: CreateUserFormProps) {
 
   const form = useForm({
     defaultValues: {
-      name: '',
-      email: '',
-      role: 'Admin',
-      mobileContact: '',
-      countryCode: '+234',
+      name: "",
+      email: "",
+      role: "Admin",
+      mobileContact: "",
+      countryCode: "+234",
       joinDate: new Date(),
-      expirationDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
-      password: '',
-      confirmPassword: '',
-      supervisorId: '',
+      expirationDate: new Date(
+        new Date().setFullYear(new Date().getFullYear() + 1)
+      ),
+      password: "",
+      confirmPassword: "",
+      supervisorId: "",
     },
   });
 
-  // Watch for role changes to show/hide supervisor field
-  const selectedRole = form.watch('role');
-  
-  useEffect(() => {
-    // Show supervisor field only when 'Analyst' or 'Client' role is selected
-    setShowSupervisorField(selectedRole === 'Analyst' || selectedRole === 'Client');
+  // Watch for role changes to toggle supervisor field
+  const selectedRole = form.watch("role");
 
-    // Reset supervisor value when role changes to non-analyst/client
-    if (selectedRole !== 'Analyst' && selectedRole !== 'Client') {
-      form.setValue('supervisorId', '');
+  useEffect(() => {
+    setShowSupervisorField(
+      selectedRole === "Analyst" || selectedRole === "Client"
+    );
+
+    if (selectedRole !== "Analyst" && selectedRole !== "Client") {
+      form.setValue("supervisorId", "");
     }
   }, [selectedRole, form]);
 
   const onSubmit = async (values: any) => {
     if (isSubmitting) return;
 
-    // Validate passwords match
     if (values.password !== values.confirmPassword) {
-      form.setError('confirmPassword', {
-        type: 'manual',
-        message: "Passwords don't match!"
+      form.setError("confirmPassword", {
+        type: "manual",
+        message: "Passwords don't match!",
       });
       return;
     }
 
-    // Validate that analyst/client has a supervisor
-    if ((values.role === 'Analyst' || values.role === 'Client') && !values.supervisorId) {
-      form.setError('supervisorId', {
-        type: 'manual',
-        message: "Supervisor is required for analysts and clients"
+    if (
+      (values.role === "Analyst" || values.role === "Client") &&
+      !values.supervisorId
+    ) {
+      form.setError("supervisorId", {
+        type: "manual",
+        message: "Supervisor is required for analysts and clients",
       });
       return;
     }
 
     setIsSubmitting(true);
 
-    try {
-      const userData = {
-        name: values.name,
-        email: values.email,
-        password: values.password,
-        role: values.role,
-        mobileContact: values.mobileContact,
-        countryCode: values.countryCode,
-        supervisorId: values.supervisorId || undefined,
-        expirationDate: values.role === 'Client' ? values.expirationDate.toISOString() : undefined,
-        avatar,
-      };
+    const userData = {
+      name: values.name,
+      email: values.email,
+      password: values.password,
+      role: values.role,
+      mobileContact: values.mobileContact,
+      countryCode: values.countryCode,
+      supervisorId: values.supervisorId || undefined,
+      joinDate: values.joinDate.toISOString(),
+      expirationDate: values.expirationDate.toISOString(),
+      avatar,
+    };
 
-      const result = await createUser.mutate(userData);
-      onSave(result);
-      toast.success("User created successfully");
-    } catch (error) {
-      console.error('Error creating user:', error);
-      toast.error("Failed to create user");
-    } finally {
-      setIsSubmitting(false);
-    }
+    createUser.mutate(userData, {
+      onSuccess: (result: any) => {
+        toast.success(result?.message || "User created successfully");
+        onSave(result?.data?.user || result?.data);
+        form.reset();
+      },
+      onError: (error: any) => {
+        console.error("Error creating user:", error);
+        const errorMsg =
+          error?.response?.data?.message ||
+          (Array.isArray(error?.response?.data?.errors)
+            ? error.response.data.errors.map((e: any) => e.message).join(", ")
+            : "Something went wrong");
+        toast.error(errorMsg);
+      },
+      onSettled: () => {
+        setIsSubmitting(false);
+      },
+    });
   };
 
   return (
@@ -131,15 +142,15 @@ export function CreateUserForm({ onSave, onCancel }: CreateUserFormProps) {
               <Image className="h-10 w-10 text-gray-400" />
             </AvatarFallback>
           </Avatar>
-          <Button 
-            size="icon" 
-            variant="outline" 
+          <Button
+            size="icon"
+            variant="outline"
             className="absolute bottom-0 right-0 rounded-full h-7 w-7 bg-background border border-input shadow-sm"
             onClick={() => {
-              // In a real app, this would open a file selection dialog
-              // For this demo, we'll just set a random avatar
               const seed = Math.random().toString(36).substring(7);
-              setAvatar(`https://api.dicebear.com/7.x/personas/svg?seed=${seed}`);
+              setAvatar(
+                `https://api.dicebear.com/7.x/personas/svg?seed=${seed}`
+              );
             }}
           >
             <Pencil className="h-3 w-3" />
@@ -149,7 +160,7 @@ export function CreateUserForm({ onSave, onCancel }: CreateUserFormProps) {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-
+          {/* Username */}
           <FormField
             control={form.control}
             name="name"
@@ -157,9 +168,9 @@ export function CreateUserForm({ onSave, onCancel }: CreateUserFormProps) {
               <FormItem>
                 <FormLabel>User Name</FormLabel>
                 <FormControl>
-                  <Input 
-                    {...field} 
-                    className="bg-gray-50 border-gray-200" 
+                  <Input
+                    {...field}
+                    className="bg-gray-50 border-gray-200"
                     placeholder="Enter user name"
                   />
                 </FormControl>
@@ -168,6 +179,7 @@ export function CreateUserForm({ onSave, onCancel }: CreateUserFormProps) {
             )}
           />
 
+          {/* Email */}
           <FormField
             control={form.control}
             name="email"
@@ -175,9 +187,9 @@ export function CreateUserForm({ onSave, onCancel }: CreateUserFormProps) {
               <FormItem>
                 <FormLabel>Email ID</FormLabel>
                 <FormControl>
-                  <Input 
-                    {...field} 
-                    className="bg-gray-50 border-gray-200" 
+                  <Input
+                    {...field}
+                    className="bg-gray-50 border-gray-200"
                     placeholder="Enter email id"
                     type="email"
                   />
@@ -195,10 +207,7 @@ export function CreateUserForm({ onSave, onCancel }: CreateUserFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Country Code</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger className="bg-gray-50 border-gray-200">
                         <SelectValue placeholder="Code" />
@@ -224,14 +233,12 @@ export function CreateUserForm({ onSave, onCancel }: CreateUserFormProps) {
                 <FormItem className="col-span-2">
                   <FormLabel>Mobile Number</FormLabel>
                   <FormControl>
-                    <div className="flex items-center">
-                      <Input
-                        {...field}
-                        className="bg-gray-50 border-gray-200"
-                        placeholder="Enter mobile number"
-                        type="tel"
-                      />
-                    </div>
+                    <Input
+                      {...field}
+                      className="bg-gray-50 border-gray-200"
+                      placeholder="Enter mobile number"
+                      type="tel"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -239,16 +246,14 @@ export function CreateUserForm({ onSave, onCancel }: CreateUserFormProps) {
             />
           </div>
 
+          {/* Role */}
           <FormField
             control={form.control}
             name="role"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Role</FormLabel>
-                <Select 
-                  onValueChange={field.onChange} 
-                  defaultValue={field.value}
-                >
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
                     <SelectTrigger className="bg-gray-50 border-gray-200">
                       <SelectValue placeholder="Select role" />
@@ -266,7 +271,7 @@ export function CreateUserForm({ onSave, onCancel }: CreateUserFormProps) {
             )}
           />
 
-          {/* Supervisor field - only shown for analysts */}
+          {/* Supervisor (only for Analyst/Client) */}
           {showSupervisorField && (
             <FormField
               control={form.control}
@@ -274,10 +279,7 @@ export function CreateUserForm({ onSave, onCancel }: CreateUserFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Assign Supervisor</FormLabel>
-                  <Select 
-                    onValueChange={field.onChange} 
-                    defaultValue={field.value}
-                  >
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger className="bg-gray-50 border-gray-200">
                         <SelectValue placeholder="Choose Supervisor" />
@@ -297,6 +299,7 @@ export function CreateUserForm({ onSave, onCancel }: CreateUserFormProps) {
             />
           )}
 
+          {/* Join Date & Expiration Date */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={form.control}
@@ -377,7 +380,7 @@ export function CreateUserForm({ onSave, onCancel }: CreateUserFormProps) {
             />
           </div>
 
-          {/* Password Field */}
+          {/* Password */}
           <FormField
             control={form.control}
             name="password"
@@ -385,9 +388,9 @@ export function CreateUserForm({ onSave, onCancel }: CreateUserFormProps) {
               <FormItem>
                 <FormLabel>Password</FormLabel>
                 <FormControl>
-                  <Input 
-                    {...field} 
-                    className="bg-gray-50 border-gray-200" 
+                  <Input
+                    {...field}
+                    className="bg-gray-50 border-gray-200"
                     placeholder="Enter password"
                     type="password"
                   />
@@ -397,7 +400,7 @@ export function CreateUserForm({ onSave, onCancel }: CreateUserFormProps) {
             )}
           />
 
-          {/* Confirm Password Field */}
+          {/* Confirm Password */}
           <FormField
             control={form.control}
             name="confirmPassword"
@@ -405,9 +408,9 @@ export function CreateUserForm({ onSave, onCancel }: CreateUserFormProps) {
               <FormItem>
                 <FormLabel>Confirm Password</FormLabel>
                 <FormControl>
-                  <Input 
-                    {...field} 
-                    className="bg-gray-50 border-gray-200" 
+                  <Input
+                    {...field}
+                    className="bg-gray-50 border-gray-200"
                     placeholder="Confirm Password"
                     type="password"
                   />
@@ -417,6 +420,7 @@ export function CreateUserForm({ onSave, onCancel }: CreateUserFormProps) {
             )}
           />
 
+          {/* Actions */}
           <div className="flex justify-end space-x-2 pt-4 border-t mt-6">
             <Button
               type="button"
@@ -438,7 +442,7 @@ export function CreateUserForm({ onSave, onCancel }: CreateUserFormProps) {
                   Creating...
                 </>
               ) : (
-                'Save'
+                "Save"
               )}
             </Button>
           </div>

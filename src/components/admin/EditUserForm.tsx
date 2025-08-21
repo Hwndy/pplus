@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
-import { CalendarIcon, Pencil, Phone } from 'lucide-react';
+import { CalendarIcon, Pencil } from 'lucide-react';
 import {
   Form,
   FormControl,
@@ -29,8 +28,8 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 
-// Sample supervisors for the demo
-const MOCK_SupervisorS = [
+// ✅ Temporary mock supervisors (replace with API-driven list)
+const MOCK_SUPERVISORS = [
   { id: 'sup-1', name: 'John Supervisor' },
   { id: 'sup-2', name: 'Sarah Manager' },
   { id: 'sup-3', name: 'Michael Team Lead' },
@@ -40,7 +39,7 @@ export interface User {
   id: string | number;
   name: string;
   email: string;
-  role: string;
+  role: string | { id: string; name: string };
   avatar?: string;
   active?: boolean;
   joinDate?: Date;
@@ -56,21 +55,33 @@ interface EditUserFormProps {
   onCancel: () => void;
 }
 
+// ✅ Helper: Normalize role
+const normalizeRole = (role: User['role']): string => {
+  if (typeof role === 'string') return role.toLowerCase();
+  if (typeof role === 'object' && role !== null && 'name' in role) {
+    return String(role.name).toLowerCase();
+  }
+  return 'unknown';
+};
+
 export function EditUserForm({ user, onSave, onCancel }: EditUserFormProps) {
   const [avatar, setAvatar] = useState(user.avatar || '');
-  const [showSupervisorField, setShowSupervisorField] = useState(user.role === 'analyst');
-  
+  const [showSupervisorField, setShowSupervisorField] = useState(false);
+
+  // ✅ Normalize role once at init
+  const normalizedRole = normalizeRole(user.role);
+
   // Split mobile contact into country code and number if exists
   const mobileContactParts = user.mobileContact ? user.mobileContact.split(' ') : ['+1', ''];
   const defaultCountryCode = mobileContactParts[0] || '+1';
   const defaultMobileNumber = mobileContactParts.slice(1).join(' ') || '';
-  
+
   const form = useForm({
     defaultValues: {
       id: user.id,
       name: user.name,
       email: user.email,
-      role: user.role.toLowerCase(),
+      role: normalizedRole,
       countryCode: defaultCountryCode,
       mobileContact: defaultMobileNumber,
       joinDate: user.joinDate ? new Date(user.joinDate) : new Date(),
@@ -79,21 +90,18 @@ export function EditUserForm({ user, onSave, onCancel }: EditUserFormProps) {
     },
   });
 
-  // Watch for role changes to show/hide supervisor field
+  // Watch for role changes
   const selectedRole = form.watch('role');
-  
+
   useEffect(() => {
-    // Show supervisor field only when 'analyst' role is selected
     setShowSupervisorField(selectedRole === 'analyst');
-    
-    // Reset supervisor value when role changes to non-analyst
+
     if (selectedRole !== 'analyst') {
       form.setValue('supervisorId', '');
     }
   }, [selectedRole, form]);
 
   const onSubmit = (values: any) => {
-    // Validate that analyst has a supervisor
     if (values.role === 'analyst' && !values.supervisorId) {
       form.setError('supervisorId', { 
         type: 'manual',
@@ -101,10 +109,11 @@ export function EditUserForm({ user, onSave, onCancel }: EditUserFormProps) {
       });
       return;
     }
-    
+
     const updatedUser: User = {
       ...user,
       ...values,
+      role: values.role, // ✅ now always a string
       mobileContact: `${values.countryCode} ${values.mobileContact}`,
       avatar,
     };
@@ -124,8 +133,6 @@ export function EditUserForm({ user, onSave, onCancel }: EditUserFormProps) {
             variant="outline" 
             className="absolute bottom-0 right-0 rounded-full h-7 w-7 bg-background border border-input shadow-sm"
             onClick={() => {
-              // In a real app, this would open a file selection dialog
-              // For this demo, we'll just set a random avatar
               const seed = Math.random().toString(36).substring(7);
               setAvatar(`https://api.dicebear.com/7.x/personas/svg?seed=${seed}`);
             }}
@@ -137,6 +144,7 @@ export function EditUserForm({ user, onSave, onCancel }: EditUserFormProps) {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          {/* ID */}
           <FormField
             control={form.control}
             name="id"
@@ -144,17 +152,13 @@ export function EditUserForm({ user, onSave, onCancel }: EditUserFormProps) {
               <FormItem>
                 <FormLabel>User ID</FormLabel>
                 <FormControl>
-                  <Input 
-                    {...field} 
-                    disabled 
-                    className="bg-gray-50 border-gray-200" 
-                    placeholder="#ID"
-                  />
+                  <Input {...field} disabled className="bg-gray-50 border-gray-200" />
                 </FormControl>
               </FormItem>
             )}
           />
 
+          {/* Name */}
           <FormField
             control={form.control}
             name="name"
@@ -162,17 +166,14 @@ export function EditUserForm({ user, onSave, onCancel }: EditUserFormProps) {
               <FormItem>
                 <FormLabel>User Name</FormLabel>
                 <FormControl>
-                  <Input 
-                    {...field} 
-                    className="bg-gray-50 border-gray-200" 
-                    placeholder="Enter user name"
-                  />
+                  <Input {...field} className="bg-gray-50 border-gray-200" placeholder="Enter user name" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
 
+          {/* Email */}
           <FormField
             control={form.control}
             name="email"
@@ -180,19 +181,14 @@ export function EditUserForm({ user, onSave, onCancel }: EditUserFormProps) {
               <FormItem>
                 <FormLabel>Email ID</FormLabel>
                 <FormControl>
-                  <Input 
-                    {...field} 
-                    className="bg-gray-50 border-gray-200" 
-                    placeholder="Enter email id"
-                    type="email"
-                  />
+                  <Input {...field} className="bg-gray-50 border-gray-200" type="email" placeholder="Enter email" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
 
-          {/* Mobile Contact with Country Code */}
+          {/* Mobile Contact */}
           <div className="grid grid-cols-3 gap-2">
             <FormField
               control={form.control}
@@ -200,10 +196,7 @@ export function EditUserForm({ user, onSave, onCancel }: EditUserFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Country Code</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger className="bg-gray-50 border-gray-200">
                         <SelectValue placeholder="Code" />
@@ -229,14 +222,7 @@ export function EditUserForm({ user, onSave, onCancel }: EditUserFormProps) {
                 <FormItem className="col-span-2">
                   <FormLabel>Mobile Number</FormLabel>
                   <FormControl>
-                    <div className="flex items-center">
-                      <Input
-                        {...field}
-                        className="bg-gray-50 border-gray-200"
-                        placeholder="Enter mobile number"
-                        type="tel"
-                      />
-                    </div>
+                    <Input {...field} className="bg-gray-50 border-gray-200" placeholder="Enter mobile number" type="tel" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -244,16 +230,14 @@ export function EditUserForm({ user, onSave, onCancel }: EditUserFormProps) {
             />
           </div>
 
+          {/* Role */}
           <FormField
             control={form.control}
             name="role"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Role</FormLabel>
-                <Select 
-                  onValueChange={field.onChange} 
-                  defaultValue={field.value}
-                >
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
                     <SelectTrigger className="bg-gray-50 border-gray-200">
                       <SelectValue placeholder="Select role" />
@@ -271,7 +255,7 @@ export function EditUserForm({ user, onSave, onCancel }: EditUserFormProps) {
             )}
           />
 
-          {/* Supervisor field - only shown for analysts */}
+          {/* Supervisor for analysts */}
           {showSupervisorField && (
             <FormField
               control={form.control}
@@ -279,19 +263,16 @@ export function EditUserForm({ user, onSave, onCancel }: EditUserFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Assign Supervisor</FormLabel>
-                  <Select 
-                    onValueChange={field.onChange} 
-                    defaultValue={field.value}
-                  >
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger className="bg-gray-50 border-gray-200">
                         <SelectValue placeholder="Choose Supervisor" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {MOCK_SupervisorS.map(supervisor => (
-                        <SelectItem key={supervisor.id} value={supervisor.id}>
-                          {supervisor.name}
+                      {MOCK_SUPERVISORS.map(sup => (
+                        <SelectItem key={sup.id} value={sup.id}>
+                          {sup.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -302,7 +283,9 @@ export function EditUserForm({ user, onSave, onCancel }: EditUserFormProps) {
             />
           )}
 
+          {/* Dates */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Join Date */}
             <FormField
               control={form.control}
               name="joinDate"
@@ -312,36 +295,21 @@ export function EditUserForm({ user, onSave, onCancel }: EditUserFormProps) {
                   <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "pl-3 text-left font-normal bg-gray-50 border-gray-200",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value ? (
-                            format(field.value, "dd MMM yyyy")
-                          ) : (
-                            <span>Select date</span>
-                          )}
+                        <Button variant="outline" className={cn("pl-3 text-left font-normal bg-gray-50 border-gray-200", !field.value && "text-muted-foreground")}>
+                          {field.value ? format(field.value, "dd MMM yyyy") : <span>Select date</span>}
                           <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        initialFocus
-                        className="p-3 pointer-events-auto"
-                      />
+                      <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus className="p-3 pointer-events-auto" />
                     </PopoverContent>
                   </Popover>
                 </FormItem>
               )}
             />
 
+            {/* Expiration Date */}
             <FormField
               control={form.control}
               name="expirationDate"
@@ -351,30 +319,14 @@ export function EditUserForm({ user, onSave, onCancel }: EditUserFormProps) {
                   <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "pl-3 text-left font-normal bg-gray-50 border-gray-200",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value ? (
-                            format(field.value, "dd MMM yyyy")
-                          ) : (
-                            <span>Select date</span>
-                          )}
+                        <Button variant="outline" className={cn("pl-3 text-left font-normal bg-gray-50 border-gray-200", !field.value && "text-muted-foreground")}>
+                          {field.value ? format(field.value, "dd MMM yyyy") : <span>Select date</span>}
                           <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        initialFocus
-                        className="p-3 pointer-events-auto"
-                      />
+                      <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus className="p-3 pointer-events-auto" />
                     </PopoverContent>
                   </Popover>
                 </FormItem>
@@ -382,13 +334,9 @@ export function EditUserForm({ user, onSave, onCancel }: EditUserFormProps) {
             />
           </div>
 
+          {/* Actions */}
           <div className="flex justify-end space-x-2 pt-4 border-t mt-6">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={onCancel}
-              className="bg-gray-50 hover:bg-gray-100 text-gray-800"
-            >
+            <Button type="button" variant="outline" onClick={onCancel} className="bg-gray-50 hover:bg-gray-100 text-gray-800">
               Discard
             </Button>
             <Button type="submit" className="bg-indigo-950">Save</Button>

@@ -485,23 +485,45 @@ class ApiService {
   }
 
   async createUser(data: Partial<User>) {
-    try {
-      console.log('Creating user with data:', data);
-      const response = await post(`${this.baseUrl}/auth/create-user`, data, {
-        headers: this.getAuthHeaders(),
-      });
-      console.log('Create user API response:', response);
-      return response;
-    } catch (error) {
-      console.error('Create user error:', error);
-      console.error('Error details:', {
-        message: error instanceof Error ? error.message : 'Unknown error',
-        status: (error as any)?.response?.status,
-        data: (error as any)?.response?.data
-      });
-      throw error;
-    }
+  try {
+    const payload = {
+      username: data.name,
+      email: data.email,
+      country_code: data.countryCode,
+      mobile_number: data.mobileContact,
+      role: data.role, // Must be exactly Admin | Supervisor | Analyst | Client
+      joinDate: data.joinDate
+        ? new Date(data.joinDate).toISOString()
+        : new Date().toISOString(), // required
+      expiration_date: data.expirationDate
+        ? new Date(data.expirationDate).toISOString()
+        : new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(), // required
+      password: data.password, // required
+      confirmPassword: data.confirmPassword, // required
+      supervisor_Id:
+        data.role === "Analyst" ? Number(data.supervisorId) : undefined,
+    };
+
+    console.log("Creating user with payload:", payload);
+
+    const response = await post(
+      `${this.baseUrl}/auth/create-user`,
+      payload,
+      { headers: this.getAuthHeaders() }
+    );
+
+    console.log("Create user API response:", response);
+    return this.extractApiResponse<User>(response);
+  } catch (error: any) {
+    console.error("Create user error:", error);
+    console.error("Error details:", {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data, // shows Joi errors
+    });
+    throw error;
   }
+}
 
   async updateUser(id: string, data: Partial<User>) {
     try {
