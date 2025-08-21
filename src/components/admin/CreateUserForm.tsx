@@ -46,29 +46,23 @@ export default function CreateUserForm({ onSave, onCancel }: CreateUserFormProps
 
   const form = useForm({
     defaultValues: {
-      name: "",
+      username: "",
       email: "",
       role: "Admin",
-      mobileContact: "",
-      countryCode: "+234",
+      mobile_number: "",
+      country_code: "+234",
       joinDate: new Date(),
-      expirationDate: new Date(
-        new Date().setFullYear(new Date().getFullYear() + 1)
-      ),
+      expirationDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
       password: "",
       confirmPassword: "",
       supervisorId: "",
     },
   });
 
-  // Watch for role changes to toggle supervisor field
   const selectedRole = form.watch("role");
 
   useEffect(() => {
-    setShowSupervisorField(
-      selectedRole === "Analyst" || selectedRole === "Client"
-    );
-
+    setShowSupervisorField(selectedRole === "Analyst" || selectedRole === "Client");
     if (selectedRole !== "Analyst" && selectedRole !== "Client") {
       form.setValue("supervisorId", "");
     }
@@ -85,10 +79,7 @@ export default function CreateUserForm({ onSave, onCancel }: CreateUserFormProps
       return;
     }
 
-    if (
-      (values.role === "Analyst" || values.role === "Client") &&
-      !values.supervisorId
-    ) {
+    if ((values.role === "Analyst" || values.role === "Client") && !values.supervisorId) {
       form.setError("supervisorId", {
         type: "manual",
         message: "Supervisor is required for analysts and clients",
@@ -99,17 +90,20 @@ export default function CreateUserForm({ onSave, onCancel }: CreateUserFormProps
     setIsSubmitting(true);
 
     const userData = {
-      name: values.name,
+      username: values.username,
       email: values.email,
       password: values.password,
+      confirmPassword: values.confirmPassword,
       role: values.role,
-      mobileContact: values.mobileContact,
-      countryCode: values.countryCode,
+      country_code: values.country_code,
+      mobile_number: values.mobile_number,
       supervisorId: values.supervisorId || undefined,
       joinDate: values.joinDate.toISOString(),
-      expirationDate: values.expirationDate.toISOString(),
+      expiration_date: values.expirationDate.toISOString(),
       avatar,
     };
+
+    console.log("Creating user with payload:", userData);
 
     createUser.mutate(userData, {
       onSuccess: (result: any) => {
@@ -126,9 +120,7 @@ export default function CreateUserForm({ onSave, onCancel }: CreateUserFormProps
             : "Something went wrong");
         toast.error(errorMsg);
       },
-      onSettled: () => {
-        setIsSubmitting(false);
-      },
+      onSettled: () => setIsSubmitting(false),
     });
   };
 
@@ -148,9 +140,7 @@ export default function CreateUserForm({ onSave, onCancel }: CreateUserFormProps
             className="absolute bottom-0 right-0 rounded-full h-7 w-7 bg-background border border-input shadow-sm"
             onClick={() => {
               const seed = Math.random().toString(36).substring(7);
-              setAvatar(
-                `https://api.dicebear.com/7.x/personas/svg?seed=${seed}`
-              );
+              setAvatar(`https://api.dicebear.com/7.x/personas/svg?seed=${seed}`);
             }}
           >
             <Pencil className="h-3 w-3" />
@@ -163,16 +153,12 @@ export default function CreateUserForm({ onSave, onCancel }: CreateUserFormProps
           {/* Username */}
           <FormField
             control={form.control}
-            name="name"
+            name="username"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>User Name</FormLabel>
+                <FormLabel>Username</FormLabel>
                 <FormControl>
-                  <Input
-                    {...field}
-                    className="bg-gray-50 border-gray-200"
-                    placeholder="Enter user name"
-                  />
+                  <Input {...field} className="bg-gray-50 border-gray-200" placeholder="Enter username" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -185,25 +171,20 @@ export default function CreateUserForm({ onSave, onCancel }: CreateUserFormProps
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email ID</FormLabel>
+                <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input
-                    {...field}
-                    className="bg-gray-50 border-gray-200"
-                    placeholder="Enter email id"
-                    type="email"
-                  />
+                  <Input {...field} className="bg-gray-50 border-gray-200" placeholder="Enter email" type="email" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
 
-          {/* Mobile Contact with Country Code */}
+          {/* Country code + Mobile number */}
           <div className="grid grid-cols-3 gap-2">
             <FormField
               control={form.control}
-              name="countryCode"
+              name="country_code"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Country Code</FormLabel>
@@ -214,13 +195,10 @@ export default function CreateUserForm({ onSave, onCancel }: CreateUserFormProps
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
+                      <SelectItem value="+234">+234 (NG)</SelectItem>
                       <SelectItem value="+1">+1 (US/CA)</SelectItem>
                       <SelectItem value="+44">+44 (UK)</SelectItem>
                       <SelectItem value="+91">+91 (IN)</SelectItem>
-                      <SelectItem value="+61">+61 (AU)</SelectItem>
-                      <SelectItem value="+86">+86 (CN)</SelectItem>
-                      <SelectItem value="+33">+33 (FR)</SelectItem>
-                      <SelectItem value="+49">+49 (DE)</SelectItem>
                     </SelectContent>
                   </Select>
                 </FormItem>
@@ -228,17 +206,12 @@ export default function CreateUserForm({ onSave, onCancel }: CreateUserFormProps
             />
             <FormField
               control={form.control}
-              name="mobileContact"
+              name="mobile_number"
               render={({ field }) => (
                 <FormItem className="col-span-2">
                   <FormLabel>Mobile Number</FormLabel>
                   <FormControl>
-                    <Input
-                      {...field}
-                      className="bg-gray-50 border-gray-200"
-                      placeholder="Enter mobile number"
-                      type="tel"
-                    />
+                    <Input {...field} className="bg-gray-50 border-gray-200" placeholder="Enter mobile number" type="tel" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -271,7 +244,7 @@ export default function CreateUserForm({ onSave, onCancel }: CreateUserFormProps
             )}
           />
 
-          {/* Supervisor (only for Analyst/Client) */}
+          {/* Supervisor */}
           {showSupervisorField && (
             <FormField
               control={form.control}
@@ -286,9 +259,9 @@ export default function CreateUserForm({ onSave, onCancel }: CreateUserFormProps
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {supervisors?.map((supervisor: any) => (
-                        <SelectItem key={supervisor.id} value={supervisor.id}>
-                          {supervisor.name}
+                      {supervisors?.map((sup: any) => (
+                        <SelectItem key={sup.id} value={sup.id}>
+                          {sup.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -299,7 +272,7 @@ export default function CreateUserForm({ onSave, onCancel }: CreateUserFormProps
             />
           )}
 
-          {/* Join Date & Expiration Date */}
+          {/* Join + Expiration */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={form.control}
@@ -310,30 +283,14 @@ export default function CreateUserForm({ onSave, onCancel }: CreateUserFormProps
                   <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "pl-3 text-left font-normal bg-gray-50 border-gray-200",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value ? (
-                            format(field.value, "dd MMM yyyy")
-                          ) : (
-                            <span>Select date</span>
-                          )}
+                        <Button variant="outline" className={cn("pl-3 text-left font-normal bg-gray-50 border-gray-200", !field.value && "text-muted-foreground")}>
+                          {field.value ? format(field.value, "dd MMM yyyy") : <span>Select date</span>}
                           <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        initialFocus
-                        className="p-3 pointer-events-auto"
-                      />
+                      <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus className="p-3 pointer-events-auto" />
                     </PopoverContent>
                   </Popover>
                 </FormItem>
@@ -349,30 +306,14 @@ export default function CreateUserForm({ onSave, onCancel }: CreateUserFormProps
                   <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "pl-3 text-left font-normal bg-gray-50 border-gray-200",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value ? (
-                            format(field.value, "dd MMM yyyy")
-                          ) : (
-                            <span>Select date</span>
-                          )}
+                        <Button variant="outline" className={cn("pl-3 text-left font-normal bg-gray-50 border-gray-200", !field.value && "text-muted-foreground")}>
+                          {field.value ? format(field.value, "dd MMM yyyy") : <span>Select date</span>}
                           <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        initialFocus
-                        className="p-3 pointer-events-auto"
-                      />
+                      <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus className="p-3 pointer-events-auto" />
                     </PopoverContent>
                   </Popover>
                 </FormItem>
@@ -380,7 +321,7 @@ export default function CreateUserForm({ onSave, onCancel }: CreateUserFormProps
             />
           </div>
 
-          {/* Password */}
+          {/* Password + Confirm */}
           <FormField
             control={form.control}
             name="password"
@@ -388,19 +329,13 @@ export default function CreateUserForm({ onSave, onCancel }: CreateUserFormProps
               <FormItem>
                 <FormLabel>Password</FormLabel>
                 <FormControl>
-                  <Input
-                    {...field}
-                    className="bg-gray-50 border-gray-200"
-                    placeholder="Enter password"
-                    type="password"
-                  />
+                  <Input {...field} className="bg-gray-50 border-gray-200" placeholder="Enter password" type="password" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
 
-          {/* Confirm Password */}
           <FormField
             control={form.control}
             name="confirmPassword"
@@ -408,12 +343,7 @@ export default function CreateUserForm({ onSave, onCancel }: CreateUserFormProps
               <FormItem>
                 <FormLabel>Confirm Password</FormLabel>
                 <FormControl>
-                  <Input
-                    {...field}
-                    className="bg-gray-50 border-gray-200"
-                    placeholder="Confirm Password"
-                    type="password"
-                  />
+                  <Input {...field} className="bg-gray-50 border-gray-200" placeholder="Confirm password" type="password" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -422,20 +352,10 @@ export default function CreateUserForm({ onSave, onCancel }: CreateUserFormProps
 
           {/* Actions */}
           <div className="flex justify-end space-x-2 pt-4 border-t mt-6">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onCancel}
-              className="bg-gray-50 hover:bg-gray-100 text-gray-800"
-              disabled={isSubmitting}
-            >
+            <Button type="button" variant="outline" onClick={onCancel} className="bg-gray-50 hover:bg-gray-100 text-gray-800" disabled={isSubmitting}>
               Discard
             </Button>
-            <Button
-              type="submit"
-              className="bg-indigo-950"
-              disabled={isSubmitting}
-            >
+            <Button type="submit" className="bg-indigo-950" disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -484,43 +484,34 @@ class ApiService {
     }
   }
 
-  async createUser(data: Partial<User>) {
+ async createUser(data: Partial<User>) {
   try {
     const payload = {
-      username: data.name,
+      username: data.username,
       email: data.email,
-      country_code: data.countryCode,
-      mobile_number: data.mobileContact,
-      role: data.role, // Must be exactly Admin | Supervisor | Analyst | Client
+      country_code: data.country_code,
+      mobile_number: data.mobile_number,
+      role: data.role,
       joinDate: data.joinDate
         ? new Date(data.joinDate).toISOString()
-        : new Date().toISOString(), // required
-      expiration_date: data.expirationDate
-        ? new Date(data.expirationDate).toISOString()
-        : new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(), // required
-      password: data.password, // required
-      confirmPassword: data.confirmPassword, // required
-      supervisor_Id:
-        data.role === "Analyst" ? Number(data.supervisorId) : undefined,
+        : new Date().toISOString(),
+      expiration_date: data.expiration_date
+        ? new Date(data.expiration_date).toISOString()
+        : new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(),
+      password: data.password,
+      confirmPassword: data.confirmPassword,
+      supervisor_id: data.role === "Analyst" ? Number(data.supervisor_id) : undefined,
     };
 
     console.log("Creating user with payload:", payload);
-
     const response = await post(
       `${this.baseUrl}/auth/create-user`,
       payload,
       { headers: this.getAuthHeaders() }
     );
-
-    console.log("Create user API response:", response);
     return this.extractApiResponse<User>(response);
   } catch (error: any) {
     console.error("Create user error:", error);
-    console.error("Error details:", {
-      message: error.message,
-      status: error.response?.status,
-      data: error.response?.data, // shows Joi errors
-    });
     throw error;
   }
 }
