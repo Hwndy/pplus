@@ -1,473 +1,104 @@
-
-import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Plus, X, Copy, Loader2 } from 'lucide-react';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { toast } from 'sonner';
-import { useCreateCompany } from '@/hooks/useApi';
-
-interface CompanyFormData {
-  id?: number;
-  name: string;
-  email: string;
-  industry: string;
-  subIndustry: string;
-  prefix: string;
-  officeAddress: string;
-  officeState: string;
-  officeCountry: string;
-  contactPerson: string;
-  ceo: string;
-  phone: string;
-  website: string;
-  facebookLink: string;
-  instagramLink: string;
-  twitterLink: string;
-  linkedinLink: string;
-  youtubeLink: string;
-}
+// src/components/admin/CreateCompanyForm.tsx
+import React, { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface CreateCompanyFormProps {
-  onSave: (company: any) => void;
-  onCancel: () => void;
+  onSuccess?: () => void; // Callback after successful creation
 }
 
-export function CreateCompanyForm({ onSave, onCancel }: CreateCompanyFormProps) {
-  const [companyForms, setCompanyForms] = useState<CompanyFormData[]>([{
-    name: '',
-    email: '',
-    industry: '',
-    subIndustry: '',
-    prefix: '',
-    officeAddress: '',
-    officeState: '',
-    officeCountry: '',
-    contactPerson: '',
-    ceo: '',
-    phone: '',
-    website: '',
-    facebookLink: '',
-    instagramLink: '',
-    twitterLink: '',
-    linkedinLink: 'https://linkedin.com', // Set default value since it's required
-    youtubeLink: 'https://youtube.com', // Set default value since it's required
-  }]);
-
-  const [subsidiaries, setSubsidiaries] = useState<Array<{ id: number, name: string }>>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const createCompany = useCreateCompany();
-
-  const form = useForm({
-    defaultValues: {
-      name: '',
-      email: '',
-      industry: '',
-      subIndustry: '',
-      prefix: '',
-      subsidiaries: '',
-      officeAddress: '',
-      officeState: '',
-      officeCountry: '',
-      contactPerson: '',
-      ceo: '',
-      phone: '',
-      website: '',
-      facebookLink: '',
-      instagramLink: '',
-      twitterLink: '',
-      linkedinLink: 'https://linkedin.com',
-      youtubeLink: 'https://youtube.com',
-    },
+const CreateCompanyForm: React.FC<CreateCompanyFormProps> = ({ onSuccess }) => {
+  const [formData, setFormData] = useState({
+    name: "",
+    industry: "",
+    location: "",
   });
 
-  const onSubmit = async () => {
-    if (isSubmitting) return;
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-    setIsSubmitting(true);
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
 
     try {
-      const companies = companyForms.map(formData => ({
-        name: formData.name,
-        email: formData.email,
-        industry: formData.industry,
-        website: formData.website,
-        // Map form fields to backend expected fields
-        sub_industry: formData.subIndustry, // Backend expects sub_industry
-        state: formData.officeState, // Backend expects state
-        country: formData.officeCountry, // Backend expects country
-        contact: formData.contactPerson, // Backend expects contact
-        phone_no: formData.phone, // Backend expects phone_no
-        address: formData.officeAddress, // Use just the address field
-        ceo: formData.ceo,
-        // Remove prefix as it's not allowed by backend
-        // Social media links as separate fields - provide defaults if empty
-        facebook_link: formData.facebookLink || 'https://facebook.com',
-        instagram_link: formData.instagramLink || 'https://instagram.com',
-        twitter_link: formData.twitterLink || 'https://twitter.com',
-        linkedin_link: formData.linkedinLink || 'https://linkedin.com', // Required field
-        youtube_link: formData.youtubeLink || 'https://youtube.com', // Required field
-      }));
+      const response = await fetch("https://p-analytics.onrender.com/api/companies", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+      });
 
-      // Create companies one by one
-      const createdCompanies = [];
-      for (const companyData of companies) {
-        try {
-          const result = await createCompany.mutate(companyData);
-          createdCompanies.push(result);
-        } catch (error) {
-          console.error('Error creating company:', error);
-          toast.error(`Failed to create company: ${companyData.name}`);
-        }
+      if (!response.ok) {
+        throw new Error("Failed to create company");
       }
 
-      if (createdCompanies.length > 0) {
-        if (createdCompanies.length === 1) {
-          onSave(createdCompanies[0]);
-          toast.success("Company created successfully");
-        } else {
-          createdCompanies.forEach(company => onSave(company));
-          toast.success(`${createdCompanies.length} companies created successfully`);
-        }
-      }
-    } catch (error) {
-      console.error('Error in form submission:', error);
-      toast.error("Failed to create company");
+      setFormData({ name: "", industry: "", location: "" });
+      if (onSuccess) onSuccess();
+    } catch (err: any) {
+      setError(err.message || "Something went wrong");
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
-
-  const addSubsidiary = () => {
-    setSubsidiaries([...subsidiaries, { id: subsidiaries.length + 1, name: '' }]);
-  };
-
-  const removeSubsidiary = (id: number) => {
-    setSubsidiaries(subsidiaries.filter(s => s.id !== id));
-  };
-
-  const updateSubsidiary = (id: number, name: string) => {
-    setSubsidiaries(subsidiaries.map(s => s.id === id ? { ...s, name } : s));
-  };
-
-  const cloneCompanyForm = () => {
-    if (companyForms.length < 2) { // Limit to 2 forms
-      setCompanyForms([...companyForms, { ...companyForms[0] }]);
-      toast.success("Company form cloned");
-    } else {
-      toast.error("Maximum of 2 company forms allowed");
-    }
-  };
-
-  const removeCompanyForm = (index: number) => {
-    const updatedForms = companyForms.filter((_, i) => i !== index);
-    setCompanyForms(updatedForms);
-  };
-
-  const updateCompanyForm = (index: number, field: keyof CompanyFormData, value: string) => {
-    const updatedForms = [...companyForms];
-    updatedForms[index] = { ...updatedForms[index], [field]: value };
-    setCompanyForms(updatedForms);
-  };
-
-  const industryOptions = ['Financial Services', 'Technology', 'Healthcare', 'Manufacturing', 'Retail', 'Education', 'Media', 'Other'];
 
   return (
-    <ScrollArea className="h-[calc(100vh-300px)]">
-      <div className="p-1">
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            {companyForms.map((companyForm, formIndex) => (
-              <div key={formIndex} className="border p-4 rounded-md relative mb-6">
-                {formIndex > 0 && (
-                  <Button 
-                    type="button" 
-                    size="icon" 
-                    variant="ghost"
-                    className="absolute top-2 right-2 text-red-500 hover:text-red-700"
-                    onClick={() => removeCompanyForm(formIndex)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                )}
-                
-                {/* First Row - Core Info */}
-                <div className="grid grid-cols-3 gap-4 mb-6">
-                  <div>
-                    <FormLabel>Company Name <span className="text-red-500">*</span></FormLabel>
-                    <Input 
-                      className="bg-gray-50 border-gray-200" 
-                      placeholder="Enter company name"
-                      value={companyForm.name}
-                      onChange={(e) => updateCompanyForm(formIndex, 'name', e.target.value)}
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <FormLabel>Industry <span className="text-red-500">*</span></FormLabel>
-                    <Select 
-                      value={companyForm.industry}
-                      onValueChange={(value) => updateCompanyForm(formIndex, 'industry', value)}
-                    >
-                      <SelectTrigger className="bg-gray-50 border-gray-200">
-                        <SelectValue placeholder="Select industry" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {industryOptions.map(option => (
-                          <SelectItem key={option} value={option}>{option}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div>
-                    <FormLabel>Sub-industry <span className="text-red-500">*</span></FormLabel>
-                    <Input 
-                      className="bg-gray-50 border-gray-200" 
-                      placeholder="Enter sub-industry"
-                      value={companyForm.subIndustry}
-                      onChange={(e) => updateCompanyForm(formIndex, 'subIndustry', e.target.value)}
-                      required
-                    />
-                  </div>
-                </div>
-                
-                {/* Second Row - Contact Details */}
-                <div className="grid grid-cols-3 gap-4 mb-6">
-                  <div>
-                    <FormLabel>Email <span className="text-red-500">*</span></FormLabel>
-                    <Input 
-                      className="bg-gray-50 border-gray-200" 
-                      placeholder="Enter email"
-                      type="email"
-                      value={companyForm.email}
-                      onChange={(e) => updateCompanyForm(formIndex, 'email', e.target.value)}
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <FormLabel>Phone no <span className="text-red-500">*</span></FormLabel>
-                    <Input 
-                      className="bg-gray-50 border-gray-200" 
-                      placeholder="Enter phone number"
-                      value={companyForm.phone}
-                      onChange={(e) => updateCompanyForm(formIndex, 'phone', e.target.value)}
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <FormLabel>Website <span className="text-red-500">*</span></FormLabel>
-                    <Input 
-                      className="bg-gray-50 border-gray-200" 
-                      placeholder="Enter website URL"
-                      type="url"
-                      value={companyForm.website}
-                      onChange={(e) => updateCompanyForm(formIndex, 'website', e.target.value)}
-                      required
-                    />
-                  </div>
-                </div>
-                
-                {/* Third Row - Address */}
-                <div className="grid grid-cols-3 gap-4 mb-6">
-                  <div>
-                    <FormLabel>Office Address <span className="text-red-500">*</span></FormLabel>
-                    <Textarea 
-                      className="bg-gray-50 border-gray-200 min-h-[80px]" 
-                      placeholder="Enter office address"
-                      value={companyForm.officeAddress}
-                      onChange={(e) => updateCompanyForm(formIndex, 'officeAddress', e.target.value)}
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <FormLabel>Office State <span className="text-red-500">*</span></FormLabel>
-                    <Input 
-                      className="bg-gray-50 border-gray-200" 
-                      placeholder="Enter office state"
-                      value={companyForm.officeState}
-                      onChange={(e) => updateCompanyForm(formIndex, 'officeState', e.target.value)}
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <FormLabel>Office Country <span className="text-red-500">*</span></FormLabel>
-                    <Input 
-                      className="bg-gray-50 border-gray-200" 
-                      placeholder="Enter office country"
-                      value={companyForm.officeCountry}
-                      onChange={(e) => updateCompanyForm(formIndex, 'officeCountry', e.target.value)}
-                      required
-                    />
-                  </div>
-                </div>
-                
-                {/* Fourth Row - Personnel */}
-                <div className="grid grid-cols-3 gap-4 mb-6">
-                  <div>
-                    <FormLabel>CEO <span className="text-red-500">*</span></FormLabel>
-                    <Input 
-                      className="bg-gray-50 border-gray-200" 
-                      placeholder="Enter CEO name"
-                      value={companyForm.ceo}
-                      onChange={(e) => updateCompanyForm(formIndex, 'ceo', e.target.value)}
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <FormLabel>Contact Person <span className="text-red-500">*</span></FormLabel>
-                    <Input 
-                      className="bg-gray-50 border-gray-200" 
-                      placeholder="Enter contact person name"
-                      value={companyForm.contactPerson}
-                      onChange={(e) => updateCompanyForm(formIndex, 'contactPerson', e.target.value)}
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <FormLabel>Additional Info</FormLabel>
-                    <Input
-                      className="bg-gray-50 border-gray-200"
-                      placeholder="Any additional information"
-                      value=""
-                      disabled
-                    />
-                    <p className="text-xs text-gray-500 mt-1">This field is for future use</p>
-                  </div>
-                </div>
-                
-                {/* Fifth Row - Social Media */}
-                <div className="grid grid-cols-3 gap-4 mb-6">
-                  <div>
-                    <FormLabel>Facebook Link</FormLabel>
-                    <Input
-                      className="bg-gray-50 border-gray-200"
-                      placeholder="Enter Facebook URL"
-                      type="url"
-                      value={companyForm.facebookLink}
-                      onChange={(e) => updateCompanyForm(formIndex, 'facebookLink', e.target.value)}
-                    />
-                  </div>
-
-                  <div>
-                    <FormLabel>Instagram Link</FormLabel>
-                    <Input
-                      className="bg-gray-50 border-gray-200"
-                      placeholder="Enter Instagram URL"
-                      type="url"
-                      value={companyForm.instagramLink}
-                      onChange={(e) => updateCompanyForm(formIndex, 'instagramLink', e.target.value)}
-                    />
-                  </div>
-
-                  <div>
-                    <FormLabel>Twitter Link</FormLabel>
-                    <Input
-                      className="bg-gray-50 border-gray-200"
-                      placeholder="Enter Twitter URL"
-                      type="url"
-                      value={companyForm.twitterLink}
-                      onChange={(e) => updateCompanyForm(formIndex, 'twitterLink', e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                {/* Sixth Row - Required Social Media */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <FormLabel>LinkedIn Link <span className="text-red-500">*</span></FormLabel>
-                    <Input
-                      className="bg-gray-50 border-gray-200"
-                      placeholder="Enter LinkedIn URL"
-                      type="url"
-                      value={companyForm.linkedinLink}
-                      onChange={(e) => updateCompanyForm(formIndex, 'linkedinLink', e.target.value)}
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <FormLabel>YouTube Link <span className="text-red-500">*</span></FormLabel>
-                    <Input
-                      className="bg-gray-50 border-gray-200"
-                      placeholder="Enter YouTube URL"
-                      type="url"
-                      value={companyForm.youtubeLink}
-                      onChange={(e) => updateCompanyForm(formIndex, 'youtubeLink', e.target.value)}
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
-            
-            <div className="flex justify-center">
-              <Button 
-                type="button" 
-                onClick={cloneCompanyForm}
-                className="bg-blue-500 hover:bg-blue-600"
-                disabled={companyForms.length >= 2}
-              >
-                <Copy className="mr-2 h-4 w-4" />
-                Clone Company Form
-              </Button>
-            </div>
-
-            <div className="border-t pt-4 mt-4"></div>
-
-            <div className="flex justify-end space-x-2 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onCancel}
-                className="bg-gray-50 hover:bg-gray-100 text-gray-800"
-                disabled={isSubmitting}
-              >
-                Discard
-              </Button>
-              <Button
-                type="submit"
-                className="bg-indigo-950"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  'Save'
-                )}
-              </Button>
-            </div>
-          </form>
-        </Form>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <Label htmlFor="name">Company Name</Label>
+        <Input
+          id="name"
+          name="name"
+          value={formData.name}
+          onChange={handleChange}
+          placeholder="Enter company name"
+          required
+        />
       </div>
-    </ScrollArea>
+
+      <div>
+        <Label htmlFor="industry">Industry</Label>
+        <Input
+          id="industry"
+          name="industry"
+          value={formData.industry}
+          onChange={handleChange}
+          placeholder="Enter industry"
+          required
+        />
+      </div>
+
+      <div>
+        <Label htmlFor="location">Location</Label>
+        <Input
+          id="location"
+          name="location"
+          value={formData.location}
+          onChange={handleChange}
+          placeholder="Enter location"
+          required
+        />
+      </div>
+
+      {error && <p className="text-red-500 text-sm">{error}</p>}
+
+      <Button type="submit" disabled={loading}>
+        {loading ? "Creating..." : "Create Company"}
+      </Button>
+    </form>
   );
-}
+};
+
+export default CreateCompanyForm;

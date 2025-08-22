@@ -18,15 +18,25 @@ export interface User {
 }
 
 export interface Company {
-  id: string;
-  name: string;
-  industry: string;
-  description?: string;
-  website?: string;
-  logo?: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+        id: string;
+        company_name: string;
+        industry: string;
+        sub_industry: string;
+        office_address: string;
+        // subsidiary: company.subsidiary ? SubsidiaryArray(company.subsidiary) : [],
+        office_state: string;
+        office_country: string;
+        contact_person: string;
+        ceo: string;
+        email: string;
+        additional_info: string;
+        phone_no: string;
+        website: string;
+        facebook_link: string;
+        instagram_link: string;
+        twitter_link: string;
+        linkedin_link: string;
+        youtube_link: string;
 }
 
 export interface Publication {
@@ -573,24 +583,56 @@ class ApiService {
   }
 
   // COMPANIES - Fixed endpoints to match Postman collection
-  async getCompanies(params?: QueryParams): Promise<ApiResponse<Company[]>> {
-    try {
-      console.log('Fetching companies with params:', params);
-      const axiosResponse = await get(`${this.baseUrl}/companies${this.buildQuery(params)}`, {
+// Inside apiService.ts
+async getCompanies(params?: QueryParams): Promise<{
+  companies: {
+    id: string;
+    company: string;
+    industry: string;
+    contact: string;
+    status: string;
+    logo: string | null;
+    website: string | null;
+    phone_no: string | null;
+  }[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}> {
+  try {
+    const axiosResponse = await get(
+      `${this.baseUrl}/companies${this.buildQuery(params)}`,
+      {
         headers: this.getAuthHeaders(false),
-      });
-      console.log('Companies API response:', axiosResponse);
-      return this.extractApiResponse<Company[]>(axiosResponse);
-    } catch (error) {
-      console.error('Get companies error:', error);
-      console.error('Error details:', {
-        message: error instanceof Error ? error.message : 'Unknown error',
-        status: (error as any)?.response?.status,
-        data: (error as any)?.response?.data
-      });
-      throw error;
-    }
+      }
+    );
+
+    const rawResponse = this.extractApiResponse<any>(axiosResponse);
+
+    // Normalize company records
+    const companies = rawResponse.data.data.map((c: any) => ({
+      id: c.id,
+      company: c.company_name,
+      industry: c.industry,
+      contact: `${c.contact_person} (${c.email})`,
+      status: c.ceo,
+      logo: null,      
+      website: c.website ?? null,
+      phone_no: c.phone_no ?? null,
+    }));
+
+    // Use backend pagination object directly
+    const pagination = rawResponse.data.pagination;
+
+    return { companies, pagination };
+  } catch (error) {
+    console.error("Error fetching companies:", error);
+    throw error;
   }
+}
 
   async getCompanyById(id: string) {
     try {
