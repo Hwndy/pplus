@@ -89,28 +89,45 @@ export default function CreateUserForm({ onSave, onCancel }: CreateUserFormProps
 
     setIsSubmitting(true);
 
-    const userData = {
-      username: values.username,
-      email: values.email,
-      password: values.password,
-      confirmPassword: values.confirmPassword,
-      role: values.role,
-      country_code: values.country_code,
-      mobile_number: values.mobile_number,
-      supervisorId: values.supervisorId || undefined,
-      joinDate: values.joinDate.toISOString(),
-      expiration_date: values.expirationDate.toISOString(),
-      avatar,
-    };
+    // const userData = {
+    //   username: values.username,
+    //   email: values.email,
+    //   password: values.password,
+    //   // confirmPassword: values.confirmPassword,
+    //   role: values.role,
+    //   country_code: values.country_code,
+    //   mobile_number: values.mobile_number,
+    //   supervisorId: values.supervisorId || undefined,
+    //   joinDate: values.joinDate.toISOString(),
+    //   expiration_date: values.expirationDate.toISOString(),
+    //   avatar,
+    // };
+
+const userData = {
+  username: values.username,
+  email: values.email,
+  password: values.password,
+  role: values.role,
+  country_code: values.country_code,
+  mobile_number: values.mobile_number,
+  supervisor_id: values.supervisorId ? Number(values.supervisorId) : undefined,
+  joinDate: values.joinDate.toISOString(),
+  expiration_date: values.expirationDate.toISOString(),
+  avatar,
+};
+
+
 
     console.log("Creating user with payload:", userData);
 
     createUser.mutate(userData, {
-      onSuccess: (result: any) => {
-        toast.success(result?.message || "User created successfully");
-        onSave(result?.data?.user || result?.data);
-        form.reset();
-      },
+  onSuccess: (result: any) => {
+    toast.success(result?.message || "User created successfully");
+    onSave(result?.data?.user || result?.data);
+    form.reset();
+    onCancel(); // ✅ close the form automatically
+  },
+
       onError: (error: any) => {
         console.error("Error creating user:", error);
         const errorMsg =
@@ -261,7 +278,7 @@ export default function CreateUserForm({ onSave, onCancel }: CreateUserFormProps
                     <SelectContent>
                       {supervisors?.map((sup: any) => (
                         <SelectItem key={sup.id} value={sup.id}>
-                          {sup.name}
+                          {sup.username}
                         </SelectItem>
                       ))}
                     </SelectContent>
