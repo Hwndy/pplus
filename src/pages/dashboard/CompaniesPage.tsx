@@ -76,7 +76,7 @@ const CompaniesPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await axios.get('https://pplusanalytics.onrender.com/api/companies/', {
+      const res = await axios.get('https://pplus-86qw.onrender.com/api/companies/', {
         params: apiParams
       });
       const apiData = res.data?.data;

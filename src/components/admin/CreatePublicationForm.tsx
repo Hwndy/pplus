@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,7 +8,7 @@ import { Loader2 } from 'lucide-react';
 
 interface PublicationFormData {
   name: string;
-  type?: string;
+  publication_type?: string;
   website?: string;
   description?: string;
 }
@@ -17,53 +16,57 @@ interface PublicationFormData {
 interface CreatePublicationFormProps {
   onSave: (publication: PublicationFormData) => void;
   onCancel: () => void;
+  initialData?: PublicationFormData | null;
 }
 
 export const CreatePublicationForm: React.FC<CreatePublicationFormProps> = ({
   onSave,
-  onCancel
+  onCancel,
+  initialData
 }) => {
   const [formData, setFormData] = useState<PublicationFormData>({
     name: '',
-    type: 'print',
+    publication_type: 'print',
     website: '',
     description: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Prefill form when editing
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        name: initialData.name || '',
+        publication_type: initialData.publication_type || 'print',
+        website: initialData.website || '',
+        description: initialData.description || ''
+      });
+    }
+  }, [initialData]);
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-
-    if (!formData.name.trim()) {
-      newErrors.name = 'Publication name is required';
-    }
-
+    if (!formData.name.trim()) newErrors.name = 'Publication name is required';
+    if (!formData.publication_type) newErrors.publication_type = 'Publication type is required';
     if (formData.website && !formData.website.match(/^https?:\/\/.+/)) {
       newErrors.website = 'Please enter a valid URL (starting with http:// or https://)';
     }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     setIsSubmitting(true);
     try {
       await onSave(formData);
-      // Reset form on success
-      setFormData({
-        name: '',
-        type: 'print',
-        website: '',
-        description: ''
-      });
+      // reset only if creating
+      if (!initialData) {
+        setFormData({ name: '', publication_type: 'print', website: '', description: '' });
+      }
       setErrors({});
     } catch (error) {
       console.error('Error submitting form:', error);
@@ -74,15 +77,12 @@ export const CreatePublicationForm: React.FC<CreatePublicationFormProps> = ({
 
   const handleInputChange = (field: keyof PublicationFormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
-    }
+    if (errors[field]) setErrors(prev => ({ ...prev, [field]: '' }));
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Publication Name */}
+      {/* Name */}
       <div>
         <Label htmlFor="name">Publication Name *</Label>
         <Input
@@ -97,8 +97,11 @@ export const CreatePublicationForm: React.FC<CreatePublicationFormProps> = ({
 
       {/* Publication Type */}
       <div>
-        <Label htmlFor="type">Publication Type</Label>
-        <Select value={formData.type} onValueChange={(value) => handleInputChange('type', value)}>
+        <Label htmlFor="publication_type">Publication Type *</Label>
+        <Select
+          value={formData.publication_type}
+          onValueChange={(value) => handleInputChange('publication_type', value)}
+        >
           <SelectTrigger>
             <SelectValue placeholder="Select publication type" />
           </SelectTrigger>
@@ -111,6 +114,7 @@ export const CreatePublicationForm: React.FC<CreatePublicationFormProps> = ({
             <SelectItem value="newsletter">Newsletter</SelectItem>
           </SelectContent>
         </Select>
+        {errors.publication_type && <p className="text-red-500 text-sm mt-1">{errors.publication_type}</p>}
       </div>
 
       {/* Website */}
@@ -139,7 +143,7 @@ export const CreatePublicationForm: React.FC<CreatePublicationFormProps> = ({
         />
       </div>
 
-      {/* Form Actions */}
+      {/* Actions */}
       <div className="flex justify-end gap-2 pt-4">
         <Button
           type="button"
@@ -149,18 +153,14 @@ export const CreatePublicationForm: React.FC<CreatePublicationFormProps> = ({
         >
           Cancel
         </Button>
-        <Button
-          type="submit"
-          className="bg-indigo-950"
-          disabled={isSubmitting}
-        >
+        <Button type="submit" className="bg-indigo-950" disabled={isSubmitting}>
           {isSubmitting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Creating...
+              {initialData ? 'Updating...' : 'Creating...'}
             </>
           ) : (
-            'Create Publication'
+            initialData ? 'Update Publication' : 'Create Publication'
           )}
         </Button>
       </div>

@@ -39,16 +39,21 @@ export interface Company {
         youtube_link: string;
 }
 
-export interface Publication {
-  id: string;
-  name: string;
-  type: string;
-  website?: string;
-  description?: string;
-  createdAt: string;
-  updatedAt: string;
+interface PublicationsResponse {
+  publication: Publication[];
+  meta: {
+    total: number;
+    currentPage: number;
+    totalPage: number;
+    pageSize: number;
+  };
+  links?: {
+    first?: string;
+    last?: string;
+    prev?: string;
+    next?: string;
+  };
 }
-
 export interface Editorial {
   id: string;
   title: string;
@@ -247,7 +252,7 @@ export interface ApiResponse<T = unknown> {
 // API Service Class
 class ApiService {
   private token: string | null = null;
-  private baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://pplusanalytics.onrender.com/api';
+  private baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://pplus-86qw.onrender.com/api';
 
   constructor() {
     console.log('ApiService initialized with baseUrl:', this.baseUrl);
@@ -519,6 +524,8 @@ class ApiService {
       payload,
       { headers: this.getAuthHeaders() }
     );
+
+    
     return this.extractApiResponse<User>(response);
   } catch (error: any) {
     console.error("Create user error:", error);
@@ -709,18 +716,18 @@ async getCompanies(params?: QueryParams): Promise<{
   }
 
   // PUBLICATIONS
-  async getPublications(params?: QueryParams): Promise<ApiResponse<Publication[]>> {
-    try {
-      const axiosResponse = await get(`${this.baseUrl}/publications${this.buildQuery(params)}`, {
-        headers: this.getAuthHeaders(false),
-      });
-      return this.extractApiResponse<Publication[]>(axiosResponse);
-    } catch (error) {
-      console.error('Get publications error:', error);
-      throw error;
-    }
+async getPublications(params?: QueryParams): Promise<ApiResponse<PublicationsResponse>> {
+  try {
+    const axiosResponse = await get(
+      `${this.baseUrl}/publications${this.buildQuery(params)}`,
+      { headers: this.getAuthHeaders(false) }
+    );
+    return this.extractApiResponse<PublicationsResponse>(axiosResponse);
+  } catch (error) {
+    console.error('Get publications error:', error);
+    throw error;
   }
-
+}
   async getPublicationById(id: string) {
     try {
       const response = await get(`${this.baseUrl}/publications/${id}`, {

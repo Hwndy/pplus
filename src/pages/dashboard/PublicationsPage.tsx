@@ -1,21 +1,20 @@
-
-import React, { useState } from 'react';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import React, { useState, useEffect } from 'react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
 } from '@/components/ui/dialog';
 import {
   Pagination,
@@ -23,123 +22,118 @@ import {
   PaginationItem,
   PaginationLink,
   PaginationNext,
-  PaginationPrevious
+  PaginationPrevious,
 } from '@/components/ui/pagination';
 import { Pencil, Trash2, Search, Loader2, RefreshCw } from 'lucide-react';
-import { CreatePublicationForm } from '@/components/admin/CreatePublicationForm';
 import { toast } from 'sonner';
-import { usePublications, useDeletePublication } from '@/hooks/useApi';
-import { apiService } from '@/services/apiService';
+import { CreatePublicationForm } from '@/components/admin/CreatePublicationForm';
 
-// Define the Publication interface to match API response
 interface Publication {
-  id: string;
+  id: number;
   name: string;
-  type: string;
+  type?: string;
   website?: string;
   description?: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
 }
 
-const PublicationsPage = () => {
+const PublicationsPage: React.FC = () => {
+  const [publications, setPublications] = useState<Publication[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPublication, setEditingPublication] = useState<Publication | null>(null);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const publicationsPerPage = 10;
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
-  // API hooks
-  const { data: publicationsData, loading, error, refetch } = usePublications({
-    page: currentPage,
-    limit: publicationsPerPage,
-    search: searchTerm
-  });
-  const { mutate: deletePublication, loading: deleting } = useDeletePublication();
+  const pageSize = 10;
 
-  // Ensure publications is always an array
-  const publications = Array.isArray(publicationsData) ? publicationsData : [];
+  const fetchPublications = async (page = 1, search = '') => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await fetch(
+        `https://pplus-86qw.onrender.com/api/publications?page=${page}&limit=${pageSize}&search=${search}`
+      );
+      const result = await response.json();
 
-  // Handle search
+      if (result.success) {
+        setPublications(result.data.publication || []);
+        setTotalPages(result.data.meta?.totalPage || 1);
+      } else {
+        throw new Error(result.message || 'Failed to load publications');
+      }
+    } catch (err: any) {
+      console.error('Error fetching publications:', err);
+      setError(err.message || 'Something went wrong');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPublications(currentPage, searchTerm);
+  }, [currentPage, searchTerm]);
+
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
     setCurrentPage(1);
   };
 
-  // Calculate pagination
-  const totalPages = Math.ceil(publications.length / publicationsPerPage);
-  const indexOfLastPublication = currentPage * publicationsPerPage;
-  const indexOfFirstPublication = indexOfLastPublication - publicationsPerPage;
-  const currentPublications = publications.slice(indexOfFirstPublication, indexOfLastPublication);
-
-  // Handle edit
-  const handleEdit = (publication: Publication) => {
+  const handleDelete = async (id: number) => {
     try {
-      console.log('Edit publication with id:', publication.id);
-      setEditingPublication(publication);
-      setIsEditDialogOpen(true);
-      // TODO: Implement edit functionality when form is updated
-      toast.info(`Edit functionality for ${publication.name} - Opening edit form...`);
-    } catch (error) {
-      console.error('Error opening edit form:', error);
-      toast.error('Failed to open edit form');
+      setDeletingId(id);
+      const response = await fetch(`https://pplus-86qw.onrender.com/api/publications/delete/${id}`, {
+        method: 'PUT',
+      });
+      const result = await response.json();
+      if (result.success) {
+        toast.success('Publication deleted successfully');
+        fetchPublications(currentPage, searchTerm);
+      } else {
+        throw new Error(result.message || 'Failed to delete publication');
+      }
+    } catch (err: any) {
+      console.error('Error deleting publication:', err);
+      toast.error(err.message || 'Failed to delete publication');
+    } finally {
+      setDeletingId(null);
     }
   };
 
-  // Handle delete
-  const handleDelete = async (id: string) => {
+  const handleSavePublication = async (publicationData: Publication) => {
     try {
-      console.log('Deleting publication with id:', id);
-      await deletePublication(id);
-      toast.success("Publication deleted successfully");
-      refetch(); // Refresh the list
-    } catch (error) {
-      console.error('Error deleting publication:', error);
-      toast.error("Failed to delete publication");
-    }
-  };
+      setLoading(true);
+      const url = editingPublication
+        ? `https://pplus-86qw.onrender.com/api/publications/update/${editingPublication.id}`
+        : `https://pplus-86qw.onrender.com/api/publications/create`;
 
-  // Handle save for new publication
-  const handleSavePublication = async (publicationData: { name: string; type?: string; website?: string; description?: string }) => {
-    try {
-      console.log('Creating publication:', publicationData);
-
-      // Call API to create publication
-      const response = await apiService.createPublication({
-        name: publicationData.name,
-        type: publicationData.type || 'print',
-        website: publicationData.website,
-        description: publicationData.description
+      const response = await fetch(url, {
+        method: editingPublication ? 'PUT' : 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(publicationData),
       });
 
-      console.log('Publication created successfully:', response);
-      setIsDialogOpen(false);
-      toast.success("Publication created successfully");
-      refetch(); // Refresh the list
-    } catch (error) {
-      console.error('Error creating publication:', error);
-      toast.error("Failed to create publication");
+      const result = await response.json();
+      if (result.success) {
+        toast.success(editingPublication ? 'Publication updated successfully' : 'Publication created successfully');
+        setIsDialogOpen(false);
+        setEditingPublication(null);
+        fetchPublications(1, searchTerm);
+      } else {
+        throw new Error(result.message || 'Failed to save publication');
+      }
+    } catch (err: any) {
+      console.error('Error saving publication:', err);
+      toast.error(err.message || 'Failed to save publication');
+    } finally {
+      setLoading(false);
     }
   };
-
-  // Handle cancel for publication form
-  const handleCancelPublication = () => {
-    setIsDialogOpen(false);
-    setEditingPublication(null);
-  };
-
-  // Handle edit cancel
-  const handleEditCancel = () => {
-    setIsEditDialogOpen(false);
-    setEditingPublication(null);
-  };
-
-  // Generate page numbers for pagination
-  const pageNumbers = [];
-  for (let i = 1; i <= totalPages; i++) {
-    pageNumbers.push(i);
-  }
 
   return (
     <div className="p-6 h-full">
@@ -148,19 +142,16 @@ const PublicationsPage = () => {
           <h1 className="text-2xl font-bold">Publications</h1>
           <p className="text-gray-600 mt-1">Manage publication sources and media outlets</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => refetch()} disabled={loading}>
-            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-        </div>
+        <Button variant="outline" onClick={() => fetchPublications(currentPage, searchTerm)} disabled={loading}>
+          <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
       </div>
 
-      {/* Error State */}
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-          <p className="text-red-600">Failed to load publications. Please try again.</p>
-          <Button variant="outline" size="sm" onClick={() => refetch()} className="mt-2">
+          <p className="text-red-600">{error}</p>
+          <Button variant="outline" size="sm" onClick={() => fetchPublications(currentPage, searchTerm)} className="mt-2">
             Retry
           </Button>
         </div>
@@ -169,27 +160,21 @@ const PublicationsPage = () => {
       <div className="flex justify-between mb-4">
         <div className="relative w-64">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search publications..."
-            className="pl-8"
-            value={searchTerm}
-            onChange={handleSearch}
-          />
+          <Input placeholder="Search publications..." className="pl-8" value={searchTerm} onChange={handleSearch} />
         </div>
-        
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+
+        <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) setEditingPublication(null); }}>
           <DialogTrigger asChild>
-            <Button className="bg-indigo-950">
-              Create Publication
-            </Button>
+            <Button className="bg-indigo-950">{editingPublication ? 'Edit Publication' : 'Create Publication'}</Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle>Create Publication</DialogTitle>
+              <DialogTitle>{editingPublication ? 'Edit Publication' : 'Create Publication'}</DialogTitle>
             </DialogHeader>
-            <CreatePublicationForm 
-              onSave={handleSavePublication} 
-              onCancel={handleCancelPublication} 
+            <CreatePublicationForm
+              onSave={handleSavePublication}
+              onCancel={() => { setIsDialogOpen(false); setEditingPublication(null); }}
+              initialData={editingPublication || undefined}
             />
           </DialogContent>
         </Dialog>
@@ -212,51 +197,39 @@ const PublicationsPage = () => {
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-8">
                   <div className="flex items-center justify-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Loading publications...
+                    <Loader2 className="h-4 w-4 animate-spin" /> Loading publications...
                   </div>
                 </TableCell>
               </TableRow>
-            ) : currentPublications.length === 0 ? (
+            ) : publications.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8">
-                  <div className="text-gray-500">
-                    {searchTerm ? 'No publications found matching your search.' : 'No publications found.'}
-                  </div>
+                <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                  {searchTerm ? 'No publications found matching your search.' : 'No publications found.'}
                 </TableCell>
               </TableRow>
             ) : (
-              currentPublications.map((publication, index) => (
+              publications.map((publication, index) => (
                 <TableRow key={publication.id}>
-                  <TableCell>{indexOfFirstPublication + index + 1}</TableCell>
+                  <TableCell>{(currentPage - 1) * pageSize + index + 1}</TableCell>
                   <TableCell className="font-medium">{publication.name}</TableCell>
-                  <TableCell>
-                    <span className="capitalize">{publication.type || 'N/A'}</span>
-                  </TableCell>
+                  <TableCell>{publication.type || 'N/A'}</TableCell>
                   <TableCell>
                     {publication.website ? (
-                      <a
-                        href={publication.website}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline"
-                      >
+                      <a href={publication.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
                         {publication.website}
                       </a>
                     ) : (
                       'N/A'
                     )}
                   </TableCell>
-                  <TableCell>
-                    {publication.createdAt ? new Date(publication.createdAt).toLocaleDateString() : 'N/A'}
-                  </TableCell>
+                  <TableCell>{publication.createdAt ? new Date(publication.createdAt).toLocaleDateString() : 'N/A'}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleEdit(publication)}
-                        title="Edit publication"
+                        title="Edit"
+                        onClick={() => { setEditingPublication(publication); setIsDialogOpen(true); }}
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -264,14 +237,10 @@ const PublicationsPage = () => {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleDelete(publication.id)}
-                        disabled={deleting}
-                        title="Delete publication"
+                        disabled={deletingId === publication.id}
+                        title="Delete"
                       >
-                        {deleting ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
+                        {deletingId === publication.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                       </Button>
                     </div>
                   </TableCell>
@@ -287,37 +256,20 @@ const PublicationsPage = () => {
           <Pagination>
             <PaginationContent>
               <PaginationItem>
-                <PaginationPrevious 
-                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                  className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
-                />
+                <PaginationPrevious onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''} />
               </PaginationItem>
-              
-              {pageNumbers.map(number => (
-                <PaginationItem key={number}>
-                  <PaginationLink
-                    isActive={currentPage === number}
-                    onClick={() => setCurrentPage(number)}
-                  >
-                    {number}
+              {Array.from({ length: totalPages }).map((_, i) => (
+                <PaginationItem key={i}>
+                  <PaginationLink isActive={currentPage === i + 1} onClick={() => setCurrentPage(i + 1)}>
+                    {i + 1}
                   </PaginationLink>
                 </PaginationItem>
               ))}
-              
               <PaginationItem>
-                <PaginationNext 
-                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                  className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
-                />
+                <PaginationNext onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))} className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''} />
               </PaginationItem>
             </PaginationContent>
           </Pagination>
-        </div>
-      )}
-
-      {publications.length > 0 && (
-        <div className="mt-4 text-sm text-gray-500">
-          Showing {indexOfFirstPublication + 1} to {Math.min(indexOfLastPublication, publications.length)} of {publications.length} results
         </div>
       )}
     </div>
