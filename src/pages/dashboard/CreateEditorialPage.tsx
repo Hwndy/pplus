@@ -1,58 +1,54 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Copy, Save, Send, Loader2 } from 'lucide-react';
-import { useCreateEditorial, useUpdateEditorial, useCompanies, usePublications } from '@/hooks/useApi';
-import { useAuth } from '@/components/auth/AuthContext';
-import { toast } from 'sonner';
+import { Plus, Copy, Save, Send, Loader2, ArrowLeft } from 'lucide-react';
+import { Editorial, Company, Person, DataParameter, SentimentKeyword } from '@/types';
 import EditorialForm from '@/components/EditorialForm';
 
-import { Editorial } from '@/components/EditorialForm';
+const API_BASE_URL = 'https://pplus-86qw.onrender.com/api';
 
-
-
-const CreateEditorialPage = () => {
+const CreateEditorialPage: React.FC = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
   const isEditMode = !!location.state?.editorialData;
-
-  // Check if we're in review mode
   const searchParams = new URLSearchParams(location.search);
   const reviewId = searchParams.get('review');
   const isReviewMode = !!reviewId;
 
-  // API hooks
-  const createEditorial = useCreateEditorial();
-  const updateEditorial = useUpdateEditorial();
-  const { data: companiesResponse } = useCompanies({ limit: 100 });
-  const { data: publicationsResponse } = usePublications({ limit: 100 });
-
-  // Extract real data from API
-  const apiCompanies = companiesResponse || [];
-  const apiPublications = publicationsResponse || [];
-
-  // Get user role from authentication context
-  const { user } = useAuth();
-  const userRole = user?.role?.toLowerCase() || 'analyst';
-
-  // State for form submission
+  const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionType, setSubmissionType] = useState<'draft' | 'send'>('draft');
 
-  // Default initial form data
+  const [apiCompanies, setApiCompanies] = useState<Company[]>([]);
+  const [apiPublications, setApiPublications] = useState<DataParameter[]>([]);
+  const [apiReporters, setApiReporters] = useState<Person[]>([]);
+  const [apiSpokespersons, setApiSpokespersons] = useState<DataParameter[]>([]);
+  const [apiPlacements, setApiPlacements] = useState<DataParameter[]>([]);
+  const [apiOnlineChannels, setApiOnlineChannels] = useState<DataParameter[]>([]);
+  const [apiCeoMediaPresence, setApiCeoMediaPresence] = useState<DataParameter[]>([]);
+  const [apiCeoThoughtLeadership, setApiCeoThoughtLeadership] = useState<DataParameter[]>([]);
+  const [apiLanguages, setApiLanguages] = useState<DataParameter[]>([]);
+  const [apiCountries, setApiCountries] = useState<DataParameter[]>([]);
+  const [apiActivities, setApiActivities] = useState<DataParameter[]>([]);
+  const [apiPageSizes, setApiPageSizes] = useState<DataParameter[]>([]);
+  const [apiSentimentKeywords, setApiSentimentKeywords] = useState<SentimentKeyword[]>([]);
+
+  // static user for now
+  const user = { role: { name: 'analyst' } };
+  const userRole = user?.role?.name?.toLowerCase() || 'analyst';
+
   const defaultFormData: Editorial = {
     id: Date.now(),
     date: new Date().toISOString().split('T')[0],
     company: '',
-    industry: 'Financial Services',
     brand: '',
-    subIndustry: '',
+    company_id: 0,
     source: '',
     placement: '',
     title: '',
+    mediaType: '',
     printWebClips: '',
     reporter: '',
     country: 'Nigeria',
@@ -63,11 +59,11 @@ const CreateEditorialPage = () => {
     activity: '',
     circulation: 0,
     audienceReach: 0,
-    mediaType: 'Print',
     onlineChannel: '',
     sentiment: '',
     sentimentClassification: '',
     sentimentScore: 0,
+    sentiment_keyword_indicator_id: 0,
     advertSpend: 0,
     pageSize: '',
     status: 'DRAFT',
@@ -76,31 +72,22 @@ const CreateEditorialPage = () => {
     adminNote: '',
   };
 
-  // Generate a unique session key for this form
   const getSessionKey = () => {
-    // If editing, use the editorial ID to ensure we don't mix up different editorials
     if (location.state?.editorialData) {
       return `editorial_form_${location.state.editorialData.id}`;
     }
-    // For new editorials, use a consistent key
     return 'editorial_form_new';
   };
-
   const sessionKey = getSessionKey();
 
-  // Initialize form data from location state, session storage, or default
   const getInitialFormData = (): Editorial => {
-    // If we're in edit mode, use the provided editorial data
     if (location.state?.editorialData) {
       return location.state.editorialData;
     }
-
-    // Try to get data from session storage
     const savedData = sessionStorage.getItem(sessionKey);
     if (savedData) {
       try {
         const parsedData = JSON.parse(savedData);
-        // If we have saved editorials, return them
         if (parsedData.editorials && parsedData.editorials.length > 0) {
           return parsedData.editorials[0];
         }
@@ -108,63 +95,85 @@ const CreateEditorialPage = () => {
         console.error('Error parsing saved editorial data:', error);
       }
     }
-
-    // Fall back to default data
     return defaultFormData;
   };
 
   const initialFormData = getInitialFormData();
-
-  // Initialize state
   const [editorials, setEditorials] = useState<Editorial[]>([initialFormData]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [dates, setDates] = useState<(Date | undefined)[]>(
-    [initialFormData.date ? new Date(initialFormData.date) : new Date()]
-  );
 
-  // Load saved data from session storage or fetch review data
   useEffect(() => {
-    if (isReviewMode && reviewId) {
-      // In review mode, fetch the editorial data from API
-      // For now, we'll use the existing data loading mechanism
-      // In a real implementation, you'd fetch the specific editorial by ID
-      console.log('Review mode: loading editorial', reviewId);
-      return;
-    }
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const companiesPromise = fetch(`${API_BASE_URL}/companies?limit=100`).then(res => res.json());
+        const publicationsPromise = fetch(`${API_BASE_URL}/data-parameters/category/Publications`).then(res => res.json());
+        const usersPromise = fetch(`${API_BASE_URL}/users`).then(res => res.json());
+        const dataParamsPromises = [
+          'SpokesPerson', 'Placement', 'Online Channel', 'CEO Media Presence',
+          'CEO thought leadership', 'Language', 'Country', 'Activity', 'Page Size'
+        ].map(param => fetch(`${API_BASE_URL}/data-parameters/category/${encodeURIComponent(param)}`).then(res => res.json()));
+        const sentimentKeywordsPromise = fetch(`${API_BASE_URL}/sentiment-keyword-indicators`).then(res => res.json());
 
+        const [
+          companiesResponse, publicationsResponse, usersResponse,
+          spokespersonsResponse, placementsResponse, onlineChannelsResponse,
+          ceoMediaPresenceResponse, ceoThoughtLeadershipResponse, languagesResponse,
+          countriesResponse, activitiesResponse, pageSizesResponse, sentimentKeywordsResponse
+        ] = await Promise.all([
+          companiesPromise, publicationsPromise, usersPromise,
+          ...dataParamsPromises, sentimentKeywordsPromise
+        ]);
+
+        setApiCompanies(companiesResponse?.data?.data || []);
+        setApiPublications(publicationsResponse?.data?.categories?.values || []);
+        setApiReporters((usersResponse?.data?.data || []).filter((u: Person) => (u.role?.name || '').toLowerCase() === 'analyst'));
+        setApiSpokespersons(spokespersonsResponse?.data?.categories?.values || []);
+        setApiPlacements(placementsResponse?.data?.categories?.values || []);
+        setApiOnlineChannels(onlineChannelsResponse?.data?.categories?.values || []);
+        setApiCeoMediaPresence(ceoMediaPresenceResponse?.data?.categories?.values || []);
+        setApiCeoThoughtLeadership(ceoThoughtLeadershipResponse?.data?.categories?.values || []);
+        setApiLanguages(languagesResponse?.data?.categories?.values || []);
+        setApiCountries(countriesResponse?.data?.categories?.values || []);
+        setApiActivities(activitiesResponse?.data?.categories?.values || []);
+        setApiPageSizes(pageSizesResponse?.data?.categories?.values || []);
+        setApiSentimentKeywords(sentimentKeywordsResponse?.data?.data || []);
+      } catch (error) {
+        console.error('Failed to fetch API data:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load form data. Please check your network connection.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
     const savedData = sessionStorage.getItem(sessionKey);
     if (savedData && !location.state?.editorialData) {
       try {
         const parsedData = JSON.parse(savedData);
         if (parsedData.editorials && parsedData.editorials.length > 0) {
           setEditorials(parsedData.editorials);
-
-          // Reconstruct dates array from editorials
-          const newDates = parsedData.editorials.map((editorial: Editorial) =>
-            editorial.date ? new Date(editorial.date) : undefined
-          );
-          setDates(newDates);
-
-          // Set active index (default to 0 if not saved)
           if (parsedData.activeIndex !== undefined) {
             setActiveIndex(parsedData.activeIndex);
           }
-
           toast({
             title: "Data Restored",
             description: "Your previously entered data has been restored."
           });
         }
       } catch (error) {
-        console.error('Error loading saved editorial data:', error);
+        console.error('Error parsing saved editorial data:', error);
       }
     }
-  }, [sessionKey, location.state, toast, isReviewMode, reviewId]);
 
-  // Save data to session storage whenever it changes
-  useEffect(() => {
-    // Save current state to session storage
     const saveToSessionStorage = () => {
       const dataToSave = {
         editorials,
@@ -174,48 +183,17 @@ const CreateEditorialPage = () => {
       sessionStorage.setItem(sessionKey, JSON.stringify(dataToSave));
     };
 
-    // Save data when it changes
-    saveToSessionStorage();
-
-    // Also set up an interval to save periodically (every 10 seconds)
     const saveInterval = setInterval(saveToSessionStorage, 10000);
-
-    // Clean up interval on unmount
     return () => clearInterval(saveInterval);
-  }, [editorials, activeIndex, sessionKey]);
+  }, [sessionKey, location.state, toast, editorials, activeIndex]);
 
-  // Handle changes to form inputs for the active editorial
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-
-    const updatedEditorials = [...editorials];
-    updatedEditorials[activeIndex] = {
-      ...updatedEditorials[activeIndex],
-      [name]: value
-    };
-
-    setEditorials(updatedEditorials);
-
-    // Clear error when field is modified
-    if (errors[name]) {
-      setErrors({
-        ...errors,
-        [name]: ''
-      });
-    }
-  };
-
-  // Handle field changes from the form component
   const handleFieldChange = (name: string, value: string | number) => {
     const updatedEditorials = [...editorials];
     updatedEditorials[activeIndex] = {
       ...updatedEditorials[activeIndex],
       [name]: value
     };
-
     setEditorials(updatedEditorials);
-
-    // Clear error when field is modified
     if (errors[name]) {
       setErrors({
         ...errors,
@@ -224,85 +202,44 @@ const CreateEditorialPage = () => {
     }
   };
 
-  // Handle clearing errors
-  const handleClearError = (fieldName: string) => {
-    if (errors[fieldName]) {
-      setErrors({
-        ...errors,
-        [fieldName]: ''
-      });
-    }
-  };
-
-  // Handle select changes for the active editorial
-  const handleSelectChange = (name: string, value: string) => {
-    const updatedEditorials = [...editorials];
-    updatedEditorials[activeIndex] = {
-      ...updatedEditorials[activeIndex],
-      [name]: value
-    };
-
-    setEditorials(updatedEditorials);
-
-    // Clear error when field is modified
-    if (errors[name]) {
-      setErrors({
-        ...errors,
-        [name]: ''
-      });
-    }
-  };
-
-  // Handle date change for the active editorial
-  const handleDateChange = (selectedDate: Date | undefined) => {
-    if (selectedDate) {
-      const updatedDates = [...dates];
-      updatedDates[activeIndex] = selectedDate;
-      setDates(updatedDates);
-
-      const updatedEditorials = [...editorials];
-      updatedEditorials[activeIndex] = {
-        ...updatedEditorials[activeIndex],
-        date: selectedDate.toISOString().split('T')[0]
-      };
-
-      setEditorials(updatedEditorials);
-    }
-  };
-
-  // Add a new editorial
   const addEditorial = () => {
     const newId = Date.now();
-    setEditorials([...editorials, { ...initialFormData, id: newId }]);
-    setDates([...dates, new Date()]);
-    setActiveIndex(editorials.length);
+    setEditorials(prev => {
+      const newEditorials = [...prev, { ...defaultFormData, id: newId }];
+      setActiveIndex(newEditorials.length - 1);
+      return newEditorials;
+    });
   };
 
-  // Clone the current editorial
   const cloneEditorial = () => {
-    const currentEditorial = editorials[activeIndex];
-    const clonedEditorial = { ...currentEditorial, id: Date.now() };
-
-    setEditorials([...editorials, clonedEditorial]);
-    setDates([...dates, dates[activeIndex] ? new Date(dates[activeIndex]!) : new Date()]);
-    setActiveIndex(editorials.length);
+    setEditorials(prev => {
+      const current = prev[activeIndex] || defaultFormData;
+      const cloned = { ...current, id: Date.now() };
+      const newEditorials = [...prev, cloned];
+      setActiveIndex(newEditorials.length - 1);
+      return newEditorials;
+    });
   };
 
-  // Switch to a different editorial
+  const removeEditorial = (id: number) => {
+    setEditorials(prev => {
+      const filtered = prev.filter(e => e.id !== id);
+      const newIndex = Math.max(0, Math.min(activeIndex, filtered.length - 1));
+      setActiveIndex(newIndex);
+      return filtered.length ? filtered : [{ ...defaultFormData, id: Date.now() }];
+    });
+  };
+
   const switchEditorial = (index: number) => {
     setActiveIndex(index);
   };
 
-  // Form validation
   const validateForm = (isDraft: boolean = false) => {
     let hasErrors = false;
     const newErrors: Record<string, string> = {};
-
-    // Required fields - less strict for drafts
     const requiredFields = isDraft
-      ? ['title', 'company', 'date'] // Minimal requirements for draft
-      : ['title', 'company', 'brand', 'source', 'date', 'industry', 'country', 'language', 'mediaType'];
-
+      ? ['title', 'company', 'date', 'mediaType']
+      : ['title', 'company', 'source', 'date', 'country', 'language', 'mediaType'];
     requiredFields.forEach(field => {
       const value = editorials[activeIndex][field as keyof Editorial];
       if (!value || (typeof value === 'string' && value.trim() === '')) {
@@ -310,15 +247,12 @@ const CreateEditorialPage = () => {
         hasErrors = true;
       }
     });
-
     setErrors(newErrors);
     return !hasErrors;
   };
 
-  // Handle form submission
   const handleSubmit = async (type: 'draft' | 'send') => {
     const isDraft = type === 'draft';
-
     if (!validateForm(isDraft)) {
       toast({
         title: "Validation Error",
@@ -334,47 +268,41 @@ const CreateEditorialPage = () => {
     setSubmissionType(type);
 
     try {
-      // Prepare editorial data for API
       const editorialData = {
         ...editorials[activeIndex],
         status: isDraft ? 'DRAFT' : 'PENDING',
-        // Map form fields to API expected fields
-        subIndustry: editorials[activeIndex].subIndustry,
-        source: editorials[activeIndex].source,
-        printWebClips: editorials[activeIndex].printWebClips,
-        ceoMediaPresence: editorials[activeIndex].ceoMediaPresence,
-        ceoThoughtLeadership: editorials[activeIndex].ceoThoughtLeadership,
-        sentimentClassification: editorials[activeIndex].sentimentClassification,
-        sentimentScore: editorials[activeIndex].sentimentScore,
+        reviewedBy: isDraft ? undefined : userRole,
+        reviewedAt: isDraft ? undefined : new Date().toISOString()
       };
 
-      let result;
-      if (isEditMode && location.state?.editorialData?.id) {
-        result = await updateEditorial.mutate({
-          id: location.state.editorialData.id,
-          data: editorialData
-        });
-      } else {
-        result = await createEditorial.mutate(editorialData);
+      const endpoint = isEditMode ? `${API_BASE_URL}/editorials/${location.state.editorialData.id}` : `${API_BASE_URL}/editorials`;
+      const method = isEditMode ? 'PUT' : 'POST';
+
+      const response = await fetch(endpoint, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(editorialData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save editorial');
       }
 
-      // Clear session storage after successful submission
       sessionStorage.removeItem(sessionKey);
-
       navigate('/dashboard/editorial', {
         state: {
-          savedEditorials: [result],
+          savedEditorials: [await response.json()],
           isEditMode
         }
       });
-
       toast({
         title: "Success",
         description: isDraft
           ? (isEditMode ? "Editorial draft updated successfully" : "Editorial saved as draft")
           : (isEditMode ? "Editorial updated and sent for approval" : "Editorial sent for approval")
       });
-
     } catch (error) {
       console.error('Error saving editorial:', error);
       toast({
@@ -389,39 +317,28 @@ const CreateEditorialPage = () => {
     }
   };
 
-  // Cancel and go back
   const handleCancel = () => {
-    // Check if there are unsaved changes by comparing with the initial data
     const hasChanges = JSON.stringify(editorials) !== JSON.stringify([initialFormData]);
-
     if (hasChanges) {
-      // Show confirmation dialog
       if (window.confirm('You have unsaved changes. Are you sure you want to leave?')) {
-        // User confirmed, navigate away
         navigate('/dashboard/editorial');
       }
-      // If user cancels, stay on the page
     } else {
-      // No changes, navigate away directly
       navigate('/dashboard/editorial');
     }
   };
 
-  // Determine if a field should be read-only based on user role and review mode
   const isFieldReadOnly = (fieldName: string): boolean => {
-    // In review mode, only allow editing of role-specific note fields
     if (isReviewMode) {
       if (fieldName === 'supervisorNote' && userRole === 'supervisor') {
-        return false; // Supervisors can edit their notes in review mode
+        return false;
       }
       if (fieldName === 'adminNote' && userRole === 'admin') {
-        return false; // Admins can edit their notes in review mode
+        return false;
       }
-      // All other fields are read-only in review mode
       return true;
     }
 
-    // In normal mode (not review), apply standard note field restrictions
     if (fieldName === 'analystNote' && userRole !== 'analyst') {
       return true;
     }
@@ -431,19 +348,14 @@ const CreateEditorialPage = () => {
     if (fieldName === 'adminNote' && userRole !== 'admin') {
       return true;
     }
-
-    // All other fields are editable in normal mode for all roles
     return false;
   };
 
-  // Handle review actions (approve/reject)
   const handleReviewAction = async (action: 'approve' | 'reject') => {
     if (!isReviewMode || !reviewId) return;
 
     try {
       const currentEditorial = editorials[activeIndex];
-
-      // Validate supervisor note if rejecting
       if (action === 'reject' && !currentEditorial.supervisorNote?.trim()) {
         toast({
           title: "Validation Error",
@@ -453,26 +365,30 @@ const CreateEditorialPage = () => {
         return;
       }
 
-      // Update the editorial with review status
       const updateData = {
         status: action === 'approve' ? 'approved' : 'rejected',
         supervisorNote: currentEditorial.supervisorNote,
-        reviewedBy: userRole, // Current user
+        reviewedBy: userRole,
         reviewedAt: new Date().toISOString()
       };
 
-      // Call the update API
-      await updateEditorial.mutate({
-        id: reviewId,
-        data: updateData
+      const response = await fetch(`${API_BASE_URL}/editorials/${reviewId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData),
       });
+
+      if (!response.ok) {
+        throw new Error('Failed to update editorial');
+      }
 
       toast({
         title: "Success",
         description: `Editorial ${action}d successfully`,
       });
 
-      // Navigate back to review page
       navigate('/dashboard/review');
     } catch (error) {
       toast({
@@ -483,12 +399,26 @@ const CreateEditorialPage = () => {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-full">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Loading data...</span>
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full h-full flex flex-col">
+    <div className="w-full h-full flex flex-col p-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">
-          {isReviewMode ? 'Review Editorial' : isEditMode ? 'Edit Editorial' : 'Create Editorial'}
-        </h1>
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="icon" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <h1 className="text-2xl font-bold">
+            {isReviewMode ? 'Review Editorial' : isEditMode ? 'Edit Editorial' : 'Create Editorial'}
+          </h1>
+        </div>
         {!isReviewMode && (
           <div className="flex space-x-2">
             <Button
@@ -511,77 +441,83 @@ const CreateEditorialPage = () => {
         )}
       </div>
 
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 overflow-y-auto">
         <EditorialForm
-        editorials={editorials}
-        activeIndex={activeIndex}
-        errors={errors}
-        dates={dates}
-        apiCompanies={apiCompanies}
-        apiPublications={apiPublications}
-        userRole={userRole}
-        onEditorialChange={setEditorials}
-        onDateChange={setDates}
-        onAddEditorial={addEditorial}
-        onCloneEditorial={cloneEditorial}
-        onSwitchEditorial={switchEditorial}
-        onFieldChange={handleFieldChange}
-        onSelectChange={handleSelectChange}
-        onDateSelect={handleDateChange}
-        onClearError={handleClearError}
-        onReviewAction={isReviewMode ? handleReviewAction : undefined}
-        isFieldReadOnly={isFieldReadOnly}
-      />
+          editorials={editorials}
+          activeIndex={activeIndex}
+          errors={errors}
+          userRole={userRole}
+          onFieldChange={handleFieldChange}
+          onSwitchEditorial={switchEditorial}
+          onReviewAction={isReviewMode ? handleReviewAction : undefined}
+          isFieldReadOnly={isFieldReadOnly}
+          apiCompanies={apiCompanies}
+          apiPublications={apiPublications}
+          apiReporters={apiReporters}
+          apiSpokespersons={apiSpokespersons}
+          apiPlacements={apiPlacements}
+          apiOnlineChannels={apiOnlineChannels}
+          apiCeoMediaPresence={apiCeoMediaPresence}
+          apiCeoThoughtLeadership={apiCeoThoughtLeadership}
+          apiLanguages={apiLanguages}
+          apiCountries={apiCountries}
+          apiActivities={apiActivities}
+          apiPageSizes={apiPageSizes}
+          apiSentimentKeywords={apiSentimentKeywords}
+          // NEW: pass the local handlers so the form's internal add/remove buttons work
+          onAddEditorial={addEditorial}
+          onCloneEditorial={cloneEditorial}
+          onRemoveEditorial={removeEditorial}
+        />
       </div>
 
-      {/* Form Actions - Hidden in review mode */}
       {!isReviewMode && (
         <div className="flex justify-end space-x-2 mt-6">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={handleCancel}
-          disabled={isSubmitting}
-        >
-          Cancel
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => handleSubmit('draft')}
-          disabled={isSubmitting}
-          className="border-blue-500 text-blue-600 hover:bg-blue-50"
-        >
-          {isSubmitting && submissionType === 'draft' ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Saving...
-            </>
-          ) : (
-            <>
-              <Save className="mr-2 h-4 w-4" />
-              Save as Draft
-            </>
-          )}
-        </Button>
-        <Button
-          type="button"
-          onClick={() => handleSubmit('send')}
-          disabled={isSubmitting}
-          className="bg-indigo-600 hover:bg-indigo-700"
-        >
-          {isSubmitting && submissionType === 'send' ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Sending...
-            </>
-          ) : (
-            <>
-              <Send className="mr-2 h-4 w-4" />
-              Save & Send for Approval
-            </>
-          )}
-        </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleCancel}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => handleSubmit('draft')}
+            disabled={isSubmitting}
+            className="border-blue-500 text-blue-600 hover:bg-blue-50"
+          >
+            {isSubmitting && submissionType === 'draft' ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" />
+                Save as Draft
+              </>
+            )}
+          </Button>
+          <Button
+            type="button"
+            onClick={() => handleSubmit('send')}
+            disabled={isSubmitting}
+            className="bg-indigo-600 hover:bg-indigo-700"
+          >
+            {isSubmitting && submissionType === 'send' ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Sending...
+              </>
+            ) : (
+              <>
+                <Send className="mr-2 h-4 w-4" />
+                Save & Send for Approval
+              </>
+            )}
+          </Button>
         </div>
       )}
     </div>

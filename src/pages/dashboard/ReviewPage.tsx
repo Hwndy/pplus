@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { DataCard } from '@/components/ui/DataCard';
 import { DataTable } from '@/components/ui/DataTable';
@@ -21,9 +20,9 @@ import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { Stat } from '@/components/ui/Stat';
-import { apiService } from '@/services/apiService';
-import type { Editorial, DailyMention, SwotAnalysis, OutcomeInsight } from '@/services/apiService';
 import { useNavigate } from 'react-router-dom';
+
+const API_BASE = "https://pplus-86qw.onrender.com/api";
 
 // Status badge component
 function StatusBadge({ status }: { status: string }) {
@@ -81,7 +80,7 @@ interface ReviewEntry {
   reviewedAt?: string;
   createdAt: string;
   updatedAt: string;
-  originalData: Editorial | DailyMention | SwotAnalysis | OutcomeInsight;
+  originalData: any; // Keep this as any to handle various data structures
   history?: {
     status: string;
     timestamp: string;
@@ -131,12 +130,12 @@ export default function ReviewPage() {
 
         // Fetch all data types in parallel
         const [editorialsRes, dailyMentionsRes, swotAnalysesRes, outcomeInsightsRes, companiesRes, usersRes] = await Promise.all([
-          apiService.getEditorials(),
-          apiService.getDailyMentions(),
-          apiService.getSwotAnalyses(),
-          apiService.getOutcomeInsights(),
-          apiService.getCompanies(),
-          apiService.getUsers()
+          fetch(`${API_BASE}/editorials/all`).then(res => res.json()),
+          fetch(`${API_BASE}/daily-mentions/all`).then(res => res.json()),
+          fetch(`${API_BASE}/swot-analyses/all`).then(res => res.json()),
+          fetch(`${API_BASE}/outcome-insights/all`).then(res => res.json()),
+          fetch(`${API_BASE}/companies/all`).then(res => res.json()),
+          fetch(`${API_BASE}/users/all`).then(res => res.json())
         ]);
 
         // Store lookup data
@@ -157,9 +156,9 @@ export default function ReviewPage() {
             status: data.status?.toLowerCase() || 'pending',
             date: data.date || data.createdAt,
             authorId: data.authorId,
-            authorName: author?.name || 'Unknown Author',
+            authorName: author?.username || 'Unknown Author',
             companyId: data.companyId,
-            companyName: company?.name || 'Unknown Company',
+            companyName: company?.company_name || 'Unknown Company',
             content: data.content || data.insights || data.strengths?.join(', ') || '',
             comments: data.comments || '',
             reviewedBy: data.reviewedBy,
@@ -177,7 +176,7 @@ export default function ReviewPage() {
         // Process editorials - handle both array and object responses
         const editorialsData = Array.isArray(editorialsRes.data) ? editorialsRes.data : (editorialsRes.data?.editorials || []);
         if (editorialsData.length > 0) {
-          editorialsData.forEach((editorial: Editorial) => {
+          editorialsData.forEach((editorial: any) => {
             allEntries.push(transformToReviewEntry(editorial, 'editorial'));
           });
         }
@@ -185,7 +184,7 @@ export default function ReviewPage() {
         // Process daily mentions - handle both array and object responses
         const dailyMentionsData = Array.isArray(dailyMentionsRes.data) ? dailyMentionsRes.data : (dailyMentionsRes.data?.mentions || []);
         if (dailyMentionsData.length > 0) {
-          dailyMentionsData.forEach((mention: DailyMention) => {
+          dailyMentionsData.forEach((mention: any) => {
             allEntries.push(transformToReviewEntry(mention, 'daily-mention'));
           });
         }
@@ -193,7 +192,7 @@ export default function ReviewPage() {
         // Process SWOT analyses - handle both array and object responses
         const swotAnalysesData = Array.isArray(swotAnalysesRes.data) ? swotAnalysesRes.data : (swotAnalysesRes.data?.analyses || []);
         if (swotAnalysesData.length > 0) {
-          swotAnalysesData.forEach((swot: SwotAnalysis) => {
+          swotAnalysesData.forEach((swot: any) => {
             allEntries.push(transformToReviewEntry(swot, 'swot-analysis'));
           });
         }
@@ -201,7 +200,7 @@ export default function ReviewPage() {
         // Process outcome insights - handle both array and object responses
         const outcomeInsightsData = Array.isArray(outcomeInsightsRes.data) ? outcomeInsightsRes.data : (outcomeInsightsRes.data?.insights || []);
         if (outcomeInsightsData.length > 0) {
-          outcomeInsightsData.forEach((insight: OutcomeInsight) => {
+          outcomeInsightsData.forEach((insight: any) => {
             allEntries.push(transformToReviewEntry(insight, 'outcome-insight'));
           });
         }
@@ -222,8 +221,6 @@ export default function ReviewPage() {
     fetchReviewData();
   }, []);
 
-
-
   // Calculate stats on component mount and when entries change
   useEffect(() => {
     const today = new Date().toISOString().split('T')[0];
@@ -242,11 +239,11 @@ export default function ReviewPage() {
 
   // Helper functions for getting names
   const getCompanyName = (id: string) => {
-    return companies.find(c => c.id === id)?.name || 'Unknown Company';
+    return companies.find(c => c.id === id)?.company_name || 'Unknown Company';
   };
 
   const getUserName = (id: string) => {
-    return users.find(u => u.id === id)?.name || 'Unknown User';
+    return users.find(u => u.id === id)?.username || 'Unknown User';
   };
 
   // Get type icon
@@ -438,18 +435,35 @@ export default function ReviewPage() {
 
       // Call appropriate API endpoint based on entry type
       let apiResponse;
+      const endpoint = `${API_BASE}/${selectedEntry.type === 'daily-mention' ? 'daily-mentions' : selectedEntry.type + 's'}`;
       switch (selectedEntry.type) {
         case 'editorial':
-          apiResponse = await apiService.updateEditorial(selectedEntry.id, updateData);
+          apiResponse = await fetch(`${API_BASE}/editorials/${selectedEntry.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updateData)
+          }).then(res => res.json());
           break;
         case 'daily-mention':
-          apiResponse = await apiService.updateDailyMention(selectedEntry.id, updateData);
+          apiResponse = await fetch(`${API_BASE}/daily-mentions/${selectedEntry.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updateData)
+          }).then(res => res.json());
           break;
         case 'swot-analysis':
-          apiResponse = await apiService.updateSwotAnalysis(selectedEntry.id, updateData);
+          apiResponse = await fetch(`${API_BASE}/swot-analyses/${selectedEntry.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updateData)
+          }).then(res => res.json());
           break;
         case 'outcome-insight':
-          apiResponse = await apiService.updateOutcomeInsight(selectedEntry.id, updateData);
+          apiResponse = await fetch(`${API_BASE}/outcome-insights/${selectedEntry.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updateData)
+          }).then(res => res.json());
           break;
         default:
           throw new Error('Unknown entry type');
@@ -720,7 +734,7 @@ export default function ReviewPage() {
               onClick={submitReview}
               disabled={reviewAction === 'reject' && !reviewComment}
               variant={reviewAction === 'approve' ? 'default' :
-                      reviewAction === 'reject' ? 'destructive' : 'default'}
+                       reviewAction === 'reject' ? 'destructive' : 'default'}
             >
               {reviewAction === 'approve' ? 'Approve' :
                reviewAction === 'reject' ? 'Reject' : 'Submit Comment'}
@@ -853,90 +867,30 @@ export default function ReviewPage() {
                     </div>
                   </div>
                 </div>
-
                 <Separator />
-
                 <div className="space-y-2">
-                  <Label>Submitted By</Label>
-                  <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center">
-                      {selectedEntry.authorName?.charAt(0) || 'U'}
-                    </div>
-                    <div>
-                      <div className="font-medium">{selectedEntry.authorName || 'Unknown'}</div>
-                      <div className="text-xs text-muted-foreground">Author</div>
-                    </div>
-                  </div>
+                  <Label>Content</Label>
+                  <Card className="p-4">
+                    <p className="text-sm">
+                      {selectedEntry.content}
+                    </p>
+                  </Card>
                 </div>
-
                 {selectedEntry.comments && (
                   <div className="space-y-2">
-                    <Label>Comments</Label>
-                    <div className="p-3 bg-muted rounded-md text-sm">
-                      {selectedEntry.comments}
-                    </div>
-                  </div>
-                )}
-
-                {selectedEntry.reviewedBy && (
-                  <div className="space-y-2">
-                    <Label>Last Reviewed</Label>
-                    <div className="text-sm">
-                      <div className="font-medium">By: Supervisor</div>
-                      <div className="text-muted-foreground">
-                        {new Date(selectedEntry.reviewedAt || '').toLocaleString()}
-                      </div>
-                    </div>
+                    <Label>Review Comments</Label>
+                    <Card className="p-4">
+                      <p className="text-sm italic">
+                        {selectedEntry.comments}
+                      </p>
+                    </Card>
                   </div>
                 )}
               </>
             )}
           </div>
-          <DialogFooter className="flex justify-between">
-            <div>
-              {selectedEntry?.status === 'pending' && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleReviewRequest(selectedEntry, null)}
-                >
-                  <MessageSquare className="mr-2 h-4 w-4" />
-                  Add Comment
-                </Button>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setViewDetailsDialogOpen(false)}>
-                Close
-              </Button>
-
-              {selectedEntry?.status === 'pending' && (
-                <>
-                  <Button
-                    variant="outline"
-                    className="text-green-600 border-green-600 hover:bg-green-100 hover:text-green-700"
-                    onClick={() => {
-                      setViewDetailsDialogOpen(false);
-                      handleReviewRequest(selectedEntry, 'approve');
-                    }}
-                  >
-                    <CheckCircle className="mr-2 h-4 w-4" />
-                    Approve
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="text-red-600 border-red-600 hover:bg-red-100 hover:text-red-700"
-                    onClick={() => {
-                      setViewDetailsDialogOpen(false);
-                      handleReviewRequest(selectedEntry, 'reject');
-                    }}
-                  >
-                    <XCircle className="mr-2 h-4 w-4" />
-                    Reject
-                  </Button>
-                </>
-              )}
-            </div>
+          <DialogFooter>
+            <Button onClick={() => setViewDetailsDialogOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
