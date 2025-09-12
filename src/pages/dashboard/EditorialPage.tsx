@@ -50,7 +50,7 @@ interface Editorial {
   is_deleted: boolean;
 }
 
-const API_BASE = "https://pplus-86qw.onrender.com/api";
+const API_BASE = "https://pplus-tk49.onrender.com/api";
 
 const EditorialPage = () => {
   const navigate = useNavigate();

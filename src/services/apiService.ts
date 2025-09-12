@@ -252,7 +252,7 @@ export interface ApiResponse<T = unknown> {
 // API Service Class
 class ApiService {
   private token: string | null = null;
-  private baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://pplus-86qw.onrender.com/api';
+  private baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://pplus-tk49.onrender.com/api';
 
   constructor() {
     console.log('ApiService initialized with baseUrl:', this.baseUrl);

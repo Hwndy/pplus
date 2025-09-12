@@ -115,13 +115,13 @@ export default function CreateCompanyForm({
           if (initialValues && initialValues.id) {
             // ✅ EDIT mode
             res = await axios.put(
-              `https://pplus-86qw.onrender.com/api/companies/${initialValues.id}`,
+              `https://pplus-tk49.onrender.com/api/companies/${initialValues.id}`,
               companyData
             );
           } else {
             // ✅ CREATE mode
             res = await axios.post(
-              'https://pplus-86qw.onrender.com/api/companies/create',
+              'https://pplus-tk49.onrender.com/api/companies/create',
               companyData
             );
           }

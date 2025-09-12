@@ -40,7 +40,7 @@ type CategoryRaw = {
 
 export type Parameter = {
   _id: string;
-  name: string;
+  name: string;kkkkkkkkkkk
   values: string[];
   rawValues?: CategoryValue[]; // keep raw so we can operate on individual values
   active: boolean;
@@ -50,7 +50,7 @@ export type Parameter = {
 };
 
 // -------------------- Config --------------------
-const API_BASE = "https://pplus-86qw.onrender.com/api";
+const API_BASE = "https://pplus-tk49.onrender.com/api";
 
 // -------------------- jsonFetch helper --------------------
 async function jsonFetch<T = any>(path: string, options: RequestInit = {}): Promise<T> {
