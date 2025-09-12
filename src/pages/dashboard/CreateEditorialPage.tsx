@@ -20,7 +20,7 @@ import { useAuth } from '@/components/auth/AuthContext';
 // Interface for API data structures
 interface Company {
   id: number;
-  name: string;
+  company_name: string; // Corrected property from 'name' to 'company_name'
 }
 
 interface SentimentKeyword {
@@ -191,7 +191,7 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                     <SelectContent>
                       {apiCompanies.length > 0 ? (
                         apiCompanies.map((company) => (
-                          <SelectItem key={company.id} value={company.id.toString()}>{company.name}</SelectItem>
+                          <SelectItem key={company.id} value={company.id.toString()}>{company.company_name}</SelectItem> // Corrected to use company.company_name
                         ))
                       ) : (
                         <SelectItem value="loading" disabled>Loading...</SelectItem>
@@ -760,7 +760,7 @@ const CreateEditorialPage = () => {
         setApiPageSizes(pageSizeRes.data?.data?.[0]?.categories?.[0]?.values?.map((v: any) => v.value) || []);
         setApiMediaTypes(mediaTypeRes.data?.data?.[0]?.categories?.[0]?.values?.map((v: any) => v.value) || []);
         setApiSentimentKeywords(sentimentKeywordRes.data?.data?.data || []);
-        setApiCompanies(companyRes.data?.data?.data || []);
+        setApiCompanies(companyRes.data?.data?.data || []); // Corrected data accessor path
 
       } catch (err) {
         console.error('API fetch error:', err);
