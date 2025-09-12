@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, FileSpreadsheet, RefreshCw, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, FileSpreadsheet, RefreshCw, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/DataTable';
 import { toast } from 'sonner';
@@ -16,7 +16,6 @@ interface Editorial {
     industry: string;
     sub_industry: string;
   };
-  // brand: string;
   audience_reach: number;
   placement: string;
   language: string;
@@ -63,11 +62,6 @@ const EditorialPage = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
 
-  // Check if we're in review mode
-  const searchParams = new URLSearchParams(location.search);
-  const reviewId = searchParams.get('review');
-  const isReviewMode = !!reviewId;
-
   const fetchEditorials = async () => {
     setLoading(true);
     setError(null);
@@ -90,24 +84,19 @@ const EditorialPage = () => {
 
   useEffect(() => {
     fetchEditorials();
-    if (location.state?.savedEditorials) {
-      window.history.replaceState({}, document.title);
-    }
-  }, [currentPage, location.state]);
+  }, [currentPage]);
 
   const handleDelete = async (id: number) => {
     try {
       setLoading(true);
       const response = await fetch(`${API_BASE}/editorials/delete/${id}`, {
-        method: 'PUT', // Use PUT for soft delete as per backend route
+        method: 'PUT',
       });
-
       if (!response.ok) {
         throw new Error('Failed to delete editorial');
       }
-
       toast.success('Editorial deleted successfully');
-      fetchEditorials(); // Refresh the list
+      fetchEditorials();
     } catch (err: any) {
       toast.error(err.message || 'Failed to delete editorial');
     } finally {
@@ -116,9 +105,7 @@ const EditorialPage = () => {
   };
 
   const handleEdit = (editorial: Editorial) => {
-    navigate('/dashboard/editorial/create', {
-      state: { editorialData: editorial }
-    });
+    navigate('/dashboard/editorial/create', { state: { editorialData: editorial } });
   };
 
   const handleCreate = () => {
@@ -130,22 +117,9 @@ const EditorialPage = () => {
   };
 
   const columns = [
-    // {
-    //   accessorKey: 'brand',
-    //   header: 'Brand',
-    // },
-    {
-      accessorKey: 'title',
-      header: 'Title',
-    },
-    {
-      accessorKey: 'online_channel',
-      header: 'Media Type',
-    },
-    {
-      accessorKey: 'sentiment',
-      header: 'Sentiment',
-    },
+    { accessorKey: 'title', header: 'Title' },
+    { accessorKey: 'online_channel', header: 'Media Type' },
+    { accessorKey: 'sentiment', header: 'Sentiment' },
     {
       accessorKey: 'date',
       header: 'Date',
@@ -160,19 +134,11 @@ const EditorialPage = () => {
       cell: ({ row }: any) => {
         const status = row.getValue('status') || 'Pending';
         let statusColor = '';
-
         switch(status) {
-          case 'Approved':
-            statusColor = 'bg-green-100 text-green-800';
-            break;
-          case 'Rejected':
-            statusColor = 'bg-red-100 text-red-800';
-            break;
-          case 'Pending':
-          default:
-            statusColor = 'bg-yellow-100 text-yellow-800';
+          case 'Approved': statusColor = 'bg-green-100 text-green-800'; break;
+          case 'Rejected': statusColor = 'bg-red-100 text-red-800'; break;
+          case 'Pending': default: statusColor = 'bg-yellow-100 text-yellow-800'; break;
         }
-
         return (
           <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColor}`}>
             {status}
@@ -185,22 +151,12 @@ const EditorialPage = () => {
       header: 'Actions',
       cell: ({ row }: any) => {
         const editorial = row.original;
-
         return (
           <div className="flex space-x-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => handleEdit(editorial)}
-            >
+            <Button variant="ghost" size="icon" onClick={() => handleEdit(editorial)}>
               <Pencil className="h-4 w-4" />
             </Button>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => handleDelete(editorial.id)}
-            >
+            <Button variant="ghost" size="icon" onClick={() => handleDelete(editorial.id)}>
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
@@ -208,6 +164,18 @@ const EditorialPage = () => {
       },
     },
   ];
+
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(prevPage => prevPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(prevPage => prevPage + 1);
+    }
+  };
 
   return (
     <div className="h-full flex flex-col overflow-auto">
@@ -217,38 +185,25 @@ const EditorialPage = () => {
           <p className="text-gray-600 mt-1">Manage editorial content and media coverage</p>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={fetchEditorials}
-            disabled={loading}
-          >
+          <Button variant="outline" onClick={fetchEditorials} disabled={loading}>
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button
-            variant="outline"
-            onClick={handleBatchUpload}
-          >
+          <Button variant="outline" onClick={handleBatchUpload}>
             <FileSpreadsheet className="mr-2 h-4 w-4" />
             Batch Upload
           </Button>
-
-          <Button
-            onClick={handleCreate}
-            className="bg-indigo-950"
-          >
+          <Button onClick={handleCreate} className="bg-indigo-950">
             <Plus className="mr-2 h-4 w-4" />
             Create Editorial
           </Button>
         </div>
       </div>
-
       {error && (
         <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
           <p className="text-red-600">Error loading editorials: {error}</p>
         </div>
       )}
-
       <div className="flex-1 overflow-auto">
         {loading ? (
           <div className="flex justify-center items-center h-64">
@@ -258,18 +213,25 @@ const EditorialPage = () => {
             </div>
           </div>
         ) : (
-          <DataTable
-            columns={columns}
-            data={editorials}
-          />
+          <DataTable columns={columns} data={editorials} />
         )}
       </div>
-
-      {totalItems > 0 && (
-        <div className="mt-4 text-sm text-gray-500 text-center">
-          Showing {editorials.length} of {totalItems} editorials
+      <div className="mt-4 flex items-center justify-between">
+        <div className="text-sm text-gray-500">
+          Showing {editorials.length} of {totalItems} entries
         </div>
-      )}
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handlePreviousPage} disabled={currentPage === 1}>
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <span className="text-sm text-gray-700">
+            Page {currentPage} of {totalPages}
+          </span>
+          <Button variant="outline" size="sm" onClick={handleNextPage} disabled={currentPage === totalPages}>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
     </div>
   );
 };
