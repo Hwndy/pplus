@@ -4,17 +4,29 @@ import { get, post, put, del } from '@/utils/api';
 export interface User {
   id: string;
   email: string;
-  name: string;
-  role: 'Admin' | 'Supervisor' | 'Analyst' | 'Client';
-  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
+  username: string;
+  country_code: string;
+  mobile_number: string;
+  joinDate: string;
+  role: string;
   avatar?: string;
-  mobileContact?: string;
-  countryCode?: string;
-  supervisorId?: string;
-  expirationDate?: string;
+  supervisor_id?: string;
+  expiration_date?: string;
   lastLogin?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CompanyMonitoring {
+  company_id: string;
+  competitor_company_ids: string[]; 
+  monitoring_date: string | null;
+}
+
+export interface SubsidiaryMonitoring {
+  subsidiary_company_id: string;
+  competitor_subsidiary_ids: string[]; 
+  media_prominence: string;
 }
 
 export interface Company {
@@ -177,27 +189,6 @@ export interface SocialHandles {
   tiktok?: string;
 }
 
-export interface MediaChannel {
-  id: string;
-  name: string;
-  type: string;
-  category: string;
-  website?: string;
-  description?: string;
-  reach: number;
-  audienceDemographics: AudienceDemographics;
-  contactInfo: ContactInfo;
-  socialHandles: SocialHandles;
-  location: string;
-  language: string;
-  frequency: string;
-  status: string;
-  rating: number;
-  tags: string[];
-  createdAt: string;
-  updatedAt: string;
-}
-
 export interface AuditLogDetails {
   previousValues?: Record<string, unknown>;
   newValues?: Record<string, unknown>;
@@ -273,10 +264,8 @@ class ApiService {
       console.log('Testing backend connectivity...');
       const response = await fetch(`${this.baseUrl}/users?limit=1`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        signal: AbortSignal.timeout(5000) // 5 second timeout
+        headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(5000),
       });
 
       if (response.ok) {
@@ -286,8 +275,6 @@ class ApiService {
       }
     } catch (error) {
       console.error('❌ Backend connectivity test failed:', error);
-      console.error('This means the backend at', this.baseUrl, 'is not responding');
-      console.error('Pages will show loading states or errors until backend is available');
     }
   }
 
@@ -309,6 +296,31 @@ class ApiService {
       headers['Content-Type'] = 'application/json';
     }
     return headers;
+  }
+
+   private async post<T>(url: string, data: any, config: any = {}): Promise<ApiResponse<T>> {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { ...this.getAuthHeaders(), ...config.headers },
+      body: JSON.stringify(data),
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      throw new Error(result.message || 'Request failed');
+    }
+    return result;
+  }
+
+  private async get<T>(url: string): Promise<ApiResponse<T>> {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: this.getAuthHeaders(),
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) {
+      throw new Error(result.message || 'Request failed');
+    }
+    return result;
   }
 
   setToken(token: string) {
@@ -340,40 +352,11 @@ class ApiService {
   }
 
   // AUTH
-  async login(email: string, password: string): Promise<ApiResponse<{ token: string; user: User }>> {
+   async login(email: string, password: string): Promise<ApiResponse<{ token: string; user: User }>> {
     try {
       const loginUrl = `${this.baseUrl}/auth/login`;
       console.log('Attempting login to:', loginUrl);
-      const axiosResponse = await post(loginUrl, { email, password });
-
-      // Log the raw response to understand the structure
-      console.log('Raw axios response:', axiosResponse);
-      console.log('Response data:', axiosResponse.data);
-
-      // Handle different response structures from the backend
-      let response: ApiResponse<{ token: string; user: User }>;
-
-      if (axiosResponse.data.success !== undefined) {
-        // Backend returns { success: true, data: { token, user }, message: '' }
-        response = axiosResponse.data as ApiResponse<{ token: string; user: User }>;
-      } else if (axiosResponse.data.token) {
-        // Backend returns { token, user } directly
-        response = {
-          success: true,
-          data: axiosResponse.data,
-          message: 'Login successful'
-        };
-      } else {
-        // Fallback - wrap the response
-        response = {
-          success: true,
-          data: axiosResponse.data,
-          message: 'Login successful'
-        };
-      }
-
-      console.log('Processed response:', response);
-
+      const response = await this.post<{ token: string; user: User }>(loginUrl, { email, password });
       if (response.success && response.data?.token) {
         this.setToken(response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
@@ -385,34 +368,26 @@ class ApiService {
     }
   }
 
-  // Profile endpoint doesn't exist on backend, user data is stored locally after login
   async getProfile(): Promise<ApiResponse<User>> {
-    // Return user data from localStorage since backend doesn't have profile endpoint
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      try {
-        const userData = JSON.parse(savedUser);
-        return {
-          success: true,
-          data: userData,
-          message: 'Profile retrieved from local storage'
-        };
-      } catch (error) {
-        throw new Error('Failed to parse saved user data');
-      }
-    } else {
-      throw new Error('No user data found in local storage');
+    try {
+      const response = await this.get<User>(`${this.baseUrl}/auth/profile`);
+      return response;
+    } catch (error) {
+      console.error('Get profile error:', error);
+      throw error;
     }
   }
 
-  async register(userData: { username: string; email: string; gender: string; password: string; role_id?: string; active?: boolean }) {
-    try {
-      const response = await post(`${this.baseUrl}/auth/register`, userData);
-      return response;
-    } catch (error) {
-      console.error('Register error:', error);
-      throw error;
-    }
+  async getCompaniesForUser(): Promise<ApiResponse<{ id: number; company_name: string }[]>> {
+    return this.get<{ id: number; company_name: string }[]>(`${this.baseUrl}/companies?limit=1000`);
+  }
+
+  async getSubsidiaries(): Promise<ApiResponse<{ id: number; subsidiary_company_id: number; company_name: string }[]>> {
+    return this.get<{ id: number; subsidiary_company_id: number; company_name: string }[]>(`${this.baseUrl}/subsidiaries?limit=1000`);
+  }
+
+  async getMediaProminence(): Promise<ApiResponse<string[]>> {
+    return this.get<string[]>(`${this.baseUrl}/data-parameters/category/Media_Prominence`);
   }
 
   async changePassword(currentPassword: string, newPassword: string) {
@@ -441,7 +416,6 @@ class ApiService {
     }
   }
 
-  // USERS - Fixed endpoints to match Postman collection
   async getUsers(params?: QueryParams): Promise<ApiResponse<User[]>> {
     try {
       console.log('Fetching users with params:', params);
@@ -461,23 +435,27 @@ class ApiService {
     }
   }
 
-  async getSupervisors() {
-    try {
-      console.log('Fetching supervisors');
-      const response = await get(`${this.baseUrl}/users/supervisors`, {
-        headers: this.getAuthHeaders(false),
-      });
-      console.log('Supervisors API response:', response);
-      return response;
-    } catch (error) {
-      console.error('Get supervisors error:', error);
-      console.error('Error details:', {
-        message: error instanceof Error ? error.message : 'Unknown error',
-        status: (error as any)?.response?.status,
-        data: (error as any)?.response?.data
-      });
-      throw error;
-    }
+  // async getSupervisors() {
+  //   try {
+  //     console.log('Fetching supervisors');
+  //     const response = await get(`${this.baseUrl}/users/supervisors`, {
+  //       headers: this.getAuthHeaders(false),
+  //     });
+  //     console.log('Supervisors API response:', response);
+  //     return response;
+  //   } catch (error) {
+  //     console.error('Get supervisors error:', error);
+  //     console.error('Error details:', {
+  //       message: error instanceof Error ? error.message : 'Unknown error',
+  //       status: (error as any)?.response?.status,
+  //       data: (error as any)?.response?.data
+  //     });
+  //     throw error;
+  //   }
+  // }
+
+  async getSupervisors(): Promise<ApiResponse<User[]>> {
+    return this.get<User[]>(`${this.baseUrl}/users/supervisors`);
   }
 
   async getUserById(id: string) {
@@ -499,39 +477,77 @@ class ApiService {
     }
   }
 
- async createUser(data: Partial<User>) {
-  try {
-    const payload = {
-      username: data.username,
-      email: data.email,
-      country_code: data.country_code,
-      mobile_number: data.mobile_number,
-      role: data.role,
-      joinDate: data.joinDate
-        ? new Date(data.joinDate).toISOString()
-        : new Date().toISOString(),
-      expiration_date: data.expiration_date
-        ? new Date(data.expiration_date).toISOString()
-        : new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(),
-      password: data.password,
-      confirmPassword: data.confirmPassword,
-      supervisor_id: data.role === "Analyst" ? Number(data.supervisor_id) : undefined,
-    };
+//  async createUser(data: Partial<User>) {
+//   try {
+//     const payload = {
+//       username: data.username,
+//       email: data.email,
+//       country_code: data.country_code,
+//       mobile_number: data.mobile_number,
+//       role: data.role,
+//       joinDate: data.joinDate
+//         ? new Date(data.joinDate).toISOString()
+//         : new Date().toISOString(),
+//       expiration_date: data.expiration_date
+//         ? new Date(data.expiration_date).toISOString()
+//         : new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(),
+//       password: data.password,
+//       confirmPassword: data.confirmPassword,
+//       supervisor_id: data.role === "Analyst" ? Number(data.supervisor_id) : undefined,
+//     };
 
-    console.log("Creating user with payload:", payload);
-    const response = await post(
-      `${this.baseUrl}/auth/create-user`,
-      payload,
-      { headers: this.getAuthHeaders() }
-    );
+//     console.log("Creating user with payload:", payload);
+//     const response = await post(
+//       `${this.baseUrl}/auth/create-user`,
+//       payload,
+//       { headers: this.getAuthHeaders() }
+//     );
 
     
-    return this.extractApiResponse<User>(response);
-  } catch (error: any) {
-    console.error("Create user error:", error);
-    throw error;
+//     return this.extractApiResponse<User>(response);
+//   } catch (error: any) {
+//     console.error("Create user error:", error);
+//     throw error;
+//   }
+// }
+
+  async createUser(data: Partial<User> & {
+    password: string;
+    confirmPassword: string;
+    company_monitorings?: CompanyMonitoring[];
+    subsidiary_monitorings?: SubsidiaryMonitoring[];
+  }): Promise<ApiResponse<User>> {
+    try {
+      const payload = {
+        username: data.username,
+        email: data.email,
+        country_code: data.country_code,
+        mobile_number: data.mobile_number,
+        expiration_date: data.expiration_date ? new Date(data.expiration_date).toISOString() : new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(),
+        joinDate: data.joinDate ? new Date(data.joinDate).toISOString() : new Date().toISOString(),
+        role: data.role,
+        password: data.password,
+        supervisor_id: data.supervisor_id ? Number(data.supervisor_id) : undefined,
+        company_monitorings: data.company_monitorings?.map(cm => ({
+          company_id: Number(cm.company_id),
+          competitor_company_ids: cm.competitor_company_ids.map(Number),
+          monitoring_date: cm.monitoring_date ? new Date(cm.monitoring_date).toISOString() : new Date().toISOString(),
+        })),
+        subsidiary_monitorings: data.subsidiary_monitorings?.map(sm => ({
+          subsidiary_company_id: Number(sm.subsidiary_company_id),
+          competitor_subsidiary_ids: sm.competitor_subsidiary_ids.map(Number),
+          media_prominence: sm.media_prominence,
+        })),
+      };
+
+      console.log('Creating user with payload:', payload);
+      const response = await this.post<User>(`${this.baseUrl}/auth/create-user`, payload);
+      return response;
+    } catch (error) {
+      console.error('Create user error:', error);
+      throw error;
+    }
   }
-}
 
   async updateUser(id: string, data: Partial<User>) {
     try {
@@ -981,67 +997,6 @@ async getPublications(params?: QueryParams): Promise<ApiResponse<PublicationsRes
     }
   }
 
-  // // MEDIA CHANNELS
-  // async getMediaChannels(params?: QueryParams): Promise<ApiResponse<MediaChannel[]>> {
-  //   try {
-  //     const axiosResponse = await get(`${this.baseUrl}/media-channels${this.buildQuery(params)}`, {
-  //       headers: this.getAuthHeaders(false),
-  //     });
-  //     return this.extractApiResponse<MediaChannel[]>(axiosResponse);
-  //   } catch (error) {
-  //     console.error('Get media channels error:', error);
-  //     throw error;
-  //   }
-  // }
-
-  // async getMediaChannelById(id: string) {
-  //   try {
-  //     const response = await get(`${this.baseUrl}/media-channels/${id}`, {
-  //       headers: this.getAuthHeaders(false),
-  //     });
-  //     return response;
-  //   } catch (error) {
-  //     console.error('Get media channel by ID error:', error);
-  //     throw error;
-  //   }
-  // }
-
-  // async createMediaChannel(data: Partial<MediaChannel>) {
-  //   try {
-  //     const response = await post(`${this.baseUrl}/media-channels`, data, {
-  //       headers: this.getAuthHeaders(),
-  //     });
-  //     return response;
-  //   } catch (error) {
-  //     console.error('Create media channel error:', error);
-  //     throw error;
-  //   }
-  // }
-
-  // async updateMediaChannel(id: string, data: Partial<MediaChannel>) {
-  //   try {
-  //     const response = await put(`${this.baseUrl}/media-channels/${id}`, data, {
-  //       headers: this.getAuthHeaders(),
-  //     });
-  //     return response;
-  //   } catch (error) {
-  //     console.error('Update media channel error:', error);
-  //     throw error;
-  //   }
-  // }
-
-  // async deleteMediaChannel(id: string) {
-  //   try {
-  //     const response = await del(`${this.baseUrl}/media-channels/${id}`, {
-  //       headers: this.getAuthHeaders(),
-  //     });
-  //     return response;
-  //   } catch (error) {
-  //     console.error('Delete media channel error:', error);
-  //     throw error;
-  //   }
-  // }
-
   // ANALYTICS
   async getDashboardSummary(params?: QueryParams): Promise<ApiResponse<unknown>> {
     try {
@@ -1415,16 +1370,13 @@ async getPublications(params?: QueryParams): Promise<ApiResponse<PublicationsRes
   }
 
   // ROLES
-  async getRoles() {
-    try {
-      const response = await get(`${this.baseUrl}/roles`, {
-        headers: this.getAuthHeaders(false),
-      });
-      return response;
-    } catch (error) {
-      console.error('Get roles error:', error);
-      throw error;
-    }
+  async getRoles(): Promise<ApiResponse<{ id: number; name: string }[]>> {
+    const response = await this.get<{ data: { id: number; name: string }[] }>(`${this.baseUrl}/roles?limit=1000`);
+    return {
+      success: response.success,
+      data: response.data.data, // Extract the inner data array
+      message: response.message,
+    };
   }
 
   async getUserRole(userId: string) {
