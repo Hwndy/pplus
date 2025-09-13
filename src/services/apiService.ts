@@ -17,6 +17,11 @@ export interface User {
   updatedAt: string;
 }
 
+export interface SubsidiaryCompany {
+  id: number;
+  company_name: string;
+}
+
 export interface CompanyMonitoring {
   company_id: string;
   competitor_company_ids: string[]; 
@@ -370,7 +375,7 @@ class ApiService {
 
   async getProfile(): Promise<ApiResponse<User>> {
     try {
-      const response = await this.get<User>(`${this.baseUrl}/auth/profile`);
+      const response = await this.get<User>(`${this.baseUrl}/auth/me`);
       return response;
     } catch (error) {
       console.error('Get profile error:', error);
@@ -378,12 +383,12 @@ class ApiService {
     }
   }
 
-  async getCompaniesForUser(): Promise<ApiResponse<{ id: number; company_name: string }[]>> {
-    return this.get<{ id: number; company_name: string }[]>(`${this.baseUrl}/companies?limit=1000`);
+  async getCompaniesForUser(): Promise<ApiResponse<{ data: { id: number; company_name: string }[]; pagination: any }>> {
+    return this.get<{ data: { id: number; company_name: string }[]; pagination: any }>(`${this.baseUrl}/companies?limit=1000`);
   }
 
-  async getSubsidiaries(): Promise<ApiResponse<{ id: number; subsidiary_company_id: number; company_name: string }[]>> {
-    return this.get<{ id: number; subsidiary_company_id: number; company_name: string }[]>(`${this.baseUrl}/subsidiaries?limit=1000`);
+  async getSubsidiaries(): Promise<ApiResponse<{ id: number; subsidiary_company_id: number; subsidiaryCompany: SubsidiaryCompany; company_name: string }[]>> {
+    return this.get<{ id: number; subsidiary_company_id: number; subsidiaryCompany: SubsidiaryCompany; company_name: string }[]>(`${this.baseUrl}/subsidiaries?limit=1000`);
   }
 
   async getMediaProminence(): Promise<ApiResponse<string[]>> {
@@ -477,39 +482,6 @@ class ApiService {
     }
   }
 
-//  async createUser(data: Partial<User>) {
-//   try {
-//     const payload = {
-//       username: data.username,
-//       email: data.email,
-//       country_code: data.country_code,
-//       mobile_number: data.mobile_number,
-//       role: data.role,
-//       joinDate: data.joinDate
-//         ? new Date(data.joinDate).toISOString()
-//         : new Date().toISOString(),
-//       expiration_date: data.expiration_date
-//         ? new Date(data.expiration_date).toISOString()
-//         : new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(),
-//       password: data.password,
-//       confirmPassword: data.confirmPassword,
-//       supervisor_id: data.role === "Analyst" ? Number(data.supervisor_id) : undefined,
-//     };
-
-//     console.log("Creating user with payload:", payload);
-//     const response = await post(
-//       `${this.baseUrl}/auth/create-user`,
-//       payload,
-//       { headers: this.getAuthHeaders() }
-//     );
-
-    
-//     return this.extractApiResponse<User>(response);
-//   } catch (error: any) {
-//     console.error("Create user error:", error);
-//     throw error;
-//   }
-// }
 
   async createUser(data: Partial<User> & {
     password: string;

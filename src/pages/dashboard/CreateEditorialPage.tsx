@@ -148,7 +148,7 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
       onEditorialChange(newEditorials);
       if (activeIndex >= indexToRemove) {
         onSwitchEditorial(Math.max(0, activeIndex - 1));
- }
+      }
     }
   };
 
@@ -168,20 +168,22 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                   <Input
                     id="date"
                     name="date"
-                    type="date"
+                   
+                   type="date"
        
                    value={editorials[activeIndex]?.date.split('T')[0] || ''}
                     onChange={(e) => onFieldChange(activeIndex, 'date', e.target.value)}
                     className={errors.date ? "border-red-500" : ""}
                     readOnly={isFieldReadOnly('date')}
-                 
+   
                    disabled={isFieldReadOnly('date')}
                   />
                   {errors.date && <p className="text-red-500 text-sm">{errors.date}</p>}
                 </div>
 
   
-                <div className="flex-1">
+         
+               <div className="flex-1">
                   <Label htmlFor="company">Company <span className="text-red-500">*</span></Label>
  
                   <Select
@@ -205,6 +207,7 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                         <SelectItem value="loading" disabled>Loading...</SelectItem>
                       )}
                     </SelectContent>
+        
                   </Select>
        
                   {errors.company_id && <p className="text-red-500 text-sm">{errors.company_id}</p>}
@@ -212,14 +215,17 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
 
                 <div className="flex-1">
                   <Label htmlFor="media_type">Media Type</Label>
+        
                   <Select
               
-                      value={editorials[activeIndex]?.media_type || ''}
+                      value={editorials[activeIndex]?.media_type ||
+ ''}
                     onValueChange={(value) => onFieldChange(activeIndex, 'media_type', value)}
                     disabled={isFieldReadOnly('media_type')}
                   >
                     <SelectTrigger><SelectValue placeholder="Select media type" /></SelectTrigger>
       
+        
                       <SelectContent>
                       {apiMediaTypes.length > 0 ?
  (
@@ -232,7 +238,7 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                       )}
                     </SelectContent>
                   </Select>
-            
+           
           </div>
               </div>
 
@@ -240,33 +246,39 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                 <div className="min-w-max space-y-4">
                   {editorials.map((editorial, index) => (
             
-                
+         
                     <div key={editorial.id} className="flex gap-4 min-w-max">
                       <div className="flex flex-col items-center pt-6 min-w-[40px]">
                         {index === editorials.length - 1 ? (
+            
                           <Button type="button" variant="outline" size="sm" onClick={handleAddRow} 
     
                            className="h-8 w-8 p-0 rounded-full border-2 border-dashed border-gray-300 hover:border-blue-500 hover:bg-blue-50">
                             <Plus className="h-4 w-4" />
-                          </Button>
+           
+                           </Button>
            
                           ) : (
          
-                          <Button type="button" variant="ghost" size="sm" onClick={() => handleRemoveRow(index)} className="h-8 w-8 p-0 text-red-500 hover:text-red-700">
+                          <Button type="button" variant="ghost" size="sm" onClick={() => handleRemoveRow(index)} className="h-8 w-8 p-0 text-red-500 
+ hover:text-red-700">
                             <MinusCircle className="h-4 w-4" />
         
                           </Button>
                
-                        )}
+                    
+     )}
                       </div>
                      
                       <div className="min-w-[160px]">
-                        {index === 0 && <Label htmlFor="source">Source <span className="text-red-500">*</span></Label>}
+                        {index === 0 && <Label htmlFor="source">Source 
+ <span className="text-red-500">*</span></Label>}
                         <Select
                           value={editorial.source}
                  
                           onValueChange={(value) => onFieldChange(index, 'source', value)}
-                        >
+  
+                          >
                           <SelectTrigger className={index === 0 && errors.source ?
  "border-red-500" : ""}>
                             <SelectValue placeholder="Select source" />
@@ -282,54 +294,57 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                          ) : (
                               <SelectItem value="loading" disabled>Loading...</SelectItem>
                             )}
-              
+             
                           </SelectContent>
                         </Select>
                         {index === 0 && errors.source && <p className="text-red-500 text-sm">{errors.source}</p>}
-                      </div>
+                 
+      </div>
  
          
                           <div className="min-w-[160px]">
                         {index === 0 && <Label htmlFor="placement">Placement</Label>}
                         <Select
-                         
-        
+     
+                           
                            value={editorial.placement}
                           onValueChange={(value) => onFieldChange(index, 'placement', value)}
-                        >
+               
+                          >
                           <SelectTrigger><SelectValue placeholder="Select 
  placement" /></SelectTrigger>
                 
                           <SelectContent>
-                            {apiPlacements.length > 0 ?
+                   
+                           {apiPlacements.length > 0 ?
  (
                               apiPlacements.map((placement) => (
                                 <SelectItem key={placement} value={placement}>{placement}</SelectItem>
                               ))
     
- 
                             ) : (
                               <SelectItem value="loading" disabled>Loading...</SelectItem>
                             )}
-          
-     
+         
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="min-w-[160px]">
+                      
+ <div className="min-w-[160px]">
  
                          
                         {index === 0 && <Label htmlFor="title">Title <span className="text-red-500">*</span></Label>}
                         <Input
+                  
                           id="title"
  
                           name="title"
             
                           value={editorial.title}
-                          onChange={(e) => onFieldChange(index, 'title', e.target.value)}
+                          onChange={(e)=> onFieldChange(index, 'title', e.target.value)}
        
                            className={index === 0 && errors.title ?
- "border-red-500" : ""}
+                            "border-red-500" : ""}
                           placeholder="Enter article title"
                         />
                         {index === 0 && errors.title && <p className="text-red-500 text-sm">{errors.title}</p>}
@@ -338,8 +353,8 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                       </div>
                       <div className="min-w-[160px]">
                         {index === 0 && <Label htmlFor="print_web_clips">Print/Web Clips (URL)</Label>}
-                        
- <Input
+                       
+                           <Input
               
                           id="print_web_clips"
                           name="print_web_clips"
@@ -354,60 +369,70 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                       <div className="min-w-[160px]">
                         {index === 0 && <Label htmlFor="reporter">Reporter</Label>}
                         <Input
-  
+ 
                            
                           id="reporter"
                           name="reporter"
+                    
                           value={editorial.reporter}
    
                            onChange={(e) => onFieldChange(index, 'reporter', e.target.value)}
              
                           placeholder="Enter reporter name"
-                        />
+                   
+          />
         
                          </div>
                       <div className="min-w-[160px]">
                 
-                        {index === 0 && <Label htmlFor="country">Country <span className="text-red-500">*</span></Label>}
+                       
+                           {index === 0 && <Label htmlFor="country">Country <span className="text-red-500">*</span></Label>}
                 
                           <Select
                           value={editorial.country}
-                          onValueChange={(value) => onFieldChange(index, 'country', value)}
+                        
+                           onValueChange={(value) => onFieldChange(index, 'country', value)}
      
                         >
        
                            <SelectTrigger><SelectValue placeholder="Select country" /></SelectTrigger>
                           <SelectContent>
+  
+                           
                           
-                          
-                            {apiCountries.length > 0 ? (
+                            {apiCountries.length > 0 ?
+ (
                               apiCountries.map((country) => (
                                 <SelectItem key={country} value={country}>{country}</SelectItem>
                             
  
-                              ))
+     
+                           ))
                             ) : (
                               <SelectItem value="loading" disabled>Loading...</SelectItem>
         
+     
                           )}
         
                           </SelectContent>
                         </Select>
-                      
+                     
                            {index === 0 && errors.country && <p className="text-red-500 text-sm">{errors.country}</p>}
                       </div>
     
                       <div className="min-w-[160px]">
-                        {index === 0 && <Label htmlFor="language">Language <span className="text-red-500">*</span></Label>}
+               
+                           {index === 0 && <Label htmlFor="language">Language <span className="text-red-500">*</span></Label>}
           
                          <Select
                           
-                          value={editorial.language}
+                       
+                           value={editorial.language}
                           onValueChange={(value) => onFieldChange(index, 'language', value)}
     
                          >
                           <SelectTrigger><SelectValue placeholder="Select language" /></SelectTrigger>
-                 
+         
                           <SelectContent>
         
                              {apiLanguages.length > 0 ?
@@ -416,56 +441,58 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                                 <SelectItem key={language} value={language}>{language}</SelectItem>
                               ))
     
- 
                             ) : (
                               <SelectItem value="loading" disabled>Loading...</SelectItem>
                             )}
-          
-     
+         
                           </SelectContent>
                         </Select>
                         {index === 0 && errors.language && <p className="text-red-500 text-sm">{errors.language}</p>}
-              
+            
                           </div>
           
                       <div className="min-w-[160px]">
                         {index === 0 && <Label htmlFor="spokesperson">Spokesperson</Label>}
-                        <Select
+          
+                           <Select
       
                          value={editorial.spokesperson}
         
                           onValueChange={(value) => onFieldChange(index, 'spokesperson', value)}
-                        >
+                 
+                          >
                   
                           <SelectTrigger><SelectValue placeholder="Select spokesperson" /></SelectTrigger>
                          
-                          <SelectContent>
+                     
+                           <SelectContent>
                             {apiSpokespersons.length > 0 ?
  (
                               apiSpokespersons.map((spokesperson) => (
                                 <SelectItem key={spokesperson} value={spokesperson}>{spokesperson}</SelectItem>
                               ))
     
- 
                             ) : (
                               <SelectItem value="loading" disabled>Loading...</SelectItem>
                             )}
-          
-     
+         
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="min-w-[160px]">
+                      
+ <div className="min-w-[160px]">
  
                          
                         {index === 0 && <Label htmlFor="ceo_media_presence">CEO Media Presence</Label>}
                         <Select
-                          value={editorial.ceo_media_presence}
+                  
+                           value={editorial.ceo_media_presence}
  
                           onValueChange={(value) => onFieldChange(index, 'ceo_media_presence', value)}
         
                         >
-                          <SelectTrigger><SelectValue placeholder="Select presence" /></SelectTrigger>
+                          <SelectTrigger><SelectValue placeholder="Select presence" 
+ /></SelectTrigger>
           
                           <SelectContent>
                             {apiCeoMediaPresence.length 
@@ -485,20 +512,23 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                         </Select>
                       </div>
                       <div className="min-w-[160px]">
-       
+     
                            
                         {index === 0 && <Label htmlFor="ceo_thought_leadership">CEO Thought Leadership</Label>}
                         <Select
-                          value={editorial.ceo_thought_leadership}
+                
+                           value={editorial.ceo_thought_leadership}
           
                            onValueChange={(value) => onFieldChange(index, 'ceo_thought_leadership', value)}
      
                         >
-                          <SelectTrigger><SelectValue placeholder="Select leadership" /></SelectTrigger>
+                    
+                           <SelectTrigger><SelectValue placeholder="Select leadership" /></SelectTrigger>
                       
                           <SelectContent>
                           
-                            {apiCeoThoughtLeadership.length > 0 ?
+                 
+                           {apiCeoThoughtLeadership.length > 0 ?
  (
                               apiCeoThoughtLeadership.map((option) => (
                                 <SelectItem key={option} value={option}>{option}</SelectItem>
@@ -507,27 +537,31 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                          ))
                             ) : (
                               <SelectItem value="loading" disabled>Loading...</SelectItem>
-              
+             
                           )}
         
                           </SelectContent>
                         </Select>
-                      </div>
+               
+        </div>
       
                        <div className="min-w-[160px]">
              
                         {index === 0 && <Label htmlFor="activity">Activity</Label>}
-                        <Select
+                     
+                           <Select
                  
                           value={editorial.activity}
                           onValueChange={(value) => onFieldChange(index, 'activity', value)}
     
-                        >
+                    
+                          >
                           <SelectTrigger><SelectValue placeholder="Select activity" /></SelectTrigger>
     
                           <SelectContent>
                          
-                            {apiActivities.length > 0 ?
+            
+                           {apiActivities.length > 0 ?
  (
                               apiActivities.map((activity) => (
                                 <SelectItem key={activity} value={activity}>{activity}</SelectItem>
@@ -536,22 +570,25 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                           ))
                             ) : (
                               <SelectItem value="loading" disabled>Loading...</SelectItem>
-               
-                          )}
+            
+                           )}
        
                           </SelectContent>
                         </Select>
-                      </div>
+              
+          </div>
         
                          <div className="min-w-[160px]">
             
                         {index === 0 && <Label htmlFor="circulation">Circulation</Label>}
-                        <Input
+                 
+                           <Input
                     
                           id="circulation"
                           name="circulation"
        
-                          type="number"
+              
+                           type="number"
                           value={editorial.circulation?.toString() ||
  ''}
                           onChange={(e) => onFieldChange(index, 'circulation', parseInt(e.target.value) || 0)}
@@ -562,11 +599,13 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                       </div>
                       <div className="min-w-[160px]">
                         {index === 0 && <Label htmlFor="audience_reach">Audience Reach</Label>}
-                        <Input
+                        
+ <Input
  
                            
                           id="audience_reach"
                           name="audience_reach"
+                    
                           type="number"
      
                          value={editorial.audience_reach?.toString() ||
@@ -579,7 +618,8 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                       </div>
                       <div className="min-w-[160px]">
                         {index === 0 && <Label htmlFor="online_channel">Online Channel</Label>}
-                        <Select
+                        
+ <Select
  
                            
                           value={editorial.online_channel ||
@@ -596,41 +636,45 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                                 <SelectItem key={channel} value={channel}>{channel}</SelectItem>
                               ))
     
- 
                             ) : (
                               <SelectItem value="loading" disabled>Loading...</SelectItem>
                             )}
-          
-     
+         
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="min-w-[160px]">
+                      
+ <div className="min-w-[160px]">
  
                          
                         {index === 0 && <Label htmlFor="sentiment">Sentiment</Label>}
                         <Select
-                          value={editorial.sentiment}
+                    
+                           value={editorial.sentiment}
    
                            onValueChange={(value) => onFieldChange(index, 'sentiment', value)}
           
                         >
-                          <SelectTrigger><SelectValue placeholder="Select sentiment" /></SelectTrigger>
+                          
+ <SelectTrigger><SelectValue placeholder="Select sentiment" /></SelectTrigger>
           
                           <SelectContent>
                             {SENTIMENT_OPTIONS.map((sentiment) => (
  
-                              <SelectItem key={sentiment} value={sentiment}>{sentiment}</SelectItem>
+                              
+ <SelectItem key={sentiment} value={sentiment}>{sentiment}</SelectItem>
                      
                            ))}
                           </SelectContent>
                
-                        </Select>
+         
+                           </Select>
                       </div>
       
                        <div className="min-w-[160px]">
                         {index === 0 && <Label htmlFor="sentiment_keyword_indicator_id">Sentiment Keyword</Label>}
-                
+   
+                        
                         <Select
              
                           value={editorial.sentiment_keyword_indicator_id?.toString() ||
@@ -647,36 +691,39 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                                 <SelectItem key={kw.id} value={kw.id.toString()}>{kw.keyword_indicator}</SelectItem>
                               ))
     
- 
                             ) : (
                               <SelectItem value="loading" disabled>Loading...</SelectItem>
                             )}
-          
-     
+         
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="min-w-[160px]">
+                      
+ <div className="min-w-[160px]">
  
                          
                         {index === 0 && <Label htmlFor="advert_spend">Advert Spend</Label>}
                         <Input
-                          id="advert_spend"
+                   
+                           id="advert_spend"
   
                            name="advert_spend"
              
                           type="number"
-                          value={editorial.advert_spend?.toString() ||
+                         
+                           value={editorial.advert_spend?.toString() ||
  ''}
                           onChange={(e) => onFieldChange(index, 'advert_spend', parseInt(e.target.value) || 0)}
                           placeholder="Enter amount"
                         />
-                 
+              
+                           
  
                       </div>
                       <div className="min-w-[160px]">
                         {index === 0 && <Label htmlFor="page_size">Page Size</Label>}
-                        <Select
+                     
+                           <Select
  
                            
                           value={editorial.page_size ||
@@ -693,17 +740,15 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                                 <SelectItem key={size} value={size}>{size}</SelectItem>
                               ))
     
- 
                             ) : (
                               <SelectItem value="loading" disabled>Loading...</SelectItem>
                             )}
-          
-     
+         
                           </SelectContent>
                         </Select>
                       </div>
                     </div>
-    
+  
                            ))}
     
                 </div>
@@ -711,14 +756,16 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
             </div>
           </div>
           <div className="border-t border-gray-300 bg-gray-50 p-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 
+ 
+                           <div className="grid grid-cols-1 md:grid-cols-3 
  gap-6">
               <div>
         
                 <Label htmlFor="analyst_note" className="flex items-center mb-2">Analyst Note</Label>
                 <Textarea
                   id="analyst_note"
-                  name="analyst_note"
+       
+                           name="analyst_note"
      
                   value={editorials[activeIndex]?.analyst_note ||
  ''}
@@ -734,7 +781,8 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
               <div>
                 <Label htmlFor="supervisor_note" className="flex items-center mb-2">Supervisor Note</Label>
                 <Textarea
-                  id="supervisor_note"
+                  
+                           id="supervisor_note"
  
    
                   name="supervisor_note"
@@ -752,7 +800,8 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
               <div>
                 <Label htmlFor="admin_note" className="flex items-center mb-2">Admin Note</Label>
                 <Textarea
-                  id="admin_note"
+                  
+                           id="admin_note"
  
    
                   name="admin_note"
@@ -771,7 +820,8 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
             {onReviewAction && (
               <div className="flex justify-center space-x-4 mt-6 pt-4 border-t border-gray-200">
                 <Button onClick={() => onReviewAction('reject')} variant="destructive">Reject</Button>
-   
+  
+                           
    
                 <Button onClick={() => onReviewAction('approve')} className="bg-green-600 hover:bg-green-700">Approve</Button>
               </div>
@@ -781,7 +831,7 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
       </Card>
     </div>
   );
- };
+};
 
 const CreateEditorialPage = () => {
   const { toast } = useToast();
@@ -793,7 +843,16 @@ const CreateEditorialPage = () => {
   const isReviewMode = !!reviewId;
 
   const BASE_URL = 'https://pplus-tk49.onrender.com/api';
-  const { userRole } = useAuth();
+  const { userRole, userToken } = useAuth();
+
+  // Create an Axios instance with the authorization header
+  const api = axios.create({
+    baseURL: BASE_URL,
+    headers: {
+      Authorization: `Bearer ${userToken}`,
+    },
+  });
+
   const [editorials, setEditorials] = useState<Editorial[]>(isEditMode && location.state?.editorialData ? location.state.editorialData : [{
     date: new Date().toISOString().split('T')[0],
     online_channel: '',
@@ -807,6 +866,8 @@ const CreateEditorialPage = () => {
     ceo_thought_leadership: '',
     title: '',
     print_web_clips: '',
+    
+ 
     reporter: '',
     country: '',
     spokesperson: '',
@@ -851,22 +912,23 @@ const CreateEditorialPage = () => {
           ceoMediaPresenceRes, ceoThoughtLeadershipRes, languageRes, countryRes,
           activityRes, pageSizeRes, mediaTypeRes, sentimentKeywordRes, companyRes
         ] = await Promise.all([
-          axios.get(`${BASE_URL}/data-parameters/category/SpokesPerson`),
+          api.get(`/data-parameters/category/SpokesPerson`),
      
-          axios.get(`${BASE_URL}/data-parameters/category/Placement`),
-          axios.get(`${BASE_URL}/data-parameters/category/Online_Channel`),
-          axios.get(`${BASE_URL}/data-parameters/category/Publications`),
-          axios.get(`${BASE_URL}/data-parameters/category/CEO_Media_Presence`),
-          axios.get(`${BASE_URL}/data-parameters/category/CEO_Thought_Leadership`),
-          axios.get(`${BASE_URL}/data-parameters/category/Language`),
-          axios.get(`${BASE_URL}/data-parameters/category/Country`),
-          axios.get(`${BASE_URL}/data-parameters/category/Activities`),
-          axios.get(`${BASE_URL}/data-parameters/category/Page_Size`),
+          api.get(`/data-parameters/category/Placement`),
+          api.get(`/data-parameters/category/Online_Channel`),
+          api.get(`/data-parameters/category/Publications`),
+          api.get(`/data-parameters/category/CEO_Media_Presence`),
+          api.get(`/data-parameters/category/CEO_Thought_Leadership`),
+          api.get(`/data-parameters/category/Language`),
+          api.get(`/data-parameters/category/Country`),
+          api.get(`/data-parameters/category/Activities`),
+          api.get(`/data-parameters/category/Page_Size`),
          
-          axios.get(`${BASE_URL}/data-parameters/category/Media_Type`),
-          axios.get(`${BASE_URL}/sentiment-keyword-indicators/?limit=1000`),
+ 
+           api.get(`/data-parameters/category/Media_Type`),
+          api.get(`/sentiment-keyword-indicators/?limit=1000`),
       
-          axios.get(`${BASE_URL}/companies/?limit=1000`),
+          api.get(`/companies/?limit=1000`),
         ]);
         setApiSpokespersons(spokespersonRes.data?.data?.[0]?.categories?.[0]?.values?.map((v: any) => v.value) || []);
         setApiPlacements(placementRes.data?.data?.[0]?.categories?.[0]?.values?.map((v: any) => v.value) || []);
@@ -892,8 +954,13 @@ const CreateEditorialPage = () => {
         setLoading(false);
       }
     };
-    fetchDropdownOptions();
-  }, [toast]);
+    if (userToken) {
+      fetchDropdownOptions();
+    } else {
+      setLoading(false);
+    }
+  }, [toast, userToken]);
+
   const validateForm = (data: Editorial) => {
     const newErrors: Record<string, string> = {};
     if (!data.date) newErrors.date = "Date is required.";
@@ -951,16 +1018,19 @@ const CreateEditorialPage = () => {
           const { date, company_id, media_type, ...rest } = editorial;
           return {
             ...rest,
+     
             status: status === 'send' ? 'PENDING' : 'DRAFT',
           };
         }),
-        status: status === 'send' ? 'PENDING' : 'DRAFT',
+        status: status === 'send' ?
+ 'PENDING' : 'DRAFT',
       };
 
       const response = isEditMode
-        ? await axios.put(`${BASE_URL}/editorials/create/${currentEditorial.id}`, payload)
-        : await axios.post(`${BASE_URL}/editorials/create`, payload);
-      toast({
+        ?
+        await api.put(`/editorials/create/${currentEditorial.id}`, payload)
+        : await api.post(`/editorials/create`, payload);
+        toast({
         title: "Success",
         description: `Editorial ${isEditMode ? 'updated' : 'created'} successfully!`,
       });
@@ -982,7 +1052,7 @@ const CreateEditorialPage = () => {
     setSubmissionType(action);
     try {
       const newStatus = action === 'approve' ? 'APPROVED' : 'REJECTED';
-      await axios.put(`${BASE_URL}/editorials/${currentEditorial.id}/status`, { status: newStatus });
+      await api.put(`/editorials/${currentEditorial.id}/status`, { status: newStatus });
       toast({
         title: "Success",
         description: `Editorial status updated to ${newStatus}.`,
@@ -1057,6 +1127,7 @@ const CreateEditorialPage = () => {
         )}
       </div>
   
+ 
        
       <div className="w-full h-full flex flex-col">
         {loading ? (
@@ -1065,7 +1136,8 @@ const CreateEditorialPage = () => {
             <p className="ml-2">Loading...</p>
           </div>
         ) : (
-          <EditorialForm
+          
+ <EditorialForm
     
                  
             editorials={editorials}
@@ -1074,6 +1146,7 @@ const CreateEditorialPage = () => {
             apiCompanies={apiCompanies}
             userRole={userRole}
             onEditorialChange={handleEditorialChange}
+       
             onSwitchEditorial={setActiveIndex}
         
                 onFieldChange={handleFieldChange}
@@ -1100,7 +1173,7 @@ const CreateEditorialPage = () => {
         )}
       </div>
       <div className="flex justify-end gap-2 mt-6">
-      
+     
           <Button type="button" variant="outline" onClick={handleCancel} disabled={isSubmitting}>Cancel</Button>
         
         {!isReviewMode && (
@@ -1118,6 +1191,6 @@ const CreateEditorialPage = () => {
       </div>
     </div>
   );
- };
+};
 
 export default CreateEditorialPage;
