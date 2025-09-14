@@ -956,8 +956,8 @@ const CreateEditorialPage = () => {
     setIsSubmitting(true);
     setSubmissionType(action);
     try {
-      const newStatus = action === 'approve' ? 'APPROVED' : 'REJECTED';
-      await axios.put(`${BASE_URL}/editorials/${currentEditorial.id}/status`, { status: newStatus });
+      const newStatus = action === 'approve' ? 'approved' : 'rejected';
+      await axios.patch(`${BASE_URL}/editorials/${currentEditorial.id}/status`, { status: newStatus });
       toast({
         title: 'Success',
         description: `Editorial status updated to ${newStatus}.`,
