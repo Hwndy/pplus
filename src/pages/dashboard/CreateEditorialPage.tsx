@@ -724,7 +724,7 @@ const CreateEditorialPage = () => {
   const isReviewMode = !!reviewId;
 
   const BASE_URL = 'https://pplus-tk49.onrender.com/api';
-  const { userRole, isSessionValidated } = useAuth();
+  const { user, isSessionValidated } = useAuth();
   const [editorials, setEditorials] = useState<Editorial[]>(
     isEditMode && location.state?.editorialData
       ? location.state.editorialData
@@ -898,9 +898,9 @@ const CreateEditorialPage = () => {
         date: editorials[activeIndex].date,
         company_id: editorials[activeIndex].company_id,
         media_type: editorials[activeIndex].media_type,
-        ...(userRole === 'Analyst' && { analyst_note: editorials[activeIndex].analyst_note || '' }),
-        ...(userRole === 'Supervisor' && { supervisor_note: editorials[activeIndex].supervisor_note || '' }),
-        ...(userRole === 'Admin' && { admin_note: editorials[activeIndex].admin_note || '' }),
+        ...(user?.role === 'Analyst' && { analyst_note: editorials[activeIndex].analyst_note || '' }),
+        ...(user?.role === 'Supervisor' && { supervisor_note: editorials[activeIndex].supervisor_note || '' }),
+        ...(user?.role === 'Admin' && { admin_note: editorials[activeIndex].admin_note || '' }),
         editorials: editorials.map((editorial) => ({
           online_channel: editorial.online_channel,
           source: editorial.source,
@@ -930,7 +930,7 @@ const CreateEditorialPage = () => {
       };
 
       const response = isEditMode
-        ? await axios.put(`${BASE_URL}/editorials/create/${currentEditorial.id}`, payload)
+        ? await axios.put(`${BASE_URL}/editorials/update/${currentEditorial.id}`, payload)
         : await axios.post(`${BASE_URL}/editorials/create`, payload);
       toast({
         title: 'Success',
@@ -1047,7 +1047,7 @@ const CreateEditorialPage = () => {
             activeIndex={activeIndex}
             errors={errors}
             apiCompanies={apiCompanies}
-            userRole={userRole}
+            userRole={user?.role || ''}
             onEditorialChange={handleEditorialChange}
             onSwitchEditorial={setActiveIndex}
             onFieldChange={handleFieldChange}
