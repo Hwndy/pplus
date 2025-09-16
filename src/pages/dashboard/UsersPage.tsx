@@ -191,7 +191,7 @@ const UsersPage = () => {
               displayedUsers.map((user, index) => (
                 <TableRow key={user.id}>
                   <TableCell>{(currentPage - 1) * usersPerPage + index + 1}</TableCell>
-                  <TableCell>{user.name}</TableCell>
+                  <TableCell>{user.username}</TableCell>
                   <TableCell>{user.email}</TableCell>
                   <TableCell>{renderValue(user.role)}</TableCell>
                   <TableCell>
