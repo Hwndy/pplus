@@ -130,12 +130,12 @@ export default function ReviewPage() {
 
         // Fetch all data types in parallel
         const [editorialsRes, dailyMentionsRes, swotAnalysesRes, outcomeInsightsRes, companiesRes, usersRes] = await Promise.all([
-          fetch(`${API_BASE}/editorials/all`).then(res => res.json()),
-          fetch(`${API_BASE}/daily-mentions/all`).then(res => res.json()),
-          fetch(`${API_BASE}/swot-analyses/all`).then(res => res.json()),
-          fetch(`${API_BASE}/outcome-insights/all`).then(res => res.json()),
-          fetch(`${API_BASE}/companies/all`).then(res => res.json()),
-          fetch(`${API_BASE}/users/all`).then(res => res.json())
+          fetch(`${API_BASE}/editorials`).then(res => res.json()),
+          fetch(`${API_BASE}/daily-mentions`).then(res => res.json()),
+          fetch(`${API_BASE}/swot-analysis`).then(res => res.json()),
+          fetch(`${API_BASE}/outcome-insights`).then(res => res.json()),
+          fetch(`${API_BASE}/companies`).then(res => res.json()),
+          fetch(`${API_BASE}/users`).then(res => res.json())
         ]);
 
         // Store lookup data
