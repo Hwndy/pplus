@@ -1,11 +1,10 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Card } from '@/components/ui/card';
-import { Send, Download, Eye, PlusCircle, Trash2, Copy, RefreshCcw, Filter, X, CalendarIcon, FileUp, Link } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Send, Download, Eye, PlusCircle, Trash2, Copy, RefreshCcw, Filter, X, CalendarIcon, FileUp, Link, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   Select,
@@ -19,35 +18,258 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { format } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
 import { Badge } from '@/components/ui/badge';
-import {
-  DailyMediaReport,
-  MentionSection,
-  MediaMention,
-  SentimentType,
-  SectionType,
-  createEmptyMention,
-  createEmptySection,
-  createEmptyReport
-} from '@/types/dailyMentions';
+import { useLocation, useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { useAuth } from '@/components/auth/AuthContext';
 
-const DailyMentionsPage = () => {
+// Backend expects this structure for DailyMention
+interface MentionDetail {
+  headline: string;
+  content: string;
+  reporter: string | null;
+  source: string;
+  sentiment: 'positive' | 'negative' | 'neutral';
+  page: string | null;
+  publication_date: string;
+  urls: string[];
+}
+
+interface DailyMentionPayload {
+  company_id: number;
+  publication_id: number;
+  date: string;
+  analyst_id?: number;
+  status: 'draft' | 'published' | 'archived';
+  industry: MentionDetail[];
+  competitors: MentionDetail[];
+  subsidiaries: MentionDetail[];
+  passive: MentionDetail[];
+  advert: MentionDetail[];
+  filename?: string | null;
+  original_name?: string | null;
+  file_path?: string | null;
+  file_size?: number | null;
+  mime_type?: string | null;
+  file_type?: 'doc' | 'docx' | null;
+}
+
+interface SectionType {
+  id: string;
+  title: string;
+  type: 'INDUSTRY' | 'COMPETITORS' | 'SUBSIDIARIES' | 'PASSIVE' | 'ADVERT' | 'OTHER';
+  mentions: MediaMention[];
+}
+
+interface MediaMention {
+  id: string;
+  title: string;
+  content: string;
+  reporter: string;
+  publication: string;
+  publicationPage: string;
+  publicationDate: string;
+  sentiment: 'positive' | 'negative' | 'neutral';
+  links: { url: string }[];
+}
+
+interface DailyMediaReport {
+  date: string;
+  expectingPublications: string[];
+  sections: SectionType[];
+  footerNote: string;
+  companyId?: string;
+  publicationId?: string;
+}
+
+const createEmptyMention = (): MediaMention => ({
+  id: `mention-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+  title: '',
+  content: '',
+  reporter: '',
+  publication: '',
+  publicationPage: '',
+  publicationDate: '',
+  sentiment: 'neutral',
+  links: [{ url: '' }],
+});
+
+const createEmptySection = (type: string = 'OTHER'): SectionType => ({
+  id: `section-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+  title: '',
+  type: type as any,
+  mentions: [createEmptyMention()],
+});
+
+const createEmptyReport = (): DailyMediaReport => ({
+  date: new Date().toISOString().split('T')[0],
+  expectingPublications: [],
+  sections: [createEmptySection('INDUSTRY')],
+  footerNote: 'P+ Measurement Services Daily Media Briefs cover all relevant news reports, features and photo stories in major Nigerian newspapers, magazines, online news sites & blogs.',
+  companyId: '',
+  publicationId: '',
+});
+
+const DailyMentionsPage: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user, isSessionValidated } = useAuth();
+  const { toast } = useToast();
+
   // Session storage key for daily mentions form
   const sessionKey = 'daily_mentions_form_data';
+
+  // Check for edit mode
+  const isEditMode = location.state?.mentionData && location.state.mode === 'edit';
+  const mentionData = location.state?.mentionData as DailyMentionPayload | null;
 
   // Initialize state with data from session storage or create empty report
   const getInitialReport = (): DailyMediaReport => {
     try {
       const savedData = sessionStorage.getItem(sessionKey);
-      if (savedData) {
+      if (savedData && !isEditMode) {
         const parsedData = JSON.parse(savedData);
         return parsedData.report;
       }
     } catch (error) {
       console.error('Error loading saved daily mentions data:', error);
     }
+
+    // For edit mode, map backend data to form structure
+    if (isEditMode && mentionData) {
+      const sections: SectionType[] = [];
+
+      // Map industry to section
+      if (mentionData.industry && mentionData.industry.length > 0) {
+        const industrySection: SectionType = {
+          id: 'industry',
+          title: 'Industry',
+          type: 'INDUSTRY',
+          mentions: mentionData.industry.map((item) => ({
+            id: `mention-${item.headline}-${Date.now()}`,
+            title: item.headline,
+            content: item.content,
+            reporter: item.reporter || '',
+            publication: item.source,
+            publicationPage: item.page || '',
+            publicationDate: format(new Date(item.publication_date), 'MMM d, yyyy'),
+            sentiment: item.sentiment,
+            links: item.urls.map((url) => ({ url })),
+          })),
+        };
+        sections.push(industrySection);
+      }
+
+      // Map competitors to section
+      if (mentionData.competitors && mentionData.competitors.length > 0) {
+        const competitorsSection: SectionType = {
+          id: 'competitors',
+          title: 'Competitors',
+          type: 'COMPETITORS',
+          mentions: mentionData.competitors.map((item) => ({
+            id: `mention-${item.headline}-${Date.now()}`,
+            title: item.headline,
+            content: item.content,
+            reporter: item.reporter || '',
+            publication: item.source,
+            publicationPage: item.page || '',
+            publicationDate: format(new Date(item.publication_date), 'MMM d, yyyy'),
+            sentiment: item.sentiment,
+            links: item.urls.map((url) => ({ url })),
+          })),
+        };
+        sections.push(competitorsSection);
+      }
+
+      // Map subsidiaries to section
+      if (mentionData.subsidiaries && mentionData.subsidiaries.length > 0) {
+        const subsidiariesSection: SectionType = {
+          id: 'subsidiaries',
+          title: 'Subsidiaries',
+          type: 'SUBSIDIARIES',
+          mentions: mentionData.subsidiaries.map((item) => ({
+            id: `mention-${item.headline}-${Date.now()}`,
+            title: item.headline,
+            content: item.content,
+            reporter: item.reporter || '',
+            publication: item.source,
+            publicationPage: item.page || '',
+            publicationDate: format(new Date(item.publication_date), 'MMM d, yyyy'),
+            sentiment: item.sentiment,
+            links: item.urls.map((url) => ({ url })),
+          })),
+        };
+        sections.push(subsidiariesSection);
+      }
+
+      // Map passive to section
+      if (mentionData.passive && mentionData.passive.length > 0) {
+        const passiveSection: SectionType = {
+          id: 'passive',
+          title: 'Passive',
+          type: 'PASSIVE',
+          mentions: mentionData.passive.map((item) => ({
+            id: `mention-${item.headline}-${Date.now()}`,
+            title: item.headline,
+            content: item.content,
+            reporter: item.reporter || '',
+            publication: item.source,
+            publicationPage: item.page || '',
+            publicationDate: format(new Date(item.publication_date), 'MMM d, yyyy'),
+            sentiment: item.sentiment,
+            links: item.urls.map((url) => ({ url })),
+          })),
+        };
+        sections.push(passiveSection);
+      }
+
+      // Map advert to section
+      if (mentionData.advert && mentionData.advert.length > 0) {
+        const advertSection: SectionType = {
+          id: 'advert',
+          title: 'Advert',
+          type: 'ADVERT',
+          mentions: mentionData.advert.map((item) => ({
+            id: `mention-${item.headline}-${Date.now()}`,
+            title: item.headline,
+            content: item.content,
+            reporter: item.reporter || '',
+            publication: item.source,
+            publicationPage: item.page || '',
+            publicationDate: format(new Date(item.publication_date), 'MMM d, yyyy'),
+            sentiment: item.sentiment,
+            links: item.urls.map((url) => ({ url })),
+          })),
+        };
+        sections.push(advertSection);
+      }
+
+      // Add empty sections for missing types
+      const allTypes = ['INDUSTRY', 'COMPETITORS', 'SUBSIDIARIES', 'PASSIVE', 'ADVERT'];
+      allTypes.forEach((type) => {
+        if (!sections.some((s) => s.type === type)) {
+          sections.push(createEmptySection(type));
+        }
+      });
+
+      return {
+        date: format(new Date(mentionData.date), 'MMM d, yyyy'),
+        expectingPublications: [],
+        sections,
+        footerNote: 'P+ Measurement Services Daily Media Briefs cover all relevant news reports, features and photo stories in major Nigerian newspapers, magazines, online news sites & blogs.',
+        companyId: mentionData.company_id?.toString(),
+        publicationId: mentionData.publication_id?.toString(),
+      };
+    }
+
     return createEmptyReport();
   };
 
@@ -55,17 +277,74 @@ const DailyMentionsPage = () => {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const [expandedMentions, setExpandedMentions] = useState<Record<string, boolean>>({});
   const [showPreview, setShowPreview] = useState(false);
-  const [headerColor, setHeaderColor] = useState("#0066cc"); // Default blue color for headers
-  // We need to keep setLogoFile for the handleLogoChange function
-  const [, setLogoFile] = useState<File | null>(null);
+  const [headerColor, setHeaderColor] = useState("#0066cc");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
-  const { toast } = useToast();
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [publications, setPublications] = useState<Publication[]>([]);
+
+  const BASE_URL = 'https://backend-tw99.onrender.com/api';
+
+  // Axios interceptor for Bearer token
+  axios.interceptors.request.use(
+    (config) => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      return config;
+    },
+    (error) => Promise.reject(error)
+  );
+
+  // Fetch companies and publications
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      try {
+        const response = await axios.get(`${BASE_URL}/companies`);
+        setCompanies(response.data.data || []);
+      } catch (error) {
+        console.error('Error fetching companies:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to fetch companies',
+          variant: 'destructive',
+        });
+      }
+    };
+
+    const fetchPublications = async () => {
+      try {
+        const response = await axios.get(`${BASE_URL}/publications`);
+        setPublications(response.data.data || []);
+      } catch (error) {
+        console.error('Error fetching publications:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to fetch publications',
+          variant: 'destructive',
+        });
+      }
+    };
+
+    if (isSessionValidated) {
+      fetchCompanies();
+      fetchPublications();
+    } else {
+      toast({
+        title: 'Session not validated',
+        description: 'Please log in to continue.',
+        variant: 'destructive',
+      });
+      navigate('/login');
+    }
+  }, [isSessionValidated, navigate, toast]);
 
   // Load expanded sections and mentions from session storage
   useEffect(() => {
     try {
       const savedData = sessionStorage.getItem(sessionKey);
-      if (savedData) {
+      if (savedData && !isEditMode) {
         const parsedData = JSON.parse(savedData);
         if (parsedData.expandedSections) {
           setExpandedSections(parsedData.expandedSections);
@@ -81,16 +360,16 @@ const DailyMentionsPage = () => {
         }
 
         toast({
-          title: "Data Restored",
-          description: "Your previously entered data has been restored."
+          title: 'Data Restored',
+          description: 'Your previously entered data has been restored.',
         });
       }
     } catch (error) {
       console.error('Error loading saved daily mentions data:', error);
     }
-  }, [toast]);
+  }, [toast, isEditMode]);
 
-  // Save data to session storage whenever it changes
+  // Save data to session storage
   useEffect(() => {
     const saveToSessionStorage = () => {
       const dataToSave = {
@@ -99,32 +378,27 @@ const DailyMentionsPage = () => {
         expandedMentions,
         headerColor,
         logoPreview,
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
       };
       sessionStorage.setItem(sessionKey, JSON.stringify(dataToSave));
     };
 
-    // Save data when it changes
     saveToSessionStorage();
-
-    // Also set up an interval to save periodically (every 10 seconds)
     const saveInterval = setInterval(saveToSessionStorage, 10000);
-
-    // Clean up interval on unmount
     return () => clearInterval(saveInterval);
   }, [report, expandedSections, expandedMentions, headerColor, logoPreview]);
 
   // Filter states
   const [showFilters, setShowFilters] = useState(false);
   const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
-  const [publicationFilter, setPublicationFilter] = useState<string>("");
-  const [companyFilter, setCompanyFilter] = useState<string>("");
+  const [publicationFilter, setPublicationFilter] = useState<string>('');
+  const [companyFilter, setCompanyFilter] = useState<string>('');
 
   // Extract unique publications and companies/brands from the report
   const uniquePublications = useMemo(() => {
     const publications = new Set<string>();
-    report.sections.forEach(section => {
-      section.mentions.forEach(mention => {
+    report.sections.forEach((section) => {
+      section.mentions.forEach((mention) => {
         if (mention.publication) {
           publications.add(mention.publication);
         }
@@ -134,34 +408,28 @@ const DailyMentionsPage = () => {
   }, [report.sections]);
 
   const uniqueCompanies = useMemo(() => {
-    return Array.from(new Set(report.sections.map(section => section.title))).filter(Boolean).sort();
+    return Array.from(new Set(report.sections.map((section) => section.title))).filter(Boolean).sort();
   }, [report.sections]);
 
   // Apply filters to get filtered sections
   const filteredSections = useMemo(() => {
     if (!dateFilter && !publicationFilter && !companyFilter) {
-      return report.sections; // No filters applied, return all sections
+      return report.sections;
     }
 
-    // Create a deep copy of sections to avoid mutating the original data
-    const sectionsCopy = JSON.parse(JSON.stringify(report.sections)) as MentionSection[];
+    const sectionsCopy = JSON.parse(JSON.stringify(report.sections)) as SectionType[];
 
     return sectionsCopy.filter((section) => {
-      // Filter by company/brand (section title)
       if (companyFilter && !section.title.includes(companyFilter)) {
         return false;
       }
 
-      // Filter mentions within each section
-      const filteredMentions = section.mentions.filter(mention => {
-        // Filter by publication
+      const filteredMentions = section.mentions.filter((mention) => {
         if (publicationFilter && mention.publication !== publicationFilter) {
           return false;
         }
 
-        // Filter by date
         if (dateFilter && mention.publicationDate) {
-          // Simple date check - this could be improved with proper date parsing
           if (!mention.publicationDate.includes(format(dateFilter, 'PPP'))) {
             return false;
           }
@@ -170,465 +438,413 @@ const DailyMentionsPage = () => {
         return true;
       });
 
-      // If we're filtering by publication or date and no mentions match, hide the section
       if ((publicationFilter || dateFilter) && filteredMentions.length === 0) {
         return false;
       }
 
-      // Update the section with filtered mentions
       section.mentions = filteredMentions;
       return true;
     });
   }, [report.sections, companyFilter, publicationFilter, dateFilter]);
 
-
   // Toggle section expansion
   const toggleSection = (sectionId: string) => {
-    setExpandedSections(prev => ({
+    setExpandedSections((prev) => ({
       ...prev,
-      [sectionId]: !prev[sectionId]
+      [sectionId]: !prev[sectionId],
     }));
   };
 
   // Toggle mention expansion
   const toggleMention = (mentionId: string) => {
-    setExpandedMentions(prev => ({
+    setExpandedMentions((prev) => ({
       ...prev,
-      [mentionId]: !prev[mentionId]
+      [mentionId]: !prev[mentionId],
     }));
   };
 
   // Add a new section
-  const addSection = (type: SectionType = 'OTHER') => {
+  const addSection = (type: SectionType['type']) => {
     const newSection = createEmptySection(type);
-    setReport(prev => ({
+    setReport((prev) => ({
       ...prev,
-      sections: [...prev.sections, newSection]
+      sections: [...prev.sections, newSection],
     }));
-    // Auto-expand the new section
-    setExpandedSections(prev => ({
+    setExpandedSections((prev) => ({
       ...prev,
-      [newSection.id]: true
+      [newSection.id]: true,
     }));
   };
 
   // Add a new mention to a section
   const addMention = (sectionId: string) => {
     const newMention = createEmptyMention();
-    setReport(prev => ({
+    setReport((prev) => ({
       ...prev,
-      sections: prev.sections.map(section =>
+      sections: prev.sections.map((section) =>
         section.id === sectionId
           ? { ...section, mentions: [...section.mentions, newMention] }
           : section
-      )
+      ),
     }));
-    // Auto-expand the new mention
-    setExpandedMentions(prev => ({
+    setExpandedMentions((prev) => ({
       ...prev,
-      [newMention.id]: true
+      [newMention.id]: true,
     }));
   };
 
   // Clone an existing mention
   const cloneMention = (sectionId: string, mentionId: string) => {
-    const sectionIndex = report.sections.findIndex(s => s.id === sectionId);
+    const sectionIndex = report.sections.findIndex((s) => s.id === sectionId);
     if (sectionIndex === -1) return;
 
-    const mentionIndex = report.sections[sectionIndex].mentions.findIndex(m => m.id === mentionId);
+    const mentionIndex = report.sections[sectionIndex].mentions.findIndex((m) => m.id === mentionId);
     if (mentionIndex === -1) return;
 
     const mentionToClone = { ...report.sections[sectionIndex].mentions[mentionIndex] };
     const newMention: MediaMention = {
       ...mentionToClone,
-      id: `mention-${Date.now()}-${Math.floor(Math.random() * 1000)}`
+      id: `mention-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
     };
 
-    setReport(prev => ({
+    setReport((prev) => ({
       ...prev,
       sections: prev.sections.map((section, idx) =>
         idx === sectionIndex
           ? { ...section, mentions: [...section.mentions, newMention] }
           : section
-      )
+      ),
     }));
 
-    // Auto-expand the cloned mention
-    setExpandedMentions(prev => ({
+    setExpandedMentions((prev) => ({
       ...prev,
-      [newMention.id]: true
+      [newMention.id]: true,
     }));
   };
 
   // Remove a section
   const removeSection = (sectionId: string) => {
-    setReport(prev => ({
+    setReport((prev) => ({
       ...prev,
-      sections: prev.sections.filter(section => section.id !== sectionId)
+      sections: prev.sections.filter((section) => section.id !== sectionId),
     }));
   };
 
   // Remove a mention
   const removeMention = (sectionId: string, mentionId: string) => {
-    setReport(prev => ({
+    setReport((prev) => ({
       ...prev,
-      sections: prev.sections.map(section =>
+      sections: prev.sections.map((section) =>
         section.id === sectionId
-          ? { ...section, mentions: section.mentions.filter(mention => mention.id !== mentionId) }
+          ? { ...section, mentions: section.mentions.filter((mention) => mention.id !== mentionId) }
           : section
-      )
+      ),
     }));
   };
 
   // Add a new link to a mention
   const addLink = (sectionId: string, mentionId: string) => {
-    setReport(prev => ({
+    setReport((prev) => ({
       ...prev,
-      sections: prev.sections.map(section =>
+      sections: prev.sections.map((section) =>
         section.id === sectionId
           ? {
               ...section,
-              mentions: section.mentions.map(mention =>
+              mentions: section.mentions.map((mention) =>
                 mention.id === mentionId
                   ? { ...mention, links: [...mention.links, { url: '' }] }
                   : mention
-              )
+              ),
             }
           : section
-      )
+      ),
     }));
   };
 
   // Remove a link from a mention
   const removeLink = (sectionId: string, mentionId: string, linkIndex: number) => {
-    setReport(prev => ({
+    setReport((prev) => ({
       ...prev,
-      sections: prev.sections.map(section =>
+      sections: prev.sections.map((section) =>
         section.id === sectionId
           ? {
               ...section,
-              mentions: section.mentions.map(mention =>
+              mentions: section.mentions.map((mention) =>
+                mention.id === mentionId
+                  ? { ...mention, links: mention.links.filter((_, idx) => idx !== linkIndex) }
+                  : mention
+              ),
+            }
+          : section
+      ),
+    }));
+  };
+
+  // Update mention field
+  const updateMention = (sectionId: string, mentionId: string, field: keyof MediaMention, value: string) => {
+    setReport((prev) => ({
+      ...prev,
+      sections: prev.sections.map((section) =>
+        section.id === sectionId
+          ? {
+              ...section,
+              mentions: section.mentions.map((mention) =>
+                mention.id === mentionId ? { ...mention, [field]: value } : mention
+              ),
+            }
+          : section
+      ),
+    }));
+  };
+
+  // Update link URL
+  const updateLink = (sectionId: string, mentionId: string, linkIndex: number, url: string) => {
+    setReport((prev) => ({
+      ...prev,
+      sections: prev.sections.map((section) =>
+        section.id === sectionId
+          ? {
+              ...section,
+              mentions: section.mentions.map((mention) =>
                 mention.id === mentionId
                   ? {
                       ...mention,
-                      links: mention.links.filter((_, idx) => idx !== linkIndex)
+                      links: mention.links.map((link, idx) => (idx === linkIndex ? { url } : link)),
                     }
                   : mention
-              )
+              ),
             }
           : section
-      )
+      ),
     }));
   };
 
   // Update section title
   const updateSectionTitle = (sectionId: string, title: string) => {
-    setReport(prev => ({
+    setReport((prev) => ({
       ...prev,
-      sections: prev.sections.map(section =>
-        section.id === sectionId
-          ? { ...section, title }
-          : section
-      )
+      sections: prev.sections.map((section) =>
+        section.id === sectionId ? { ...section, title } : section
+      ),
     }));
   };
 
-  // Update mention field
-  const updateMention = (
-    sectionId: string,
-    mentionId: string,
-    field: keyof MediaMention,
-    value: string | SentimentType | boolean | string[]
-  ) => {
-    setReport(prev => ({
-      ...prev,
-      sections: prev.sections.map(section =>
-        section.id === sectionId
-          ? {
-              ...section,
-              mentions: section.mentions.map(mention =>
-                mention.id === mentionId
-                  ? { ...mention, [field]: value }
-                  : mention
-              )
-            }
-          : section
-      )
-    }));
-  };
-
-  // Update link
-  const updateLink = (sectionId: string, mentionId: string, linkIndex: number, url: string) => {
-    setReport(prev => ({
-      ...prev,
-      sections: prev.sections.map(section =>
-        section.id === sectionId
-          ? {
-              ...section,
-              mentions: section.mentions.map(mention =>
-                mention.id === mentionId
-                  ? {
-                      ...mention,
-                      links: mention.links.map((link, idx) =>
-                        idx === linkIndex ? { ...link, url } : link
-                      )
-                    }
-                  : mention
-              )
-            }
-          : section
-      )
-    }));
-  };
-
-  // Update report date
-  const updateReportDate = (date: string) => {
-    setReport(prev => ({ ...prev, date }));
-  };
-
-  // Add expecting publication
-  const addExpectingPublication = () => {
-    setReport(prev => ({
-      ...prev,
-      expectingPublications: [...(prev.expectingPublications || []), '']
-    }));
-  };
-
-  // Update expecting publication
-  const updateExpectingPublication = (index: number, value: string) => {
-    setReport(prev => ({
-      ...prev,
-      expectingPublications: (prev.expectingPublications || []).map((pub, idx) =>
-        idx === index ? value : pub
-      )
-    }));
-  };
-
-  // Remove expecting publication
-  const removeExpectingPublication = (index: number) => {
-    setReport(prev => ({
-      ...prev,
-      expectingPublications: (prev.expectingPublications || []).filter((_, idx) => idx !== index)
-    }));
-  };
-
-  // Handle logo file selection
-  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
+  // Handle logo upload
+  const handleLogoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (!['image/png', 'image/jpeg'].includes(file.type)) {
+        toast({
+          title: 'Invalid File Type',
+          description: 'Only PNG and JPEG images are allowed.',
+          variant: 'destructive',
+        });
+        return;
+      }
       setLogoFile(file);
-
-      // Create a preview URL
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setLogoPreview(reader.result as string);
+      reader.onload = (e) => {
+        setLogoPreview(e.target?.result as string);
       };
       reader.readAsDataURL(file);
     }
   };
 
-  // Send report
-  const sendReport = () => {
-    // This would typically involve sending the data to an API or email service
-    console.log('Sending report:', report);
-
-    // Clear session storage after successful submission
-    sessionStorage.removeItem(sessionKey);
-
-    toast({
-      title: "Report Sent",
-      description: "Your daily media highlights report has been sent successfully.",
-    });
+  // Handle header color change
+  const handleHeaderColorChange = (color: string) => {
+    setHeaderColor(color);
   };
 
-  // Download report
-  const downloadReport = () => {
-    // This would typically generate a PDF or other file format
-    console.log('Downloading report:', report);
-    toast({
-      title: "Report Downloaded",
-      description: "Your daily media highlights report has been downloaded.",
-    });
-  };
+  // Handle form submission
+  const handleSubmit = async () => {
+    try {
+      if (!report.companyId || !report.publicationId) {
+        toast({
+          title: 'Error',
+          description: 'Please select a company and publication.',
+          variant: 'destructive',
+        });
+        return;
+      }
 
-  // Generate preview
-  const generatePreview = () => {
-    console.log('Generating preview for report:', report);
-    setShowPreview(true);
-    toast({
-      title: "Preview Generated",
-      description: "Your daily media highlights report preview is ready.",
-    });
-  };
+      // Map form data to backend payload
+      const payload: DailyMentionPayload = {
+        company_id: parseInt(report.companyId),
+        publication_id: parseInt(report.publicationId),
+        date: new Date(report.date).toISOString(),
+        analyst_id: user?.role === 'Analyst' ? user.id : undefined,
+        status: 'draft',
+        industry: [],
+        competitors: [],
+        subsidiaries: [],
+        passive: [],
+        advert: [],
+      };
 
-  // Reset form
-  const resetForm = () => {
-    if (confirm('Are you sure you want to reset the form? All entered data will be lost.')) {
-      setReport(createEmptyReport());
-      setExpandedSections({});
-      setExpandedMentions({});
-      setShowPreview(false);
-      setHeaderColor("#0066cc");
-      setLogoFile(null);
-      setLogoPreview(null);
+      // Map sections to payload arrays
+      report.sections.forEach((section) => {
+        const mentionDetails = section.mentions
+          .filter((mention) => mention.title.trim() || mention.content.trim())
+          .map((mention): MentionDetail => ({
+            headline: mention.title,
+            content: mention.content,
+            reporter: mention.reporter || null,
+            source: mention.publication,
+            sentiment: mention.sentiment,
+            page: mention.publicationPage || null,
+            publication_date: new Date(mention.publicationDate).toISOString(),
+            urls: mention.links.map((link) => link.url).filter((url) => url.trim()),
+          }));
+
+        switch (section.type) {
+          case 'INDUSTRY':
+            payload.industry = mentionDetails;
+            break;
+          case 'COMPETITORS':
+            payload.competitors = mentionDetails;
+            break;
+          case 'SUBSIDIARIES':
+            payload.subsidiaries = mentionDetails;
+            break;
+          case 'PASSIVE':
+            payload.passive = mentionDetails;
+            break;
+          case 'ADVERT':
+            payload.advert = mentionDetails;
+            break;
+          default:
+            break;
+        }
+      });
+
+      // Handle file upload
+      if (logoFile) {
+        const formData = new FormData();
+        formData.append('file', logoFile);
+        const uploadResponse = await axios.post(`${BASE_URL}/daily-mentions/batch-upload`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        payload.filename = uploadResponse.data.data.filename;
+        payload.original_name = uploadResponse.data.data.original_name;
+        payload.file_path = uploadResponse.data.data.file_path;
+        payload.file_size = uploadResponse.data.data.file_size;
+        payload.mime_type = uploadResponse.data.data.mime_type;
+        payload.file_type = uploadResponse.data.data.file_type;
+      }
+
+      const response = isEditMode
+        ? await axios.put(`${BASE_URL}/daily-mentions/update/${mentionData?.id}`, payload)
+        : await axios.post(`${BASE_URL}/daily-mentions/create`, payload);
+
       toast({
-        title: "Form Reset",
-        description: "The form has been reset to its initial state.",
+        title: 'Success',
+        description: isEditMode ? 'Daily mention updated successfully!' : 'Daily mention created successfully!',
+      });
+
+      sessionStorage.removeItem(sessionKey);
+      navigate('/dashboard/daily-mentions');
+    } catch (error: any) {
+      console.error('Error submitting daily mention:', error.response?.data || error.message);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || 'Failed to submit daily mention',
+        variant: 'destructive',
       });
     }
   };
 
+  // Handle preview
+  const generatePreview = () => {
+    setShowPreview(true);
+  };
+
+  // Handle cancel
+  const handleCancel = () => {
+    sessionStorage.removeItem(sessionKey);
+    navigate('/dashboard/daily-mentions');
+  };
+
+  // Handle download PDF (placeholder)
+  const downloadPDF = () => {
+    toast({
+      title: 'PDF Generation',
+      description: 'PDF download functionality would be implemented here.',
+    });
+  };
+
+  // Toggle filters
+  const toggleFilters = () => {
+    setShowFilters(!showFilters);
+  };
+
+  // Apply filters
+  const applyFilters = () => {
+    toast({
+      title: 'Filters Applied',
+      description: 'Filter functionality would be implemented here.',
+    });
+    setShowFilters(false);
+  };
+
+  // Clear filters
+  const clearFilters = () => {
+    setDateFilter(undefined);
+    setPublicationFilter('');
+    setCompanyFilter('');
+    toast({
+      title: 'Filters Cleared',
+      description: 'All filters have been cleared.',
+    });
+    setShowFilters(false);
+  };
+
   return (
-    <div className="p-6 max-w-screen-2xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Daily Media Highlights</h1>
-        <div className="flex gap-2 flex-wrap justify-end">
-          <Button
-            onClick={() => setShowFilters(!showFilters)}
-            variant={showFilters ? "secondary" : "outline"}
-            className="flex items-center gap-1 w-full md:w-auto relative"
-          >
-            <Filter className="h-4 w-4" />
-            {showFilters ? 'Hide Filters' : 'Show Filters'}
-            {!showFilters && (dateFilter || publicationFilter || companyFilter) && (
-              <Badge
-                variant="secondary"
-                className="ml-1 text-xs absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 rounded-full"
-              >
-                {[dateFilter, publicationFilter, companyFilter].filter(Boolean).length}
-              </Badge>
-            )}
+    <div className="space-y-6 p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <Button variant="outline" onClick={handleCancel} className="h-10 w-10">
+            <ArrowLeft className="h-5 w-5" />
           </Button>
-          <Button
-            variant="outline"
-            className="flex items-center gap-1"
-            onClick={() => document.getElementById('batch-upload')?.click()}
-          >
-            <FileUp className="h-4 w-4" />
-            Batch Upload
+          <h1 className="text-2xl font-bold">
+            {isEditMode ? 'Edit Daily Mention' : 'Create Daily Mention'}
+          </h1>
+        </div>
+        <div className="flex space-x-2">
+          <Button variant="outline" onClick={toggleFilters}>
+            <Filter className="h-4 w-4 mr-2" />
+            Filters
           </Button>
-          <input
-            type="file"
-            id="batch-upload"
-            accept=".xlsx,.xls"
-            className="hidden"
-            onChange={(e) => {
-              if (e.target.files && e.target.files[0]) {
-                toast({
-                  title: "Excel Upload",
-                  description: `File '${e.target.files[0].name}' selected. This feature is not yet implemented.`,
-                });
-              }
-            }}
-          />
-          <Button
-            onClick={resetForm}
-            variant="outline"
-            className="flex items-center gap-1"
-          >
-            <RefreshCcw className="h-4 w-4" />
-            Reset
-          </Button>
-          <Button
-            onClick={generatePreview}
-            variant="outline"
-            className="flex items-center gap-1"
-          >
-            <Eye className="h-4 w-4" />
+          <Button variant="outline" onClick={generatePreview}>
+            <Eye className="h-4 w-4 mr-2" />
             Preview
           </Button>
-          <Button
-            onClick={sendReport}
-            variant="outline"
-            className="flex items-center gap-1"
-          >
-            <Send className="h-4 w-4" />
-            Send
+          <Button variant="outline" onClick={downloadPDF}>
+            <Download className="h-4 w-4 mr-2" />
+            Download PDF
           </Button>
-          <Button
-            onClick={downloadReport}
-            className="flex items-center gap-1"
-          >
-            <Download className="h-4 w-4" />
-            Download
+          <Button onClick={handleSubmit}>
+            <Send className="h-4 w-4 mr-2" />
+            {isEditMode ? 'Update' : 'Submit'}
           </Button>
         </div>
       </div>
 
-      {/* Filter Section */}
-      {showFilters && (
-        <Card className="p-4 mb-6 w-full">
-          <h2 className="text-lg font-medium mb-4">Filter Options</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
-            {/* Date Filter */}
+      {/* Filters Dialog */}
+      <Dialog open={showFilters} onOpenChange={setShowFilters}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Filter Daily Mentions</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
             <div>
-              <Label htmlFor="date-filter">Filter by Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    id="date-filter"
-                    variant="outline"
-                    className="w-full justify-start text-left font-normal mt-1"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateFilter ? format(dateFilter, 'PPP') : <span>Select date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dateFilter}
-                    onSelect={setDateFilter}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-              {dateFilter && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setDateFilter(undefined)}
-                  className="mt-1"
-                >
-                  <X className="h-3 w-3 mr-1" /> Clear
-                </Button>
-              )}
-            </div>
-
-            {/* Publication Filter */}
-            <div>
-              <Label htmlFor="publication-filter">Filter by Publication</Label>
-              <Select
-                value={publicationFilter}
-                onValueChange={setPublicationFilter}
-              >
-                <SelectTrigger id="publication-filter" className="mt-1 w-full">
-                  <SelectValue placeholder="Select publication" />
+              <Label>Company/Brand</Label>
+              <Select value={companyFilter} onValueChange={setCompanyFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select company" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Publications</SelectItem>
-                  {uniquePublications.map(publication => (
-                    <SelectItem key={publication} value={publication}>
-                      {publication}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Company/Brand Filter */}
-            <div>
-              <Label htmlFor="company-filter">Filter by Company/Brand</Label>
-              <Select
-                value={companyFilter}
-                onValueChange={setCompanyFilter}
-              >
-                <SelectTrigger id="company-filter" className="mt-1 w-full">
-                  <SelectValue placeholder="Select company/brand" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All Companies/Brands</SelectItem>
-                  {uniqueCompanies.map(company => (
+                  {uniqueCompanies.map((company) => (
                     <SelectItem key={company} value={company}>
                       {company}
                     </SelectItem>
@@ -636,334 +852,369 @@ const DailyMentionsPage = () => {
                 </SelectContent>
               </Select>
             </div>
-          </div>
-
-          {/* Active Filters */}
-          {(dateFilter || publicationFilter || companyFilter) && (
-            <div className="flex flex-wrap gap-2 mt-4 w-full">
-              <span className="text-sm font-medium">Active Filters:</span>
-              {dateFilter && (
-                <Badge variant="secondary" className="flex items-center gap-1">
-                  Date: {format(dateFilter, 'MMM d, yyyy')}
-                  <X className="h-3 w-3 ml-1 cursor-pointer" onClick={() => setDateFilter(undefined)} />
-                </Badge>
-              )}
-              {publicationFilter && (
-                <Badge variant="secondary" className="flex items-center gap-1">
-                  Publication: {publicationFilter}
-                  <X className="h-3 w-3 ml-1 cursor-pointer" onClick={() => setPublicationFilter('')} />
-                </Badge>
-              )}
-              {companyFilter && (
-                <Badge variant="secondary" className="flex items-center gap-1">
-                  Company/Brand: {companyFilter}
-                  <X className="h-3 w-3 ml-1 cursor-pointer" onClick={() => setCompanyFilter('')} />
-                </Badge>
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setDateFilter(undefined);
-                  setPublicationFilter('');
-                  setCompanyFilter('');
-                }}
-                className="ml-auto"
-              >
-                Clear All Filters
+            <div>
+              <Label>Publication</Label>
+              <Select value={publicationFilter} onValueChange={setPublicationFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select publication" />
+                </SelectTrigger>
+                <SelectContent>
+                  {uniquePublications.map((pub) => (
+                    <SelectItem key={pub} value={pub}>
+                      {pub}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left font-normal">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateFilter ? format(dateFilter, 'PPP') : <span className="text-muted-foreground">Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar mode="single" selected={dateFilter} onSelect={setDateFilter} initialFocus />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="flex justify-end space-x-2 pt-2">
+              <Button variant="outline" onClick={clearFilters}>
+                Clear
+              </Button>
+              <Button onClick={applyFilters}>
+                Apply
               </Button>
             </div>
-          )}
-        </Card>
-      )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
-      <div className="grid gap-6">
-        {/* Report Header Information */}
-        <Card className="p-4">
-          <h2 className="text-lg font-medium mb-4">Report Information</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Form Content */}
+      <div className="space-y-6">
+        {/* Company and Publication Selection */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="company-id">Company</Label>
+                <Select
+                  value={report.companyId}
+                  onValueChange={(value) => setReport((prev) => ({ ...prev, companyId: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select company" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {companies.map((company) => (
+                      <SelectItem key={company.id} value={company.id.toString()}>
+                        {company.company_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="publication-id">Publication</Label>
+                <Select
+                  value={report.publicationId}
+                  onValueChange={(value) => setReport((prev) => ({ ...prev, publicationId: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select publication" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {publications.map((pub) => (
+                      <SelectItem key={pub.id} value={pub.id.toString()}>
+                        {pub.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Header Color Picker */}
+        <Card>
+          <CardContent className="p-4">
+            <Label className="mb-2 block">Header Color</Label>
+            <Input
+              type="color"
+              value={headerColor}
+              onChange={(e) => handleHeaderColorChange(e.target.value)}
+              className="h-12 w-32"
+            />
+          </CardContent>
+        </Card>
+
+        {/* Logo Upload */}
+        <Card>
+          <CardContent className="p-4">
+            <Label className="mb-2 block">Company Logo</Label>
             <div className="space-y-2">
-              <Label htmlFor="report-date">Report Date</Label>
               <Input
-                id="report-date"
-                type="date"
-                value={report.date}
-                onChange={(e) => updateReportDate(e.target.value)}
+                id="logo-upload"
+                type="file"
+                accept="image/png,image/jpeg"
+                onChange={handleLogoChange}
+                className="w-full"
               />
-            </div>
-            <div className="space-y-2">
-              <Label>Expecting Publications</Label>
-              {report.expectingPublications?.map((pub, idx) => (
-                <div key={idx} className="flex gap-2 items-center">
-                  <Input
-                    value={pub}
-                    onChange={(e) => updateExpectingPublication(idx, e.target.value)}
-                    placeholder="Publication name"
-                  />
+              {logoPreview && (
+                <div className="flex items-center space-x-2">
+                  <img src={logoPreview} alt="Logo preview" className="h-16 w-16 rounded" />
                   <Button
                     variant="ghost"
-                    size="icon"
-                    onClick={() => removeExpectingPublication(idx)}
-                    className="shrink-0"
+                    size="sm"
+                    onClick={() => {
+                      setLogoPreview(null);
+                      setLogoFile(null);
+                    }}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <X className="h-4 w-4" />
                   </Button>
                 </div>
-              ))}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={addExpectingPublication}
-                className="mt-2"
-              >
-                <PlusCircle className="h-4 w-4 mr-2" />
-                Add Publication
-              </Button>
+              )}
             </div>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="logo-upload">Company Logo</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    id="logo-upload"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleLogoChange}
-                    className="flex-1"
-                  />
-                  {logoPreview && (
-                    <div className="h-10 w-10 rounded-full border border-gray-200 overflow-hidden">
-                      <img
-                        src={logoPreview}
-                        alt="Logo Preview"
-                        className="h-full w-full object-contain"
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="header-color">Header Color</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    id="header-color"
-                    type="color"
-                    value={headerColor}
-                    onChange={(e) => setHeaderColor(e.target.value)}
-                    className="w-16 h-10 p-1"
-                  />
-                  <Input
-                    value={headerColor}
-                    onChange={(e) => setHeaderColor(e.target.value)}
-                    placeholder="#0066cc"
-                    className="flex-1"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
+          </CardContent>
         </Card>
 
-        {/* Sections - Use filteredSections instead of report.sections */}
-        {filteredSections.map((section) => (
-          <Card key={section.id} className="p-4">
-            <div className="mb-4">
-              <div className="flex items-center justify-between" style={{ backgroundColor: headerColor }}>
-                <div className="flex-1 p-2">
-                  <Input
-                    value={section.title}
-                    onChange={(e) => updateSectionTitle(section.id, e.target.value)}
-                    placeholder={`${section.type} (e.g., STANBIC IBTC SUBSIDIARIES)`}
-                    className="font-medium text-lg text-white bg-transparent border-none focus:ring-0 focus:border-none"
-                  />
-                </div>
-                <div className="flex gap-2 p-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-white hover:text-white hover:bg-blue-700"
-                    onClick={() => toggleSection(section.id)}
-                  >
-                    {expandedSections[section.id] ? "Collapse" : "Expand"}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-white hover:text-white hover:bg-blue-700"
-                    onClick={() => removeSection(section.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+        {/* Date and Expecting Publications */}
+        <Card>
+          <CardContent className="p-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="report-date">Report Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-start text-left font-normal">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {report.date ? format(new Date(report.date), 'PPP') : <span className="text-muted-foreground">Pick a date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={report.date ? new Date(report.date) : undefined}
+                      onSelect={(date) => setReport((prev) => ({ ...prev, date: date ? date.toISOString().split('T')[0] : '' }))}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
-              <div className="mt-2 text-sm text-gray-500">
-                Section Type: {section.type}
+              <div>
+                <Label htmlFor="expecting-publications">Expecting Publications</Label>
+                <Input
+                  id="expecting-publications"
+                  value={report.expectingPublications.join(', ')}
+                  onChange={(e) => setReport((prev) => ({ ...prev, expectingPublications: e.target.value.split(',').map((s) => s.trim()).filter((s) => s) }))}
+                  placeholder="e.g., The Punch, Vanguard, ThisDay"
+                />
               </div>
             </div>
+          </CardContent>
+        </Card>
 
-            {(expandedSections[section.id] || section.mentions.length === 0) && (
-              <div className="space-y-4">
-                {section.mentions.map((mention) => (
-                  <Card key={mention.id} className="p-3 border border-gray-200">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex-1">
-                        <Input
-                          value={mention.title}
-                          onChange={(e) => updateMention(section.id, mention.id, 'title', e.target.value)}
-                          placeholder="News Headline"
-                          className="font-medium"
-                        />
-                      </div>
-                      <div className="flex gap-1">
-                        <select
-                          value={mention.sentiment}
-                          onChange={(e) => updateMention(section.id, mention.id, 'sentiment', e.target.value as SentimentType)}
-                          className="h-8 rounded-md border border-input px-3 py-1 text-sm bg-background"
-                        >
-                          <option value="Positive">Positive</option>
-                          <option value="Neutral">Neutral</option>
-                          <option value="Negative">Negative</option>
-                          <option value="N/A">N/A</option>
-                        </select>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => toggleMention(mention.id)}
-                        >
-                          {expandedMentions[mention.id] ? "Collapse" : "Expand"}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => cloneMention(section.id, mention.id)}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeMention(section.id, mention.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
+        {/* Sections */}
+        <div className="space-y-4">
+          {filteredSections.map((section) => (
+            <Card key={section.id}>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-2">
+                    <Button variant="ghost" size="sm" onClick={() => toggleSection(section.id)}>
+                      {expandedSections[section.id] ? '−' : '+'}
+                    </Button>
+                    <Input
+                      value={section.title || section.type}
+                      onChange={(e) => updateSectionTitle(section.id, e.target.value)}
+                      placeholder="Section Title"
+                      className="w-64"
+                    />
+                  </div>
+                  <div className="flex space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => cloneMention(section.id, section.mentions[0]?.id || '')}
+                      disabled={!section.mentions[0]}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => removeSection(section.id)}
+                      disabled={report.sections.length <= 1}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
 
-                    {expandedMentions[mention.id] && (
-                      <div className="space-y-3 mt-3">
-                        <div>
-                          <Label htmlFor={`content-${mention.id}`}>Content</Label>
-                          <Textarea
-                            id={`content-${mention.id}`}
-                            value={mention.content}
-                            onChange={(e) => updateMention(section.id, mention.id, 'content', e.target.value)}
-                            placeholder="News content..."
-                            rows={4}
-                          />
-                          <div className="text-xs text-gray-500 mt-1">
-                            Format content as shown in the template: Start with headline, followed by content, then add sentiment and reporter at the end.
+                {expandedSections[section.id] && (
+                  <div className="space-y-4">
+                    {section.mentions.map((mention) => (
+                      <Card key={mention.id} className="p-4">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center space-x-2">
+                            <Button variant="ghost" size="sm" onClick={() => toggleMention(mention.id)}>
+                              {expandedMentions[mention.id] ? '−' : '+'}
+                            </Button>
+                            <Label className="font-semibold">{mention.title || 'News Item'}</Label>
+                          </div>
+                          <div className="flex space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => cloneMention(section.id, mention.id)}
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => removeMention(section.id, mention.id)}
+                              disabled={section.mentions.length <= 1}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div>
-                            <Label htmlFor={`reporter-${mention.id}`}>Reporter</Label>
-                            <Input
-                              id={`reporter-${mention.id}`}
-                              value={mention.reporter || ''}
-                              onChange={(e) => updateMention(section.id, mention.id, 'reporter', e.target.value)}
-                              placeholder="Reporter Name"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor={`source-${mention.id}`}>Source</Label>
-                            <Input
-                              id={`source-${mention.id}`}
-                              value={mention.source || ''}
-                              onChange={(e) => updateMention(section.id, mention.id, 'source', e.target.value)}
-                              placeholder="Source (e.g., BusinessDay)"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                          <div>
-                            <Label htmlFor={`publication-${mention.id}`}>Publication</Label>
-                            <Input
-                              id={`publication-${mention.id}`}
-                              value={mention.publication || ''}
-                              onChange={(e) => updateMention(section.id, mention.id, 'publication', e.target.value)}
-                              placeholder="Publication Name"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor={`page-${mention.id}`}>Page</Label>
-                            <Input
-                              id={`page-${mention.id}`}
-                              value={mention.publicationPage || ''}
-                              onChange={(e) => updateMention(section.id, mention.id, 'publicationPage', e.target.value)}
-                              placeholder="Page Number (e.g., Page 39)"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor={`pub-date-${mention.id}`}>Publication Date</Label>
-                            <Input
-                              id={`pub-date-${mention.id}`}
-                              value={mention.publicationDate || ''}
-                              onChange={(e) => updateMention(section.id, mention.id, 'publicationDate', e.target.value)}
-                              placeholder="Date (e.g., 8th January)"
-                            />
-                          </div>
-                        </div>
-
-                        <div>
-                          <Label>Links</Label>
-                          {mention.links.map((link, linkIndex) => (
-                            <div key={linkIndex} className="flex gap-2 items-center mt-2">
-                              <Input
-                                value={link.url}
-                                onChange={(e) => updateLink(section.id, mention.id, linkIndex, e.target.value)}
-                                placeholder="URL (e.g., Punchng.com)"
-                              />
+                        {expandedMentions[mention.id] && (
+                          <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <Label htmlFor={`headline-${mention.id}`}>Headline</Label>
+                                <Input
+                                  id={`headline-${mention.id}`}
+                                  value={mention.title}
+                                  onChange={(e) => updateMention(section.id, mention.id, 'title', e.target.value)}
+                                  placeholder="Enter headline"
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor={`publication-${mention.id}`}>Publication</Label>
+                                <Input
+                                  id={`publication-${mention.id}`}
+                                  value={mention.publication}
+                                  onChange={(e) => updateMention(section.id, mention.id, 'publication', e.target.value)}
+                                  placeholder="e.g., The Punch"
+                                />
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <Label htmlFor={`reporter-${mention.id}`}>Reporter</Label>
+                                <Input
+                                  id={`reporter-${mention.id}`}
+                                  value={mention.reporter}
+                                  onChange={(e) => updateMention(section.id, mention.id, 'reporter', e.target.value)}
+                                  placeholder="Enter reporter name"
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor={`sentiment-${mention.id}`}>Sentiment</Label>
+                                <Select
+                                  value={mention.sentiment}
+                                  onValueChange={(value) => updateMention(section.id, mention.id, 'sentiment', value)}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select sentiment" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="positive">Positive</SelectItem>
+                                    <SelectItem value="negative">Negative</SelectItem>
+                                    <SelectItem value="neutral">Neutral</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <Label htmlFor={`page-${mention.id}`}>Page Number</Label>
+                                <Input
+                                  id={`page-${mention.id}`}
+                                  value={mention.publicationPage}
+                                  onChange={(e) => updateMention(section.id, mention.id, 'publicationPage', e.target.value)}
+                                  placeholder="Page Number (e.g., Page 39)"
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor={`pub-date-${mention.id}`}>Publication Date</Label>
+                                <Input
+                                  id={`pub-date-${mention.id}`}
+                                  value={mention.publicationDate}
+                                  onChange={(e) => updateMention(section.id, mention.id, 'publicationDate', e.target.value)}
+                                  placeholder="Date (e.g., 8th January)"
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <Label>Links</Label>
+                              {mention.links.map((link, linkIndex) => (
+                                <div key={linkIndex} className="flex gap-2 items-center mt-2">
+                                  <Input
+                                    value={link.url}
+                                    onChange={(e) => updateLink(section.id, mention.id, linkIndex, e.target.value)}
+                                    placeholder="URL (e.g., https://punchng.com)"
+                                  />
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => removeLink(section.id, mention.id, linkIndex)}
+                                    className="shrink-0"
+                                    disabled={mention.links.length <= 1}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ))}
                               <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => removeLink(section.id, mention.id, linkIndex)}
-                                className="shrink-0"
-                                disabled={mention.links.length <= 1}
+                                variant="outline"
+                                size="sm"
+                                onClick={() => addLink(section.id, mention.id)}
+                                className="mt-2"
                               >
-                                <Trash2 className="h-4 w-4" />
+                                <Link className="h-4 w-4 mr-2" />
+                                Add Link
                               </Button>
                             </div>
-                          ))}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => addLink(section.id, mention.id)}
-                            className="mt-2"
-                          >
-                            <Link className="h-4 w-4 mr-2" />
-                            Add Link
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </Card>
-                ))}
+                            <div>
+                              <Label htmlFor={`content-${mention.id}`}>Content</Label>
+                              <Textarea
+                                id={`content-${mention.id}`}
+                                value={mention.content}
+                                onChange={(e) => updateMention(section.id, mention.id, 'content', e.target.value)}
+                                placeholder="Enter content summary"
+                                rows={4}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </Card>
+                    ))}
+                    <Button
+                      variant="outline"
+                      onClick={() => addMention(section.id)}
+                      className="w-full mt-4"
+                    >
+                      <PlusCircle className="h-4 w-4 mr-2" />
+                      Add News Item
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
 
-                <Button
-                  variant="outline"
-                  onClick={() => addMention(section.id)}
-                  className="w-full"
-                >
-                  <PlusCircle className="h-4 w-4 mr-2" />
-                  Add News Item
-                </Button>
-              </div>
-            )}
-          </Card>
-        ))}
-
+        {/* Add Section Buttons */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <Button
             variant="outline"
@@ -993,11 +1244,11 @@ const DailyMentionsPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Button
             variant="outline"
-            onClick={() => addSection('PHOTO')}
+            onClick={() => addSection('PASSIVE')}
             className="w-full"
           >
             <PlusCircle className="h-4 w-4 mr-2" />
-            Add Photo Section
+            Add Passive Section
           </Button>
           <Button
             variant="outline"
@@ -1009,124 +1260,134 @@ const DailyMentionsPage = () => {
           </Button>
           <Button
             variant="outline"
-            onClick={() => addSection('PASSIVE')}
+            onClick={() => addSection('OTHER')}
             className="w-full"
           >
             <PlusCircle className="h-4 w-4 mr-2" />
-            Add Passive Section
+            Add Other Section
           </Button>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => addSection('OTHER')}
-          className="w-full mt-4"
-        >
-          <PlusCircle className="h-4 w-4 mr-2" />
-          Add Other Section
-        </Button>
 
         {/* Footer Note */}
-        <Card className="p-4">
-          <div className="space-y-2">
-            <Label htmlFor="footer-note">Footer Note</Label>
-            <Textarea
-              id="footer-note"
-              value={report.footerNote || ''}
-              onChange={(e) => setReport(prev => ({ ...prev, footerNote: e.target.value }))}
-              placeholder="P+ Measurement Services Daily Media Briefs cover all relevant news reports, features and photo stories in major Nigerian newspapers, magazines, online news sites & blogs."
-              rows={2}
-            />
-          </div>
-        </Card>
-      </div>
-
-      {/* Preview Section */}
-      {showPreview && (
-        <Card className="mt-6 p-4">
-          <h2 className="text-lg font-medium mb-4">Preview</h2>
-          <div className="border rounded p-4 bg-white">
-            <div className="max-w-4xl mx-auto border border-gray-300">
-              {/* Header */}
-              <div className="flex items-center justify-between" style={{ backgroundColor: headerColor }}>
-                <h1 className="text-white text-2xl font-bold p-4">DAILY MEDIA HIGHLIGHTS</h1>
-                {logoPreview && (
-                  <div className="bg-white rounded-full h-20 w-20 flex items-center justify-center p-2 mr-4">
-                    <img src={logoPreview} alt="Company Logo" className="max-h-full max-w-full" />
-                  </div>
-                )}
-              </div>
-
-              {/* Date and intro */}
-              <div className="p-4 bg-white">
-                <p className="font-semibold">{format(new Date(report.date), 'MMM d, yyyy')}</p>
-                <p className="text-sm mt-2">
-                  This daily digest provides a summary of discovered news material, and other
-                  resources related to your search terms, with a focus on coverage featured in
-                  National/Regional Print Publications and Online media. Alert covers online media for
-                  keywords from the first edition on the day of the media alert(weekly).
-                </p>
-              </div>
-
-              {/* Sections */}
-              {report.sections.map((section) => (
-                <div key={section.id} className="mt-2">
-                  {/* Section Header */}
-                  <div style={{ backgroundColor: headerColor }} className="p-2">
-                    <h2 className="text-white font-bold">{section.title || section.type}</h2>
-                  </div>
-
-                  {/* Section Content */}
-                  <div className="p-4 bg-white">
-                    {section.mentions.map((mention) => (
-                      <div key={mention.id} className="mb-4">
-                        <p className="font-bold">{mention.title || 'News headline'}: - </p>
-                        <p className="text-sm">{mention.content || 'News content will appear here...'}</p>
-
-                        {mention.links.some(link => link.url) && (
-                          <p className="text-sm mt-1">
-                            {mention.links.map((link, lIndex) =>
-                              link.url ? (
-                                <span key={lIndex}>
-                                  <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">
-                                    {link.url}
-                                  </a>
-                                  {lIndex < mention.links.length - 1 ? ' / ' : ''}
-                                </span>
-                              ) : null
-                            )}
-                          </p>
-                        )}
-
-                        <p className="text-sm mt-1">
-                          <span className="font-semibold">Sentiment:</span> {mention.sentiment || 'N/A'}<br />
-                          <span className="font-semibold">Reporter:</span> {mention.reporter || 'Not specified'}
-                          {mention.publicationPage && <><br /><span className="font-semibold">Page:</span> {mention.publicationPage}</>}
-                          {mention.publicationDate && <><br /><span className="font-semibold">Date:</span> {mention.publicationDate}</>}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-
-              {/* Expecting publications */}
-              {report.expectingPublications && report.expectingPublications.length > 0 && (
-                <div className="p-4 bg-gray-100">
-                  <p className="font-semibold">Expecting: {report.expectingPublications.join(', ')}</p>
-                </div>
-              )}
-
-              {/* Footer */}
-              <div className="p-4 bg-white text-xs text-center">
-                <p>{report.footerNote || 'P+ Measurement Services Daily Media Briefs cover all relevant news reports, features and photo stories in major Nigerian newspapers, magazines, online news sites & blogs.'}</p>
-                <p className="mt-1 text-gray-500">(Clippings of specific stories/reports are available on request)</p>
-              </div>
+        <Card>
+          <CardContent className="p-4">
+            <div className="space-y-2">
+              <Label htmlFor="footer-note">Footer Note</Label>
+              <Textarea
+                id="footer-note"
+                value={report.footerNote}
+                onChange={(e) => setReport((prev) => ({ ...prev, footerNote: e.target.value }))}
+                placeholder="Enter footer note"
+                rows={2}
+              />
             </div>
-          </div>
+          </CardContent>
         </Card>
-      )}
+
+        {/* Preview Section */}
+        {showPreview && (
+          <Card className="mt-6">
+            <CardContent className="p-4">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-medium">Preview</h2>
+                <Button variant="ghost" onClick={() => setShowPreview(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="border rounded p-4 bg-white">
+                <div className="max-w-4xl mx-auto border border-gray-300">
+                  {/* Header */}
+                  <div className="flex items-center justify-between" style={{ backgroundColor: headerColor }}>
+                    <h1 className="text-white text-2xl font-bold p-4">DAILY MEDIA HIGHLIGHTS</h1>
+                    {logoPreview && (
+                      <div className="bg-white rounded-full h-20 w-20 flex items-center justify-center p-2 mr-4">
+                        <img src={logoPreview} alt="Company Logo" className="max-h-full max-w-full" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Date and Intro */}
+                  <div className="p-4 bg-white">
+                    <p className="font-semibold">{format(new Date(report.date), 'MMM d, yyyy')}</p>
+                    <p className="text-sm mt-2">
+                      This daily digest provides a summary of discovered news material, and other
+                      resources related to your search terms, with a focus on coverage featured in
+                      National/Regional Print Publications and Online media. Alert covers online media for
+                      keywords from the first edition on the day of the media alert (weekly).
+                    </p>
+                  </div>
+
+                  {/* Sections */}
+                  {filteredSections.map((section) => (
+                    <div key={section.id} className="mt-2">
+                      <div style={{ backgroundColor: headerColor }} className="p-2">
+                        <h2 className="text-white font-bold">{section.title || section.type}</h2>
+                      </div>
+                      <div className="p-4 bg-white">
+                        {section.mentions.map((mention) => (
+                          <div key={mention.id} className="mb-4">
+                            <p className="font-bold">{mention.title || 'News headline'}: - </p>
+                            <p className="text-sm">{mention.content || 'News content will appear here...'}</p>
+                            {mention.links.some((link) => link.url) && (
+                              <p className="text-sm mt-1">
+                                {mention.links.map((link, lIndex) =>
+                                  link.url ? (
+                                    <span key={lIndex}>
+                                      <a
+                                        href={link.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-blue-500 underline"
+                                      >
+                                        {link.url}
+                                      </a>
+                                      {lIndex < mention.links.length - 1 ? ' / ' : ''}
+                                    </span>
+                                  ) : null
+                                )}
+                              </p>
+                            )}
+                            <p className="text-sm mt-1">
+                              <span className="font-semibold">Sentiment:</span> {mention.sentiment || 'N/A'}<br />
+                              <span className="font-semibold">Reporter:</span> {mention.reporter || 'Not specified'}
+                              {mention.publicationPage && (
+                                <>
+                                  <br />
+                                  <span className="font-semibold">Page:</span> {mention.publicationPage}
+                                </>
+                              )}
+                              {mention.publicationDate && (
+                                <>
+                                  <br />
+                                  <span className="font-semibold">Date:</span> {mention.publicationDate}
+                                </>
+                              )}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Expecting Publications */}
+                  {report.expectingPublications && report.expectingPublications.length > 0 && (
+                    <div className="p-4 bg-gray-100">
+                      <p className="font-semibold">Expecting: {report.expectingPublications.join(', ')}</p>
+                    </div>
+                  )}
+
+                  {/* Footer */}
+                  <div className="p-4 bg-white text-xs text-center">
+                    <p>{report.footerNote}</p>
+                    <p className="mt-1 text-gray-500">(Clippings of specific stories/reports are available on request)</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   );
 };
-
 export default DailyMentionsPage;

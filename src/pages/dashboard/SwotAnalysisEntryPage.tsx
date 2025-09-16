@@ -1,232 +1,246 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Save, FileText, ArrowLeft, Plus, Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
-import { format } from 'date-fns';
-import { SwotForm, SwotAnalysis } from '@/components/admin/SwotMentionForm';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ArrowLeft, Save, Loader2, FileText } from 'lucide-react';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
-import { useCompanies, useCreateSwotAnalysis, useUpdateSwotAnalysis, useSwotAnalysisById } from '@/hooks/useApi';
-import { apiService } from '@/services/apiService';
+import { useToast } from '@/hooks/use-toast';
 
-// Default form data
-const defaultFormData: SwotAnalysis = {
-  id: 1,
-  date: new Date().toISOString().split('T')[0],
-  company: '',
-  currentCategory: 'strengths',
-  currentAnalysis: '',
-  analystNote: '',
-  supervisorNote: '',
-  adminNote: '',
-  status: 'DRAFT'
-};
+// Interfaces
+interface Company {
+  id: number;
+  company_name: string;
+  industry: string;
+  sub_industry: string;
+}
 
-export default function SwotAnalysisEntryPage() {
+interface SwotAnalysis {
+  id?: number;
+  company_id?: number;
+  company?: Company;
+  title?: string;
+  date?: string;
+  strengths: string[];
+  weaknesses: string[];
+  opportunities: string[];
+  threats: string[];
+  analyst_note?: string | null;
+  supervisor_note?: string | null;
+  status: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  message: string;
+}
+
+// Axios interceptor
+axios.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+const SwotAnalysisEntryPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { toast } = useToast();
   const queryParams = new URLSearchParams(location.search);
-  const companyIdFromQuery = queryParams.get('companyId') || '';
+  const swotIdFromQuery = queryParams.get('id');
 
-  // API hooks
-  const { data: companiesData = [], loading: companiesLoading } = useCompanies();
-  const { mutate: createSwotAnalysis, loading: creating } = useCreateSwotAnalysis();
-  const { mutate: updateSwotAnalysis, loading: updating } = useUpdateSwotAnalysis();
+  const [formData, setFormData] = useState<SwotAnalysis>({
+    strengths: [],
+    weaknesses: [],
+    opportunities: [],
+    threats: [],
+    status: '',
+  });
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [companiesLoading, setCompaniesLoading] = useState(true);
 
-  // State management
-  const [swotAnalyses, setSwotAnalyses] = useState<SwotAnalysis[]>([
-    {
-      ...defaultFormData,
-      company: ''
-    }
-  ]);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const BASE_URL = process.env.REACT_APP_API_BASE_URL || '';
 
-  // User role (mock - in real app this would come from auth context)
-  const userRole = 'analyst';
-
-  // Update company name when companies data loads
+  // Fetch companies
   useEffect(() => {
-    if (companiesData.length > 0 && companyIdFromQuery) {
-      const selectedCompany = companiesData.find(c => c.id === companyIdFromQuery);
-      if (selectedCompany) {
-        setSwotAnalyses(prev => prev.map((swot, index) =>
-          index === 0 ? { ...swot, company: selectedCompany.name } : swot
-        ));
+    const fetchCompanies = async () => {
+      try {
+        setCompaniesLoading(true);
+        const response = await axios.get<ApiResponse<{ data: Company[] }>>(`${BASE_URL}/companies/`);
+        setCompanies(response.data.data?.data || []);
+      } catch (error: any) {
+        console.error('Error fetching companies:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load companies',
+          variant: 'destructive',
+        });
+      } finally {
+        setCompaniesLoading(false);
       }
+    };
+
+    fetchCompanies();
+  }, [toast]);
+
+  // Fetch SWOT if editing
+  useEffect(() => {
+    if (swotIdFromQuery) {
+      const fetchSwot = async () => {
+        try {
+          setLoading(true);
+          const response = await axios.get<ApiResponse<SwotAnalysis>>(`${BASE_URL}/swot-analysis/${swotIdFromQuery}`);
+          setFormData({
+            ...response.data.data,
+            strengths: response.data.data.strengths || [],
+            weaknesses: response.data.data.weaknesses || [],
+            opportunities: response.data.data.opportunities || [],
+            threats: response.data.data.threats || [],
+            status: response.data.data.status || '',
+          });
+        } catch (error: any) {
+          console.error('Error fetching SWOT analysis:', error);
+          toast({
+            title: 'Error',
+            description: 'Failed to load SWOT analysis',
+            variant: 'destructive',
+          });
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      fetchSwot();
+    } else {
+      setLoading(false);
     }
-  }, [companiesData, companyIdFromQuery]);
+  }, [swotIdFromQuery, toast]);
 
-  // Form handlers
-  const handleSwotChange = (updatedSwotAnalyses: SwotAnalysis[]) => {
-    setSwotAnalyses(updatedSwotAnalyses);
+  const validateForm = () => {
+    const errors: Record<string, string> = {};
+    if (!formData.company_id) errors.company_id = 'Company is required';
+    if (!formData.date) errors.date = 'Date is required';
+    if (!formData.title?.trim()) errors.title = 'Title is required';
+    if (!formData.status) errors.status = 'Status is required';
+    if (formData.strengths.length === 0 && formData.weaknesses.length === 0 && 
+        formData.opportunities.length === 0 && formData.threats.length === 0) {
+      errors.analysis = 'At least one SWOT category must have content';
+    }
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
-  const handleAddSwot = () => {
-    const newSwot: SwotAnalysis = {
-      ...defaultFormData,
-      id: Date.now(),
-    };
-    setSwotAnalyses([...swotAnalyses, newSwot]);
-    setActiveIndex(swotAnalyses.length);
+  const handleSubmit = async () => {
+    if (!validateForm()) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please fix the errors before submitting',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload = {
+        company_id: formData.company_id,
+        title: formData.title?.trim(),
+        date: formData.date,
+        strengths: formData.strengths,
+        weaknesses: formData.weaknesses,
+        opportunities: formData.opportunities,
+        threats: formData.threats,
+        analyst_note: formData.analyst_note || null,
+        supervisor_note: formData.supervisor_note || null,
+        status: formData.status,
+      };
+
+      if (swotIdFromQuery && formData.id) {
+        await axios.put(`${BASE_URL}/swot-analysis/${formData.id}`, payload);
+        toast({
+          title: 'Success',
+          description: 'SWOT analysis updated successfully',
+        });
+      } else {
+        await axios.post(`${BASE_URL}/swot-analysis/`, payload);
+        toast({
+          title: 'Success',
+          description: 'SWOT analysis created successfully',
+        });
+      }
+
+      navigate('/dashboard/swot-analysis');
+    } catch (error: any) {
+      console.error('Error submitting SWOT analysis:', error);
+      const message = error.response?.data?.message || 'Failed to submit SWOT analysis';
+      toast({
+        title: 'Error',
+        description: message,
+        variant: 'destructive',
+      });
+
+      if (Array.isArray(error.response?.data?.message)) {
+        const newErrors: Record<string, string> = {};
+        error.response.data.message.forEach((err: { field: string; message: string }) => {
+          newErrors[err.field] = err.message;
+        });
+        setFormErrors(newErrors);
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const handleCloneSwot = () => {
-    const currentSwot = swotAnalyses[activeIndex];
-    const clonedSwot: SwotAnalysis = {
-      ...currentSwot,
-      id: Date.now(),
-      currentAnalysis: `${currentSwot.currentAnalysis} (Copy)`,
-    };
-    setSwotAnalyses([...swotAnalyses, clonedSwot]);
-    setActiveIndex(swotAnalyses.length);
+  const handleSaveAsDraft = async () => {
+    setFormData(prev => ({ ...prev, status: 'DRAFT' }));
+    await handleSubmit();
   };
 
-  const handleSwitchSwot = (index: number) => {
-    setActiveIndex(index);
-  };
+  const handleFieldChange = (field: keyof SwotAnalysis, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
 
-  const handleFieldChange = (name: string, value: string | string[]) => {
-    const updatedSwotAnalyses = [...swotAnalyses];
-    updatedSwotAnalyses[activeIndex] = {
-      ...updatedSwotAnalyses[activeIndex],
-      [name]: value
-    };
-    setSwotAnalyses(updatedSwotAnalyses);
-
-    // Clear error for this field
-    if (errors[name]) {
-      setErrors(prev => {
+    if (formErrors[field as string]) {
+      setFormErrors(prev => {
         const newErrors = { ...prev };
-        delete newErrors[name];
+        delete newErrors[field as string];
         return newErrors;
       });
     }
   };
 
-  const handleClearError = (fieldName: string) => {
-    setErrors(prev => {
-      const newErrors = { ...prev };
-      delete newErrors[fieldName];
-      return newErrors;
-    });
+  const handleCategoryChange = (category: 'strengths' | 'weaknesses' | 'opportunities' | 'threats', value: string[]) => {
+    setFormData(prev => ({ ...prev, [category]: value }));
   };
 
-  // Validation
-  const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
-    const currentSwot = swotAnalyses[activeIndex];
-
-    if (!currentSwot.company.trim()) {
-      newErrors.company = 'Company is required';
-    }
-    if (!currentSwot.date) {
-      newErrors.date = 'Date is required';
-    }
-    if (!currentSwot.currentAnalysis?.trim()) {
-      newErrors.currentAnalysis = 'Analysis is required';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  // Submit handlers
-  const handleSubmit = async () => {
-    if (!validateForm()) {
-      toast.error('Please fix the validation errors before submitting.');
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const currentSwot = swotAnalyses[activeIndex];
-      const selectedCompany = companiesData.find(c => c.name === currentSwot.company);
-
-      if (!selectedCompany) {
-        toast.error('Please select a valid company.');
-        return;
-      }
-
-      // Prepare SWOT analysis data for API
-      const swotData = {
-        companyId: selectedCompany.id,
-        title: `SWOT Analysis - ${currentSwot.company} - ${format(new Date(currentSwot.date), 'MMM dd, yyyy')}`,
-        date: currentSwot.date,
-        strengths: currentSwot.currentCategory === 'strengths' ? [currentSwot.currentAnalysis] : [],
-        weaknesses: currentSwot.currentCategory === 'weaknesses' ? [currentSwot.currentAnalysis] : [],
-        opportunities: currentSwot.currentCategory === 'opportunities' ? [currentSwot.currentAnalysis] : [],
-        threats: currentSwot.currentCategory === 'threats' ? [currentSwot.currentAnalysis] : [],
-        analystNote: currentSwot.analystNote,
-        supervisorNote: currentSwot.supervisorNote,
-        status: currentSwot.status || 'PENDING'
-      };
-
-      console.log('Submitting SWOT analysis:', swotData);
-
-      // Call the API to create SWOT analysis
-      await createSwotAnalysis(swotData);
-
-      toast.success('SWOT analysis saved successfully!');
-      navigate('/dashboard/swot-analysis');
-    } catch (error) {
-      console.error('Error saving SWOT analysis:', error);
-      toast.error('Failed to save SWOT analysis. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleSaveAsDraft = async () => {
-    setIsSubmitting(true);
-    try {
-      const currentSwot = swotAnalyses[activeIndex];
-      const selectedCompany = companiesData.find(c => c.name === currentSwot.company);
-
-      if (!selectedCompany) {
-        toast.error('Please select a valid company.');
-        return;
-      }
-
-      // Prepare SWOT analysis data for API with DRAFT status
-      const swotData = {
-        companyId: selectedCompany.id,
-        title: `SWOT Analysis - ${currentSwot.company} - ${format(new Date(currentSwot.date), 'MMM dd, yyyy')} (Draft)`,
-        date: currentSwot.date,
-        strengths: currentSwot.currentCategory === 'strengths' ? [currentSwot.currentAnalysis] : [],
-        weaknesses: currentSwot.currentCategory === 'weaknesses' ? [currentSwot.currentAnalysis] : [],
-        opportunities: currentSwot.currentCategory === 'opportunities' ? [currentSwot.currentAnalysis] : [],
-        threats: currentSwot.currentCategory === 'threats' ? [currentSwot.currentAnalysis] : [],
-        analystNote: currentSwot.analystNote,
-        supervisorNote: currentSwot.supervisorNote,
-        status: 'DRAFT'
-      };
-
-      console.log('Saving SWOT analysis as draft:', swotData);
-
-      // Call the API to create SWOT analysis as draft
-      await createSwotAnalysis(swotData);
-
-      toast.success('SWOT analysis saved as draft!');
-    } catch (error) {
-      console.error('Error saving SWOT analysis as draft:', error);
-      toast.error('Failed to save draft. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleBack = () => {
-    navigate('/dashboard/swot-analysis');
-  };
+  if (loading || companiesLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <Loader2 className="animate-spin h-8 w-8 mx-auto mb-4" />
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="h-full flex flex-col animate-fade-in max-w-full overflow-hidden">
-      {/* Breadcrumb */}
-      <Breadcrumb className="mb-6">
+    <div className="space-y-6 animate-fade-in">
+      <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
             <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
@@ -237,115 +251,154 @@ export default function SwotAnalysisEntryPage() {
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbLink>Create Analysis</BreadcrumbLink>
+            <BreadcrumbLink>{swotIdFromQuery ? 'Edit' : 'Create'} Analysis</BreadcrumbLink>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
 
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={handleBack}>
+          <Button variant="outline" onClick={() => navigate('/dashboard/swot-analysis')}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-2xl font-bold">Create SWOT Analysis</h1>
+          <h1 className="text-2xl font-bold">{swotIdFromQuery ? 'Edit' : 'Create'} SWOT Analysis</h1>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            onClick={handleSaveAsDraft}
-            disabled={isSubmitting || creating}
-          >
-            {creating ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving Draft...
-              </>
-            ) : (
-              <>
-                <FileText className="mr-2 h-4 w-4" />
-                Save as Draft
-              </>
-            )}
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleSaveAsDraft} disabled={submitting}>
+            {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
+            Save as Draft
           </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={isSubmitting || creating}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground"
-          >
-            {creating ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="mr-2 h-4 w-4" />
-                Save Analysis
-              </>
-            )}
+          <Button onClick={handleSubmit} disabled={submitting}>
+            {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            {swotIdFromQuery ? 'Update' : 'Save'} Analysis
           </Button>
         </div>
       </div>
 
-      {/* SWOT Form */}
-      <div className="flex-1 overflow-hidden">
-        <SwotForm
-          swotAnalyses={swotAnalyses}
-          activeIndex={activeIndex}
-          errors={errors}
-          apiCompanies={companiesData}
-          userRole={userRole}
-          onSwotChange={handleSwotChange}
-          onAddSwot={handleAddSwot}
-          onCloneSwot={handleCloneSwot}
-          onSwitchSwot={handleSwitchSwot}
-          onFieldChange={handleFieldChange}
-          onClearError={handleClearError}
-          onSave={handleSubmit}
-          onCancel={handleBack}
-        />
-      </div>
-
-      {/* Multiple SWOT Analyses Navigation */}
-      {swotAnalyses.length > 1 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              SWOT Analyses ({swotAnalyses.length})
-            </CardTitle>
-            <CardDescription>
-              Switch between multiple SWOT analyses or add new ones
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {swotAnalyses.map((swot, index) => (
-                <Button
-                  key={swot.id}
-                  variant={index === activeIndex ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => handleSwitchSwot(index)}
-                  className="flex items-center gap-2"
-                >
-                  <span>Analysis {index + 1}</span>
-                  {swot.currentAnalysis && <span className="text-xs opacity-70">({swot.currentAnalysis.substring(0, 20)}...)</span>}
-                </Button>
-              ))}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleAddSwot}
-                className="flex items-center gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                Add New
-              </Button>
+      <Card>
+        <CardHeader>
+          <CardTitle>SWOT Analysis Details</CardTitle>
+          <CardDescription>Fill in the details for the SWOT analysis</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="company_id">Company <span className="text-red-500">*</span></Label>
+              <Select value={formData.company_id?.toString() || ''} onValueChange={(value) => handleFieldChange('company_id', parseInt(value))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {companies.map((company) => (
+                    <SelectItem key={company.id} value={company.id.toString()}>
+                      {company.company_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {formErrors.company_id && <p className="text-red-500 text-sm">{formErrors.company_id}</p>}
             </div>
-          </CardContent>
-        </Card>
-      )}
+            <div className="space-y-2">
+              <Label htmlFor="date">Date <span className="text-red-500">*</span></Label>
+              <Input
+                id="date"
+                type="date"
+                value={formData.date || ''}
+                onChange={(e) => handleFieldChange('date', e.target.value)}
+              />
+              {formErrors.date && <p className="text-red-500 text-sm">{formErrors.date}</p>}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="title">Title <span className="text-red-500">*</span></Label>
+            <Input
+              id="title"
+              value={formData.title || ''}
+              onChange={(e) => handleFieldChange('title', e.target.value)}
+            />
+            {formErrors.title && <p className="text-red-500 text-sm">{formErrors.title}</p>}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="status">Status <span className="text-red-500">*</span></Label>
+              <Select value={formData.status} onValueChange={(value) => handleFieldChange('status', value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {['DRAFT', 'PENDING', 'APPROVED'].map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {status}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {formErrors.status && <p className="text-red-500 text-sm">{formErrors.status}</p>}
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div>
+              <Label>Strengths</Label>
+              <Textarea
+                value={formData.strengths.join('\n')}
+                onChange={(e) => handleCategoryChange('strengths', e.target.value.split('\n').filter(s => s.trim()))}
+                rows={4}
+              />
+            </div>
+            <div>
+              <Label>Weaknesses</Label>
+              <Textarea
+                value={formData.weaknesses.join('\n')}
+                onChange={(e) => handleCategoryChange('weaknesses', e.target.value.split('\n').filter(s => s.trim()))}
+                rows={4}
+              />
+            </div>
+            <div>
+              <Label>Opportunities</Label>
+              <Textarea
+                value={formData.opportunities.join('\n')}
+                onChange={(e) => handleCategoryChange('opportunities', e.target.value.split('\n').filter(s => s.trim()))}
+                rows={4}
+              />
+            </div>
+            <div>
+              <Label>Threats</Label>
+              <Textarea
+                value={formData.threats.join('\n')}
+                onChange={(e) => handleCategoryChange('threats', e.target.value.split('\n').filter(s => s.trim()))}
+                rows={4}
+              />
+              {formErrors.analysis && <p className="text-red-500 text-sm">{formErrors.analysis}</p>}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="analyst_note">Analyst Note</Label>
+              <Textarea
+                id="analyst_note"
+                value={formData.analyst_note || ''}
+                onChange={(e) => handleFieldChange('analyst_note', e.target.value || null)}
+                rows={3}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="supervisor_note">Supervisor Note</Label>
+              <Textarea
+                id="supervisor_note"
+                value={formData.supervisor_note || ''}
+                onChange={(e) => handleFieldChange('supervisor_note', e.target.value || null)}
+                rows={3}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
-}
+};
+
+export default SwotAnalysisEntryPage;
