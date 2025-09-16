@@ -31,7 +31,9 @@ interface SocialMediaMention {
   status?: 'Pending' | 'Approved' | 'Rejected';
   createdAt?: string;
   updatedAt?: string;
-  company_data?: { name: string };
+  company_data?: {
+    company_name: string;
+};
   creator_data?: { username: string };
   approver_data?: { username: string };
 }
@@ -54,7 +56,7 @@ export default function SocialMediaMentionsPage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`https://backend-tw99.onrender.com/social-media-mentions?page=${page}&limit=${limit}`, {
+      const response = await fetch(`https://backend-tw99.onrender.com/api/social-media-mentions?page=${page}&limit=${limit}`, {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
@@ -81,7 +83,7 @@ export default function SocialMediaMentionsPage() {
 
   const handleUpdate = async (mention: SocialMediaMention) => {
     try {
-      const response = await fetch(`https://backend-tw99.onrender.com/social-media-mentions/update/${mention.id}`, {
+      const response = await fetch(`https://backend-tw99.onrender.com/api/social-media-mentions/update/${mention.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -161,7 +163,7 @@ export default function SocialMediaMentionsPage() {
                   mentions.map((mention) => (
                     <TableRow key={mention.id}>
                       <TableCell>{mention.id}</TableCell>
-                      <TableCell>{mention.company_data?.name || 'N/A'}</TableCell>
+                      <TableCell>{mention.company_data?.company_name || 'N/A'}</TableCell>
                       <TableCell>{getPlatformIcon(mention.social_media_type)} {mention.social_media_type}</TableCell>
                       <TableCell>{format(new Date(mention.date), 'MMM d, yyyy')}</TableCell>
                       <TableCell>

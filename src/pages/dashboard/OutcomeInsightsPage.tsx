@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 interface OutcomeInsight {
   id: number;
   company_id: number;
-  company: { name: string };
+  company: { company_name: string };
   date: string;
   social_media_engagement: { analysis: string }[];
   brand_awareness: { analysis: string }[];
@@ -237,7 +237,7 @@ export default function OutcomeInsightsPage() {
                   outcomeInsights.map((outcome, index) => (
                     <TableRow key={outcome.id}>
                       <TableCell className="font-medium text-center">{index + 1}</TableCell>
-                      <TableCell className="font-medium">{outcome.company.name}</TableCell>
+                      <TableCell className="font-medium">{outcome.company.company_name}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className="capitalize">
                           {outcome.category || 'General'}
