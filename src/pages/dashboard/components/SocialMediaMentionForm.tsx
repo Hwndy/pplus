@@ -29,9 +29,34 @@ interface SocialMediaMentionFormData {
   metrics: Metrics[];
   analyst_note?: string;
   supervisor_note?: string;
+  created_by?: number; // added for backend consistency
 }
 
-export function SocialMediaMentionForm() {
+interface SocialMediaMention {
+  id: number;
+  company_id: number;
+  date: string;
+  social_media_type: 'Facebook' | 'Instagram' | 'X';
+  metrics: Metrics[];
+  analyst_note?: string;
+  supervisor_note?: string;
+  created_by?: number;
+  approved_by?: number;
+  status?: 'Pending' | 'Approved' | 'Rejected';
+  createdAt?: string;
+  updatedAt?: string;
+  company_data?: { company_name: string };
+  creator_data?: { username: string };
+  approver_data?: { username: string };
+}
+
+interface SocialMediaMentionFormProps {
+  mode: 'create' | 'edit';
+  initialData?: SocialMediaMention;
+  onSuccess?: () => void;
+}
+
+export function SocialMediaMentionForm({ mode, initialData, onSuccess }: SocialMediaMentionFormProps) {
   const [formData, setFormData] = useState<SocialMediaMentionFormData>({
     company_id: 0,
     date: new Date().toISOString().split('T')[0],
@@ -49,10 +74,11 @@ export function SocialMediaMentionForm() {
   useEffect(() => {
     const fetchCompanies = async () => {
       try {
+        const token = localStorage.getItem('token') || '';
         const response = await fetch('https://backend-tw99.onrender.com/api/companies', {
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
+            'Authorization': `Bearer ${token}`,
           },
         });
         const result = await response.json();
@@ -73,6 +99,20 @@ export function SocialMediaMentionForm() {
     fetchCompanies();
   }, []);
 
+  // Set initial data for edit mode
+  useEffect(() => {
+    if (initialData && mode === 'edit') {
+      setFormData({
+        company_id: initialData.company_id,
+        date: new Date(initialData.date).toISOString().split('T')[0],
+        social_media_type: initialData.social_media_type,
+        metrics: initialData.metrics.map(m => ({ ...m })),
+        analyst_note: initialData.analyst_note || '',
+        supervisor_note: initialData.supervisor_note || '',
+      });
+    }
+  }, [initialData, mode]);
+
   const filteredCompanies = React.useMemo(() => {
     if (!companySearchTerm) return companies;
     return companies.filter(company =>
@@ -82,7 +122,6 @@ export function SocialMediaMentionForm() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    console.log('Input Change:', { name, value }); // Debugging
 
     if (name.startsWith('metrics[')) {
       const match = name.match(/metrics\[(\d+)\]\[(.*?)\]/);
@@ -143,31 +182,49 @@ export function SocialMediaMentionForm() {
 
     setLoading(true);
 
+    const url = mode === 'create'
+      ? 'https://backend-tw99.onrender.com/api/social-media-mentions/create'
+      : `https://backend-tw99.onrender.com/api/social-media-mentions/update/${initialData?.id}`;
+    const method = mode === 'create' ? 'POST' : 'PUT';
+
     try {
-      const response = await fetch('https://backend-tw99.onrender.com/api/social-media-mentions/create', {
-        method: 'POST',
+      const token = localStorage.getItem('token') || '';
+      const storedUserId = Number(localStorage.getItem('userId') || 0);
+
+      const payload = { ...formData, ...(storedUserId ? { created_by: storedUserId } : {}) };
+
+      const response = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
+          'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
+
       const result = await response.json();
-      if (result.success) {
-        toast.success('Social Media Mention created successfully');
-        setFormData({
-          company_id: 0,
-          date: new Date().toISOString().split('T')[0],
-          social_media_type: 'Facebook',
-          metrics: [{ page_likes: 0, average_likes: 0, average_comments: 0 }],
-          analyst_note: '',
-          supervisor_note: '',
-        });
+
+      if (response.status === 403) {
+        toast.error(result?.message || 'Access denied: insufficient permissions');
+      } else if (result.success) {
+        toast.success(`Social Media Mention ${mode === 'create' ? 'created' : 'updated'} successfully`);
+        if (mode === 'create') {
+          setFormData({
+            company_id: 0,
+            date: new Date().toISOString().split('T')[0],
+            social_media_type: 'Facebook',
+            metrics: [{ page_likes: 0, average_likes: 0, average_comments: 0 }],
+            analyst_note: '',
+            supervisor_note: '',
+          });
+          setCompanySearchTerm('');
+        }
+        onSuccess?.();
       } else {
-        toast.error(result.message || 'Failed to create social media mention');
+        toast.error(result.message || `Failed to ${mode} social media mention`);
       }
     } catch (error) {
-      toast.error('Error creating social media mention');
+      toast.error(`Error ${mode === 'create' ? 'creating' : 'updating'} social media mention`);
       console.error(error);
     } finally {
       setLoading(false);
@@ -200,7 +257,7 @@ export function SocialMediaMentionForm() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             {getPlatformIcon(formData.social_media_type)}
-            Create Social Media Mention
+            {mode === 'create' ? 'Create' : 'Edit'} Social Media Mention
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -316,82 +373,90 @@ export function SocialMediaMentionForm() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {formData.social_media_type === 'Facebook' && (
-                    <>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                          <Label htmlFor={`metrics[${index}][page_likes]`}>Page Likes</Label>
-                          <Input
-                            id={`metrics[${index}][page_likes]`}
-                            type="number"
-                            name={`metrics[${index}][page_likes]`}
-                            value={metric.page_likes || ''}
-                            onChange={handleInputChange}
-                            required
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor={`metrics[${index}][average_likes]`}>Average Likes</Label>
-                          <Input
-                            id={`metrics[${index}][average_likes]`}
-                            type="number"
-                            name={`metrics[${index}][average_likes]`}
-                            value={metric.average_likes || ''}
-                            onChange={handleInputChange}
-                            required
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor={`metrics[${index}][average_comments]`}>Average Comments</Label>
-                          <Input
-                            id={`metrics[${index}][average_comments]`}
-                            type="number"
-                            name={`metrics[${index}][average_comments]`}
-                            value={metric.average_comments || ''}
-                            onChange={handleInputChange}
-                            required
-                          />
-                        </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <Label htmlFor={`metrics[${index}][page_likes]`}>Page Likes</Label>
+                        <Input
+                          id={`metrics[${index}][page_likes]`}
+                          type="number"
+                          name={`metrics[${index}][page_likes]`}
+                          value={metric.page_likes || ''}
+                          onChange={handleInputChange}
+                          required
+                          min={0}
+                          step={1}
+                        />
                       </div>
-                    </>
+                      <div>
+                        <Label htmlFor={`metrics[${index}][average_likes]`}>Average Likes</Label>
+                        <Input
+                          id={`metrics[${index}][average_likes]`}
+                          type="number"
+                          name={`metrics[${index}][average_likes]`}
+                          value={metric.average_likes || ''}
+                          onChange={handleInputChange}
+                          required
+                          min={0}
+                          step={1}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor={`metrics[${index}][average_comments]`}>Average Comments</Label>
+                        <Input
+                          id={`metrics[${index}][average_comments]`}
+                          type="number"
+                          name={`metrics[${index}][average_comments]`}
+                          value={metric.average_comments || ''}
+                          onChange={handleInputChange}
+                          required
+                          min={0}
+                          step={1}
+                        />
+                      </div>
+                    </div>
                   )}
                   {(formData.social_media_type === 'Instagram' || formData.social_media_type === 'X') && (
-                    <>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                          <Label htmlFor={`metrics[${index}][posts]`}>Posts</Label>
-                          <Input
-                            id={`metrics[${index}][posts]`}
-                            type="number"
-                            name={`metrics[${index}][posts]`}
-                            value={metric.posts || ''}
-                            onChange={handleInputChange}
-                            required
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor={`metrics[${index}][followers]`}>Followers</Label>
-                          <Input
-                            id={`metrics[${index}][followers]`}
-                            type="number"
-                            name={`metrics[${index}][followers]`}
-                            value={metric.followers || ''}
-                            onChange={handleInputChange}
-                            required
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor={`metrics[${index}][following]`}>Following</Label>
-                          <Input
-                            id={`metrics[${index}][following]`}
-                            type="number"
-                            name={`metrics[${index}][following]`}
-                            value={metric.following || ''}
-                            onChange={handleInputChange}
-                            required
-                          />
-                        </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <Label htmlFor={`metrics[${index}][posts]`}>Posts</Label>
+                        <Input
+                          id={`metrics[${index}][posts]`}
+                          type="number"
+                          name={`metrics[${index}][posts]`}
+                          value={metric.posts || ''}
+                          onChange={handleInputChange}
+                          required
+                          min={0}
+                          step={1}
+                        />
                       </div>
-                    </>
+                      <div>
+                        <Label htmlFor={`metrics[${index}][followers]`}>Followers</Label>
+                        <Input
+                          id={`metrics[${index}][followers]`}
+                          type="number"
+                          name={`metrics[${index}][followers]`}
+                          value={metric.followers || ''}
+                          onChange={handleInputChange}
+                          required
+                          min={0}
+                          step={1}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor={`metrics[${index}][following]`}>Following</Label>
+                        <Input
+                          id={`metrics[${index}][following]`}
+                          type="number"
+                          name={`metrics[${index}][following]`}
+                          value={metric.following || ''}
+                          onChange={handleInputChange}
+                          required
+                          min={0}
+                          step={1}
+                        />
+                      </div>
+                    </div>
                   )}
                 </CardContent>
               </Card>
@@ -428,7 +493,7 @@ export function SocialMediaMentionForm() {
             className="w-full bg-indigo-950 hover:bg-indigo-900 text-white"
             disabled={loading}
           >
-            {loading ? "Creating..." : "Create Mention"}
+            {loading ? 'Saving...' : mode === 'create' ? 'Create Mention' : 'Update Mention'}
           </Button>
         </CardContent>
       </Card>
