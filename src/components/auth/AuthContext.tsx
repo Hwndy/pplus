@@ -625,7 +625,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           },
         });
 
-        toast.success(`Welcome back, ${userDetails.name || 'User'}!`);
+        toast.success(`Welcome back, ${userDetails.username || 'User'}!`);
         navigate('/dashboard');
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
