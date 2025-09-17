@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Facebook, Twitter, Instagram, Linkedin, Eye, MoreHorizontal, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { SocialMediaMentionForm } from '../Dashboard/components/SocialMediaMentionForm'; 
+import { SocialMediaMentionForm } from '../dashboard/components/SocialMediaMentionForm'; 
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
