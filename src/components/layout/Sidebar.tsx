@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/auth/AuthContext';
 import { cn } from '@/lib/utils';
@@ -135,8 +134,6 @@ const navigationItems: NavItem[] = [
 const adminRoutes: NavItem[] = [
   { name: 'User Management', href: '/dashboard/users', icon: Users },
   { name: 'Data Parameters', href: '/dashboard/parameters', icon: Settings },
-  { name: 'Reports', href: '/dashboard/reports', icon: FileText },
-  { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart },
   { name: 'Audit Logs', href: '/dashboard/audit-logs', icon: ArrowRightLeft },
 ];
 
@@ -184,13 +181,9 @@ export function Sidebar({ className, isOpen = true, onClose }: SidebarProps) {
       { name: 'Companies', href: '/dashboard/companies', icon: Building2 },
       { name: 'Publications', href: '/dashboard/publications-management', icon: BookOpenText },
       { name: 'Parameters', href: '/dashboard/parameters', icon: Settings },
-      { name: 'Reports', href: '/dashboard/reports', icon: FileText },
-      { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart },
-      { name: 'API Demo', href: '/dashboard/api-demo', icon: Settings },
     ];
 
     const supervisorItems: NavItem[] = [
-      { name: 'Content Review', href: '/dashboard/content-review', icon: ClipboardCheck },
       { name: 'Review Entries', href: '/dashboard/review', icon: CheckSquare },
     ];
 
