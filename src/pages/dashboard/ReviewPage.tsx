@@ -22,7 +22,7 @@ import { Card } from '@/components/ui/card';
 import { Stat } from '@/components/ui/Stat';
 import { useNavigate } from 'react-router-dom';
 
-const API_BASE = "https://backend-tw99.onrender.com/api";
+const API_BASE = "https://pplus-y9m6.onrender.com/api";
 
 // Status badge component
 function StatusBadge({ status }: { status: string }) {
