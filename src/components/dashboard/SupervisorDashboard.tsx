@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +19,7 @@ import { useAuth } from '../auth/AuthContext';
 
 // API Base
 const API_BASE = 'https://p-skai.onrender.com/api';
+const PAGE_SIZE = 10;
 
 // Generic Entry Interface
 interface GenericEntry {
@@ -169,11 +171,11 @@ export function SupervisorDashboard() {
   });
   const [data, setData] = useState<Record<ContentTypeKey, GenericEntry[]>>({});
   const [pagination, setPagination] = useState<Record<ContentTypeKey, Pagination>>({
-    editorials: { currentPage: 1, totalPages: 1, total: 0, pageSize: 10 },
-    dailyMentions: { currentPage: 1, totalPages: 1, total: 0, pageSize: 10 },
-    swotAnalysis: { currentPage: 1, totalPages: 1, total: 0, pageSize: 10 },
-    outcomeInsights: { currentPage: 1, totalPages: 1, total: 0, pageSize: 10 },
-    socialMediaMentions: { currentPage: 1, totalPages: 1, total: 0, pageSize: 10 },
+    editorials: { currentPage: 1, totalPages: 1, total: 0, pageSize: PAGE_SIZE },
+    dailyMentions: { currentPage: 1, totalPages: 1, total: 0, pageSize: PAGE_SIZE },
+    swotAnalysis: { currentPage: 1, totalPages: 1, total: 0, pageSize: PAGE_SIZE },
+    outcomeInsights: { currentPage: 1, totalPages: 1, total: 0, pageSize: PAGE_SIZE },
+    socialMediaMentions: { currentPage: 1, totalPages: 1, total: 0, pageSize: PAGE_SIZE },
   });
   const [activeTab, setActiveTab] = useState<ContentTypeKey>('editorials');
   const [loading, setLoading] = useState(true);
@@ -186,7 +188,7 @@ export function SupervisorDashboard() {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [currentEntry, setCurrentEntry] = useState<GenericEntry | null>(null);
-  const [formData, setFormData] = useState({ title: '', content: '', company_id: '' });
+  const [formData, setFormData] = useState<Partial<GenericEntry>>({ title: '', content: '', status: 'draft', comments: '' });
 
   // Handle Unauthorized Access
   useEffect(() => {
@@ -397,7 +399,8 @@ export function SupervisorDashboard() {
     if (data[type]?.length > 0 && pagination[type].currentPage === page) return;
     setTableLoading(true);
     try {
-      const res = await fetch(`${API_BASE}${contentTypes[type].endpoint}?page=${page}`, { headers });
+      const url = `${API_BASE}${contentTypes[type].endpoint}?page=${page}&limit=${PAGE_SIZE}`;
+      const res = await fetch(url, { headers });
       if (res.status === 401) {
         throw new Error('Unauthorized access. Please log in again.');
       }
@@ -414,26 +417,26 @@ export function SupervisorDashboard() {
       const json = await res.json();
       console.log(`Fetch ${type} response:`, json); // Debug log
       let entries: any[] = [];
-      let paginationData: Pagination = { currentPage: page, totalPages: 1, total: 0, pageSize: 10 };
+      let paginationData: Pagination = { currentPage: page, totalPages: 1, total: 0, pageSize: PAGE_SIZE };
 
       if (json.success) {
         if (type === 'editorials') {
           // Editorial response has data.editorial and data.meta
           entries = Array.isArray(json.data?.editorial) ? json.data.editorial : [];
           paginationData = {
-            currentPage: json.data?.meta?.currentPage || 1,
+            currentPage: json.data?.meta?.currentPage || page,
             totalPages: json.data?.meta?.totalPage || 1,
             total: json.data?.meta?.total || 0,
-            pageSize: json.data?.meta?.pageSize || 10,
+            pageSize: json.data?.meta?.pageSize || PAGE_SIZE,
           };
         } else {
           // Other content types use data.data and data.pagination
           entries = Array.isArray(json.data?.data) ? json.data.data : (Array.isArray(json.data) ? json.data : []);
           paginationData = {
-            currentPage: json.data?.pagination?.page || json.pagination?.page || 1,
+            currentPage: json.data?.pagination?.page || json.pagination?.page || page,
             totalPages: json.data?.pagination?.totalPages || json.pagination?.totalPages || 1,
             total: json.data?.pagination?.total || json.pagination?.total || 0,
-            pageSize: json.data?.pagination?.limit || json.pagination?.limit || 10,
+            pageSize: json.data?.pagination?.limit || json.pagination?.limit || PAGE_SIZE,
           };
         }
       } else {
@@ -591,14 +594,14 @@ export function SupervisorDashboard() {
 
   // Open Create Dialog
   const openCreateDialog = () => {
-    setFormData({ title: '', content: '', company_id: '' });
+    setFormData({ title: '', content: '', status: 'draft', comments: '' });
     setShowCreateDialog(true);
   };
 
   // Submit Create
   const submitCreate = async () => {
-    if (!formData.title.trim() || !formData.content.trim() || !formData.company_id) {
-      toast.error('Title, content, and company ID are required');
+    if (!formData.title?.trim() || !formData.content?.trim()) {
+      toast.error('Title and content are required');
       return;
     }
     if (!token || !user?.id) {
@@ -607,12 +610,12 @@ export function SupervisorDashboard() {
       return;
     }
     const type = activeTab;
-    const endpoint = `${API_BASE}${contentTypes[type].endpoint}/create`;
+    const endpoint = `${API_BASE}${contentTypes[type].endpoint}`;
     let createBody: any = {
-      status: 'pending',
+      status: formData.status || 'pending',
+      supervisor_note: formData.comments || '',
       date: new Date().toISOString(),
       created_by: user.id,
-      company_id: parseInt(formData.company_id, 10),
     };
 
     if (type === 'editorials') {
@@ -635,8 +638,8 @@ export function SupervisorDashboard() {
     } else if (type === 'dailyMentions') {
       createBody.publication = 'Unknown';
       createBody.industry = [{
-        headline: formData.title,
-        content: formData.content,
+        headline: formData.title || '',
+        content: formData.content || '',
         reporter: null,
         source: 'Unknown',
         sentiment: 'neutral',
@@ -694,7 +697,7 @@ export function SupervisorDashboard() {
         [type]: [...(prev[type] || []), transformToGenericEntry(type, newEntry.data || newEntry)],
       }));
       setShowCreateDialog(false);
-      setFormData({ title: '', content: '', company_id: '' });
+      setFormData({ title: '', content: '', status: 'draft', comments: '' });
     } catch (error) {
       console.error('Error creating:', error);
       toast.error(`Failed to create entry: ${(error as Error).message}`);
@@ -707,14 +710,19 @@ export function SupervisorDashboard() {
 
   // Open Edit Dialog
   const openEditDialog = (entry: GenericEntry) => {
-    setFormData({ title: entry.title, content: entry.content || '', company_id: '' });
+    setFormData({ 
+      title: entry.title, 
+      content: entry.content || '', 
+      status: entry.status, 
+      comments: entry.comments || '' 
+    });
     setCurrentEntry(entry);
     setShowEditDialog(true);
   };
 
   // Submit Edit
   const submitEdit = async () => {
-    if (!formData.title.trim() || !formData.content.trim() || !currentEntry) {
+    if (!formData.title?.trim() || !formData.content?.trim() || !currentEntry) {
       toast.error('Title and content are required');
       return;
     }
@@ -727,6 +735,8 @@ export function SupervisorDashboard() {
     const endpoint = `${API_BASE}${contentTypes[type].updateEndpoint}/${currentEntry.id}`;
     let updateBody: any = {
       updatedAt: new Date().toISOString(),
+      status: formData.status,
+      supervisor_note: formData.comments,
     };
 
     if (type === 'editorials') {
@@ -736,12 +746,12 @@ export function SupervisorDashboard() {
       const updatedIndustry = currentEntry.industry
         ? currentEntry.industry.map((item, index) =>
             index === 0
-              ? { ...item, headline: formData.title, content: formData.content }
+              ? { ...item, headline: formData.title || '', content: formData.content || '' }
               : item
           )
         : [{
-            headline: formData.title,
-            content: formData.content,
+            headline: formData.title || '',
+            content: formData.content || '',
             reporter: null,
             source: 'Unknown',
             sentiment: 'neutral',
@@ -799,7 +809,7 @@ export function SupervisorDashboard() {
       toast.success('Entry updated');
       setData(prev => ({
         ...prev,
-        [type]: prev[type].map(e => (e.id === currentEntry.id ? { ...e, title: formData.title, content: formData.content } : e)),
+        [type]: prev[type].map(e => (e.id === currentEntry.id ? { ...e, title: formData.title, content: formData.content, status: formData.status, comments: formData.comments } : e)),
       }));
       setShowEditDialog(false);
     } catch (error) {
@@ -1023,7 +1033,7 @@ export function SupervisorDashboard() {
 
       {/* Details Dialog */}
       <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Entry Details</DialogTitle>
           </DialogHeader>
@@ -1396,24 +1406,37 @@ export function SupervisorDashboard() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Title</Label>
-              <Input value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} />
+              <Input value={formData.title as string || ''} onChange={(e) => setFormData({ ...formData, title: e.target.value })} />
             </div>
             <div className="space-y-2">
               <Label>Content</Label>
               <Textarea
-                value={formData.content}
+                value={formData.content as string || ''}
                 onChange={(e) => setFormData({ ...formData, content: e.target.value })}
                 className="min-h-32"
                 placeholder="Enter content..."
               />
             </div>
             <div className="space-y-2">
-              <Label>Company ID</Label>
-              <Input
-                type="number"
-                value={formData.company_id}
-                onChange={(e) => setFormData({ ...formData, company_id: e.target.value })}
-                placeholder="Enter company ID..."
+              <Label>Status</Label>
+              <Select value={formData.status as string || 'draft'} onValueChange={(value) => setFormData({ ...formData, status: value })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Comments</Label>
+              <Textarea
+                value={formData.comments as string || ''}
+                onChange={(e) => setFormData({ ...formData, comments: e.target.value })}
+                placeholder="Enter comments..."
               />
             </div>
           </div>
@@ -1426,22 +1449,45 @@ export function SupervisorDashboard() {
 
       {/* Edit Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Entry</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Title</Label>
-              <Input value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} />
+              <Input value={formData.title as string || ''} onChange={(e) => setFormData({ ...formData, title: e.target.value })} />
             </div>
             <div className="space-y-2">
               <Label>Content</Label>
               <Textarea
-                value={formData.content}
+                value={formData.content as string || ''}
                 onChange={(e) => setFormData({ ...formData, content: e.target.value })}
                 className="min-h-32"
                 placeholder="Enter content..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select value={formData.status as string || 'draft'} onValueChange={(value) => setFormData({ ...formData, status: value })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Comments</Label>
+              <Textarea
+                value={formData.comments as string || ''}
+                onChange={(e) => setFormData({ ...formData, comments: e.target.value })}
+                placeholder="Enter comments..."
+                className="min-h-32"
               />
             </div>
           </div>
