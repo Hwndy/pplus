@@ -54,7 +54,7 @@ export default function OutcomeInsightsPage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`https://pplus-y9m6.onrender.com/api/outcome-insights?page=${page}&limit=${limit}`, {
+      const response = await fetch(`https://backend-tw99.onrender.com/api/outcome-insights?page=${page}&limit=${limit}`, {
         headers: getAuthHeaders(),
       });
       const result = await response.json();
@@ -91,7 +91,7 @@ export default function OutcomeInsightsPage() {
   const handleDelete = async (outcome: OutcomeInsight) => {
     if (window.confirm(`Are you sure you want to delete the outcome insight for ${outcome.company.name}?`)) {
       try {
-        const response = await fetch(`https://pplus-y9m6.onrender.com/api/outcome-insights/delete/${outcome.id}`, {
+        const response = await fetch(`https://backend-tw99.onrender.com/api/outcome-insights/delete/${outcome.id}`, {
           method: 'PUT',
           headers: getAuthHeaders(),
         });
