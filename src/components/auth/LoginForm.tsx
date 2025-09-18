@@ -141,31 +141,6 @@ const LoginForm = ({ className }: LoginFormProps) => {
             </svg>
             Sign in with Google
           </Button>
-
-          {/* <div className="mt-4 grid grid-cols-2 gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setEmail('admin@example.com');
-                setPassword('password');
-              }}
-              className="text-xs"
-            >
-              Admin Demo
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setEmail('client@example.com');
-                setPassword('password');
-              }}
-              className="text-xs"
-            >
-              Client Demo
-            </Button>
-          </div> */}
         </form>
       </CardContent>
     </Card>
