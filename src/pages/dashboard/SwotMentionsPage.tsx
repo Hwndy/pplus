@@ -45,7 +45,7 @@ export function SwotMentionsPage() {
   // Fetch SWOT analyses
   const fetchSwotData = async () => {
     try {
-      const response = await fetch('https://backend-tw99.onrender.com/api/swot-analysis', {
+      const response = await fetch('https://p-skai.onrender.com/api/swot-analysis', {
         headers: getAuthHeaders(),
       });
       const result = await response.json();
@@ -81,7 +81,7 @@ export function SwotMentionsPage() {
   const handleDelete = async (swot: SwotAnalysis) => {
     if (window.confirm(`Are you sure you want to delete the SWOT analysis for ${swot.company.company_name}?`)) {
       try {
-        const response = await fetch(`https://backend-tw99.onrender.com/api/swot-analysis/delete/${swot.id}`, {
+        const response = await fetch(`https://p-skai.onrender.com/api/swot-analysis/delete/${swot.id}`, {
           method: 'PUT',
           headers: getAuthHeaders(),
         });

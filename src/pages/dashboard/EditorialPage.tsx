@@ -49,7 +49,7 @@ interface Editorial {
   is_deleted: boolean;
 }
 
-const API_BASE = "https://backend-tw99.onrender.com/api";
+const API_BASE = "https://p-skai.onrender.com/api";
 
 const EditorialPage = () => {
   const navigate = useNavigate();

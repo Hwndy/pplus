@@ -75,7 +75,7 @@ export function SocialMediaMentionForm({ mode, initialData, onSuccess }: SocialM
     const fetchCompanies = async () => {
       try {
         const token = localStorage.getItem('token') || '';
-        const response = await fetch('https://backend-tw99.onrender.com/api/companies', {
+        const response = await fetch('https://p-skai.onrender.com/api/companies', {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
@@ -183,8 +183,8 @@ export function SocialMediaMentionForm({ mode, initialData, onSuccess }: SocialM
     setLoading(true);
 
     const url = mode === 'create'
-      ? 'https://backend-tw99.onrender.com/api/social-media-mentions/create'
-      : `https://backend-tw99.onrender.com/api/social-media-mentions/update/${initialData?.id}`;
+      ? 'https://p-skai.onrender.com/api/social-media-mentions/create'
+      : `https://p-skai.onrender.com/api/social-media-mentions/update/${initialData?.id}`;
     const method = mode === 'create' ? 'POST' : 'PUT';
 
     try {

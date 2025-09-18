@@ -149,7 +149,7 @@ const DailyMentionsTablePage: React.FC = () => {
   ]);
   const mentionsPerPage = 10;
 
-  const BASE_URL = 'https://backend-tw99.onrender.com/api';
+  const BASE_URL = 'https://p-skai.onrender.com/api';
 
   // Refetch function
   const refetch = useCallback(() => {
