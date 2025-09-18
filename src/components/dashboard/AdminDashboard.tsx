@@ -377,7 +377,7 @@ export function AdminDashboard() {
             <div className="p-4">
               <div className="flex flex-col gap-4">
                 <Button asChild className="w-full md:w-auto">
-                  <Link to="/dashboard/content-review">
+                  <Link to="/dashboard/supervisordashboard">
                     <Eye className="mr-2 h-4 w-4" />
                     View All Content for Review
                   </Link>

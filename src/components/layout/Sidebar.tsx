@@ -59,6 +59,7 @@ interface NavItem {
   href: string;
   icon: React.ComponentType<any>;
   hasSubmenu?: boolean;
+  disabled?: boolean;
 }
 
 const adminItems: NavItem[] = [
@@ -140,7 +141,7 @@ const adminRoutes: NavItem[] = [
 // Supervisor-specific navigation items
 const supervisorItems: NavItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Review Content', href: '/dashboard/review', icon: CheckSquare },
+  { name: 'Review', href: '/dashboard/supervisordashboard', icon: CheckSquare },
   { name: 'Editorial', href: '/dashboard/editorial', icon: Newspaper },
   { name: 'Daily Mentions', href: '/dashboard/daily-mentions', icon: FileText },
   { name: 'SWOT Mentions', href: '/dashboard/swot-mentions', icon: Target },
@@ -184,7 +185,7 @@ export function Sidebar({ className, isOpen = true, onClose }: SidebarProps) {
     ];
 
     const supervisorItems: NavItem[] = [
-      { name: 'Review Entries', href: '/dashboard/review', icon: CheckSquare },
+      { name: 'Content Review', href: '/dashboard/supervisordashboard', icon: CheckSquare },
     ];
 
     const analystItems: NavItem[] = [

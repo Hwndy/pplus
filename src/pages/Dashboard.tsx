@@ -1,4 +1,3 @@
-
 import { useAuth } from '@/components/auth/AuthContext';
 import { AdminDashboard } from '@/components/dashboard/AdminDashboard';
 import { AnalystDashboard } from '@/components/dashboard/AnalystDashboard';
@@ -36,14 +35,12 @@ import ParametersPage from './dashboard/ParametersPage';
 import ReportsPage from './dashboard/ReportsPage';
 import AnalyticsPage from './dashboard/AnalyticsPage';
 import AuditPage from './dashboard/AuditPage';
-import ReviewPage from './dashboard/ReviewPage';
 import DataEntryPage from './dashboard/DataEntryPage';
 import SubmissionsPage from './dashboard/SubmissionsPage';
 import MediaReportsPage from './dashboard/MediaReportsPage';
 import PerformancePage from './dashboard/PerformancePage';
 import SwotAnalysisPage from './dashboard/SwotAnalysisPage';
 import SwotAnalysisEntryPage from './dashboard/SwotAnalysisEntryPage';
-// import SwotMentionsPage from './dashboard/SwotMentionsPage';
 import { SwotMentionsPage } from './dashboard/SwotMentionsPage';
 import OutcomeInsightsPage from './dashboard/OutcomeInsightsPage';
 import SocialMediaMentionsPage from './dashboard/SocialMediaMentionsPage';
@@ -181,8 +178,11 @@ const Dashboard = () => {
         } />
 
         {/* Supervisor routes */}
+        <Route path="supervisordashboard" element={
+          hasRole(user.role, ['admin', 'supervisor']) ? <SupervisorDashboard /> : <Navigate to="/dashboard" replace />
+        } />
         <Route path="review" element={
-          hasRole(user.role, ['admin', 'supervisor']) ? <ReviewPage /> : <Navigate to="/dashboard" replace />
+          hasRole(user.role, ['admin', 'supervisor']) ? <SupervisorDashboard /> : <Navigate to="/dashboard" replace />
         } />
 
         {/* Analyst routes */}
@@ -243,11 +243,6 @@ const Dashboard = () => {
         } />
         <Route path="mentions-inbox" element={
           hasRole(user.role, 'client') ? <DailyMentionsInboxPage /> : <Navigate to="/dashboard" replace />
-        } />
-
-        {/* API Demo Page - accessible to admin only */}
-        <Route path="api-demo" element={
-          hasRole(user.role, 'admin') ? <ApiDemoPage /> : <Navigate to="/dashboard" replace />
         } />
 
         {/* Fallback - redirect to the main dashboard */}
