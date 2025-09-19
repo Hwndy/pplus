@@ -1,11 +1,9 @@
-
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/components/auth/AuthContext';
 import { DataCard } from '@/components/ui/DataCard';
-import { Stat } from '@/components/ui/Stat';
 import { DataTable } from '@/components/ui/DataTable';
-import { allDataEntries, clients, dataParameters, mediaChannels } from '@/utils/mockData';
 import { ColumnDef } from '@tanstack/react-table';
-import { FileInput, Save, SendHorizontal, CheckCircle, XCircle, AlertCircle, FileText, Newspaper, Zap, Target, Share2, LineChart, ChevronDown, ClipboardList } from 'lucide-react';
+import { CheckCircle, XCircle, AlertCircle, Save, FileEdit, Newspaper, FileText, Target, Share2, LineChart, ClipboardList, ChevronDown, Eye, Calendar, User, MessageCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -23,22 +21,30 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { useAuth } from '@/components/auth/AuthContext';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Link } from 'react-router-dom';
 
+// Base URL for API
+const BASE_URL = 'https://p-skai.onrender.com/api';
+
+// Interface for normalized submission data
+interface Submission {
+  id: string;
+  type: string;
+  title: string;
+  content: string;
+  createdAt: string;
+  status: string;
+  comments?: string;
+  author?: string;
+}
+
 // Status badge component
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status }: { status?: string | null }) {
+  const normalizedStatus = typeof status === 'string' && status.trim() !== '' ? status.toLowerCase() : 'pending';
+
   const getStatusStyles = () => {
-    switch (status) {
+    switch (normalizedStatus) {
       case 'approved':
         return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
       case 'rejected':
@@ -51,115 +57,218 @@ function StatusBadge({ status }: { status: string }) {
     }
   };
 
+  const getIcon = () => {
+    switch (normalizedStatus) {
+      case 'approved':
+        return <CheckCircle className="h-4 w-4 text-green-600 mr-1" />;
+      case 'rejected':
+        return <XCircle className="h-4 w-4 text-red-600 mr-1" />;
+      case 'pending':
+        return <AlertCircle className="h-4 w-4 text-yellow-600 mr-1" />;
+      case 'draft':
+        return <Save className="h-4 w-4 text-blue-600 mr-1" />;
+      default:
+        return null;
+    }
+  };
+
   return (
-    <div className="flex items-center gap-2">
-      {status === 'approved' && <CheckCircle className="h-4 w-4 text-green-600" />}
-      {status === 'rejected' && <XCircle className="h-4 w-4 text-red-600" />}
-      {status === 'pending' && <AlertCircle className="h-4 w-4 text-yellow-600" />}
-      {status === 'draft' && <Save className="h-4 w-4 text-blue-600" />}
+    <div className="flex items-center">
+      {getIcon()}
       <Badge variant="outline" className={`${getStatusStyles()} capitalize`}>
-        {status}
+        {normalizedStatus}
       </Badge>
     </div>
   );
 }
 
+// View Details Dialog Component
+function ViewDetailsDialog({ open, onClose, entry, type }: { open: boolean; onClose: () => void; entry: Submission | null; type: string }) {
+  if (!entry) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{type.charAt(0).toUpperCase() + type.slice(1)} Details</DialogTitle>
+          <DialogDescription>Detailed information about this entry.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <div className="text-sm font-medium text-muted-foreground flex items-center">
+                <Calendar className="h-4 w-4 mr-2" />
+                Date
+              </div>
+              <div className="text-sm mt-1">{entry.createdAt ? new Date(entry.createdAt).toLocaleDateString() : 'N/A'}</div>
+            </div>
+            <div>
+              <div className="text-sm font-medium text-muted-foreground flex items-center">
+                <User className="h-4 w-4 mr-2" />
+                Author
+              </div>
+              <div className="text-sm mt-1">{entry.author || 'Unknown'}</div>
+            </div>
+            <div>
+              <div className="text-sm font-medium text-muted-foreground flex items-center">
+                <MessageCircle className="h-4 w-4 mr-2" />
+                Status
+              </div>
+              <div className="text-sm mt-1 flex items-center">
+                <StatusBadge status={entry.status} />
+              </div>
+            </div>
+            <div className="md:col-span-2">
+              <div className="text-sm font-medium text-muted-foreground">Title</div>
+              <div className="text-sm mt-1">{entry.title || 'N/A'}</div>
+            </div>
+            <div className="md:col-span-2">
+              <div className="text-sm font-medium text-muted-foreground">Content</div>
+              <div className="text-sm mt-1 p-2 border rounded bg-muted/50 max-h-32 overflow-y-auto">{entry.content || 'No content provided'}</div>
+            </div>
+            {entry.comments && (
+              <div className="md:col-span-2">
+                <div className="text-sm font-medium text-muted-foreground">Supervisor Comments</div>
+                <div className="text-sm mt-1 p-2 border rounded bg-muted/50">{entry.comments}</div>
+              </div>
+            )}
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function AnalystDashboard() {
   const { user } = useAuth();
-  const [showEntryDialog, setShowEntryDialog] = useState(false);
-  const [mySubmissions, setMySubmissions] = useState(
-    allDataEntries.filter(entry => entry.analystId === '3')
-  );
+  const [activeTab, setActiveTab] = useState('all');
+  const [viewDetailsDialog, setViewDetailsDialog] = useState(false);
+  const [selectedEntry, setSelectedEntry] = useState<Submission | null>(null);
+  const [selectedType, setSelectedType] = useState<string>('');
 
-  // New entry form state
-  const [newEntry, setNewEntry] = useState({
-    clientId: '',
-    parameterId: '',
-    channelId: '',
-    value: '',
-    date: new Date().toISOString().split('T')[0],
-  });
+  // State for fetched data
+  const [editorials, setEditorials] = useState<Submission[]>([]);
+  const [dailyMentions, setDailyMentions] = useState<Submission[]>([]);
+  const [swotAnalysis, setSwotAnalysis] = useState<Submission[]>([]);
+  const [socialMentions, setSocialMentions] = useState<Submission[]>([]);
+  const [outcomeInsights, setOutcomeInsights] = useState<Submission[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Handle form input changes
-  const handleInputChange = (field: string, value: string) => {
-    setNewEntry({
-      ...newEntry,
-      [field]: value
-    });
-  };
+  // Get token from localStorage
+  const token = localStorage.getItem('token');
 
-  // Submit new entry
-  const submitEntry = (asDraft: boolean = false) => {
-    // Validate form
-    if (!newEntry.clientId || !newEntry.parameterId || !newEntry.channelId || !newEntry.value) {
-      toast.error('Please fill in all required fields');
+  // Fetch all data
+  useEffect(() => {
+    if (!token || !user) {
+      setError('Authentication required. Please log in.');
+      setLoading(false);
+      toast.error('Please log in to view submissions.');
       return;
     }
 
-    // Create new entry object
-    const entry = {
-      id: (mySubmissions.length + 100).toString(), // Generate a unique ID
-      ...newEntry,
-      value: parseFloat(newEntry.value),
-      analystId: '3', // Current user ID
-      status: asDraft ? 'draft' : 'pending',
-      comments: ''
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const headers = {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        };
+
+        const endpoints = [
+          { url: `${BASE_URL}/editorials/my-editorials`, setter: setEditorials, name: 'Editorials', type: 'Editorial' },
+          { url: `${BASE_URL}/daily-mentions/my-mentions`, setter: setDailyMentions, name: 'Daily Mentions', type: 'Daily Mention' },
+          { url: `${BASE_URL}/swot-analysis/my-analysis`, setter: setSwotAnalysis, name: 'SWOT Analysis', type: 'SWOT Analysis' },
+          { url: `${BASE_URL}/social-media-mentions/my-social-media-mentions`, setter: setSocialMentions, name: 'Social Media Mentions', type: 'Social Media Mention' },
+          { url: `${BASE_URL}/outcome-insights/my-insights`, setter: setOutcomeInsights, name: 'Outcome Insights', type: 'Outcome Insight' },
+        ];
+
+        const responses = await Promise.all(
+          endpoints.map(async ({ url, setter, name, type }) => {
+            const res = await fetch(url, { headers });
+            if (!res.ok) {
+              throw new Error(`${name} fetch failed: ${res.status} ${res.statusText}`);
+            }
+            const data = await res.json();
+            // Normalize and validate data
+            const normalizedData = (Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : []).filter(item => item && typeof item === 'object').map((item: any) => ({
+              id: item.id?.toString() || `temp-${Math.random().toString(36).substring(2)}`,
+              type,
+              title: item.title || item.mentionTitle || item.insight || item.name || 'Untitled',
+              content: item.content || item.description || item.mentionContent || item.insight || item.details || 'No content',
+              createdAt: item.createdAt || item.date || new Date().toISOString(),
+              status: typeof item.status === 'string' && item.status.trim() !== '' ? item.status : 'pending',
+              comments: item.comments || undefined,
+              author: item.author || item.username || undefined,
+            }));
+            if (normalizedData.length === 0) {
+              console.warn(`No valid data returned for ${name}`);
+            }
+            setter(normalizedData);
+            return normalizedData;
+          })
+        );
+
+        // Check if all responses are empty
+        if (responses.every(arr => arr.length === 0)) {
+          setError('No submissions found.');
+        }
+      } catch (err: any) {
+        console.error('Error fetching data:', err);
+        setError(err.message || 'Failed to load submissions');
+        toast.error(err.message || 'Failed to load submissions');
+      } finally {
+        setLoading(false);
+      }
     };
 
-    // In a real app, we'd make an API call here
-    // For demo, we'll just update the local state
-    setMySubmissions([entry, ...mySubmissions]);
+    fetchData();
+  }, [token, user]);
 
-    toast.success(asDraft
-      ? 'Entry saved as draft'
-      : 'Entry submitted successfully for review'
-    );
+  // Combined data for 'all' tab
+  const allSubmissions = [
+    ...editorials,
+    ...dailyMentions,
+    ...swotAnalysis,
+    ...socialMentions,
+    ...outcomeInsights,
+  ];
 
-    setShowEntryDialog(false);
+  // Filter by status for stats
+  const getStatusCounts = (data: Submission[]) => ({
+    draft: data.filter(e => e.status.toLowerCase() === 'draft').length,
+    pending: data.filter(e => e.status.toLowerCase() === 'pending').length,
+    approved: data.filter(e => e.status.toLowerCase() === 'approved').length,
+    rejected: data.filter(e => e.status.toLowerCase() === 'rejected').length,
+  });
 
-    // Reset form
-    setNewEntry({
-      clientId: '',
-      parameterId: '',
-      channelId: '',
-      value: '',
-      date: new Date().toISOString().split('T')[0],
-    });
-  };
+  const allCounts = getStatusCounts(allSubmissions);
 
-  // Define columns for my submissions table
-  const submissionsColumns: ColumnDef<any>[] = [
+  // Generic columns for tables
+  const getColumns = (type: string): ColumnDef<Submission>[] => [
     {
-      accessorKey: 'date',
+      accessorKey: 'type',
+      header: 'Type',
+      cell: ({ row }) => <Badge variant="secondary">{row.original.type || type}</Badge>,
+    },
+    {
+      accessorKey: 'title',
+      header: 'Title',
+      cell: ({ row }) => row.getValue('title') || 'N/A',
+    },
+    {
+      accessorKey: 'createdAt',
       header: 'Date',
-    },
-    {
-      accessorKey: 'clientId',
-      header: 'Client',
       cell: ({ row }) => {
-        const clientId = row.getValue('clientId');
-        return clients.find(c => c.id === clientId)?.name || 'Unknown';
+        const date = row.getValue('createdAt');
+        return date ? new Date(date as string).toLocaleDateString() : 'N/A';
       },
-    },
-    {
-      accessorKey: 'parameterId',
-      header: 'Parameter',
-      cell: ({ row }) => {
-        const parameterId = row.getValue('parameterId');
-        return dataParameters.find(p => p.id === parameterId)?.name || 'Unknown';
-      },
-    },
-    {
-      accessorKey: 'channelId',
-      header: 'Channel',
-      cell: ({ row }) => {
-        const channelId = row.getValue('channelId');
-        return mediaChannels.find(c => c.id === channelId)?.name || 'Unknown';
-      },
-    },
-    {
-      accessorKey: 'value',
-      header: 'Value',
     },
     {
       accessorKey: 'status',
@@ -169,230 +278,217 @@ export function AnalystDashboard() {
     {
       accessorKey: 'comments',
       header: 'Comments',
+      cell: ({ row }) => row.getValue('comments') || 'No comments',
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
       cell: ({ row }) => {
-        const comments = row.getValue('comments');
-        return comments ? comments : '-';
+        const status = row.getValue('status') as string;
+        const entryType = row.original.type.toLowerCase().replace(' ', '-');
+        return (
+          <div className="flex space-x-2">
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => {
+                setSelectedEntry(row.original);
+                setSelectedType(row.original.type);
+                setViewDetailsDialog(true);
+              }}
+            >
+              <Eye className="h-4 w-4 mr-1" />
+              View
+            </Button>
+            {(status.toLowerCase() === 'draft' || status.toLowerCase() === 'rejected') && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                asChild
+              >
+                <Link to={`/dashboard/${entryType}/edit/${row.original.id}`}>
+                  <FileEdit className="h-4 w-4 mr-1" />
+                  {status.toLowerCase() === 'draft' ? 'Edit' : 'Revise'}
+                </Link>
+              </Button>
+            )}
+          </div>
+        );
       },
     },
   ];
 
-  // Count by status
-  const pendingCount = mySubmissions.filter(e => e.status === 'pending').length;
-  const approvedCount = mySubmissions.filter(e => e.status === 'approved').length;
-  const rejectedCount = mySubmissions.filter(e => e.status === 'rejected').length;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-lg animate-pulse">Loading submissions...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-red-500 text-lg">{error}</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in p-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Analyst Dashboard</h1>
-        <div className="flex gap-2">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Analyst Dashboard</h1>
+        <div className="flex gap-3">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button>
-                <FileInput className="mr-2 h-4 w-4" />
+              <Button className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                <ClipboardList className="mr-2 h-4 w-4" />
                 Create New <ChevronDown className="ml-2 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="bg-white dark:bg-gray-800">
               <DropdownMenuItem asChild>
-                <Link to="/dashboard/editorial/create" className="w-full cursor-pointer">
+                <Link to="/dashboard/editorial/create" className="w-full cursor-pointer flex items-center text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">
                   <Newspaper className="mr-2 h-4 w-4" />
                   New Editorial
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link to="/dashboard/daily-mentions/create" className="w-full cursor-pointer">
+                <Link to="/dashboard/daily-mentions/create" className="w-full cursor-pointer flex items-center text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">
                   <FileText className="mr-2 h-4 w-4" />
                   New Daily Mention
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link to="/dashboard/swot-mentions" className="w-full cursor-pointer">
+                <Link to="/dashboard/swot-mentions/create" className="w-full cursor-pointer flex items-center text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">
                   <Target className="mr-2 h-4 w-4" />
                   New SWOT Mention
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link to="/dashboard/outcome-insights" className="w-full cursor-pointer">
+                <Link to="/dashboard/social-media-mentions/create" className="w-full cursor-pointer flex items-center text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">
+                  <Share2 className="mr-2 h-4 w-4" />
+                  New Social Media Mention
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/dashboard/outcome-insights/create" className="w-full cursor-pointer flex items-center text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">
                   <LineChart className="mr-2 h-4 w-4" />
                   New Outcome & Insight
                 </Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button asChild variant="outline">
-            <Link to="/dashboard/submissions">
-              <ClipboardList className="mr-2 h-4 w-4" />
-              My Submissions
-            </Link>
-          </Button>
         </div>
       </div>
 
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <DataCard title="Pending Review" variant="glass" icon={<AlertCircle size={24} />}>
-          <Stat
-            label="Entries Pending Review"
-            value={pendingCount}
-            subtitle="Awaiting supervisor approval"
-          />
+        <DataCard title="Drafts" variant="glass" icon={<Save size={24} className="text-blue-500" />}>
+          <div className="p-4">
+            <div className="text-2xl font-bold">{allCounts.draft}</div>
+            <div className="text-sm text-muted-foreground">Saved for later</div>
+          </div>
         </DataCard>
-        <DataCard title="Approved Entries" variant="glass" icon={<CheckCircle size={24} />}>
-          <Stat
-            label="Entries Approved"
-            value={approvedCount}
-            subtitle="Successfully validated"
-          />
+        <DataCard title="Pending" variant="glass" icon={<AlertCircle size={24} className="text-yellow-500" />}>
+          <div className="p-4">
+            <div className="text-2xl font-bold">{allCounts.pending}</div>
+            <div className="text-sm text-muted-foreground">Awaiting review</div>
+          </div>
         </DataCard>
-        <DataCard title="Rejected Entries" variant="glass" icon={<XCircle size={24} />}>
-          <Stat
-            label="Entries Rejected"
-            value={rejectedCount}
-            subtitle="Require attention"
-          />
+        <DataCard title="Approved" variant="glass" icon={<CheckCircle size={24} className="text-green-500" />}>
+          <div className="p-4">
+            <div className="text-2xl font-bold">{allCounts.approved}</div>
+            <div className="text-sm text-muted-foreground">Successfully validated</div>
+          </div>
         </DataCard>
-
-        <DataCard title="Quick Actions" variant="glass" icon={<Zap size={24} />}>
-          <div className="p-4 flex flex-col gap-2">
-            <Button asChild variant="outline" className="w-full">
-              <Link to="/dashboard/daily-mentions">
-                <FileText className="mr-2 h-4 w-4" />
-                Daily Mentions
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="w-full">
-              <Link to="/dashboard/editorial">
-                <Newspaper className="mr-2 h-4 w-4" />
-                Editorial
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="w-full">
-              <Link to="/dashboard/swot-mentions">
-                <Target className="mr-2 h-4 w-4" />
-                SWOT Mentions
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="w-full">
-              <Link to="/dashboard/social-media-mentions">
-                <Share2 className="mr-2 h-4 w-4" />
-                Social Media
-              </Link>
-            </Button>
-            <Button asChild variant="outline" className="w-full">
-              <Link to="/dashboard/outcome-insights">
-                <LineChart className="mr-2 h-4 w-4" />
-                Outcome & Insights
-              </Link>
-            </Button>
+        <DataCard title="Rejected" variant="glass" icon={<XCircle size={24} className="text-red-500" />}>
+          <div className="p-4">
+            <div className="text-2xl font-bold">{allCounts.rejected}</div>
+            <div className="text-sm text-muted-foreground">Require attention</div>
           </div>
         </DataCard>
       </div>
 
-      <DataCard
-        title="My Submissions"
-        description="View and manage your submitted data entries"
-        variant="glass"
-      >
-        <DataTable
-          columns={submissionsColumns}
-          data={mySubmissions}
-          searchPlaceholder="Search entries..."
-        />
-      </DataCard>
+      {/* Tabs for different submission types */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-6 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+          <TabsTrigger value="all" className="text-sm">All</TabsTrigger>
+          <TabsTrigger value="editorials" className="text-sm">Editorials</TabsTrigger>
+          <TabsTrigger value="daily-mentions" className="text-sm">Daily Mentions</TabsTrigger>
+          <TabsTrigger value="swot" className="text-sm">SWOT Analysis</TabsTrigger>
+          <TabsTrigger value="social" className="text-sm">Social Media</TabsTrigger>
+          <TabsTrigger value="insights" className="text-sm">Outcome Insights</TabsTrigger>
+        </TabsList>
 
-      {/* New Entry Dialog */}
-      <Dialog open={showEntryDialog} onOpenChange={setShowEntryDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>New Data Entry</DialogTitle>
-            <DialogDescription>
-              Enter media monitoring data for a client.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="client">Client</Label>
-              <Select onValueChange={(value) => handleInputChange('clientId', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select client" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clients.map(client => (
-                    <SelectItem key={client.id} value={client.id}>
-                      {client.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+        <TabsContent value="all" className="mt-6">
+          <DataCard title="All Submissions" description="View and manage all your data submissions" variant="glass">
+            {allSubmissions.length > 0 ? (
+              <DataTable columns={getColumns('All')} data={allSubmissions} searchPlaceholder="Search all submissions..." />
+            ) : (
+              <div className="text-center p-4 text-gray-500">No submissions available.</div>
+            )}
+          </DataCard>
+        </TabsContent>
 
-            <div className="space-y-2">
-              <Label htmlFor="parameter">Parameter</Label>
-              <Select onValueChange={(value) => handleInputChange('parameterId', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select parameter" />
-                </SelectTrigger>
-                <SelectContent>
-                  {dataParameters.map(param => (
-                    <SelectItem key={param.id} value={param.id}>
-                      {param.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+        <TabsContent value="editorials" className="mt-6">
+          <DataCard title="Editorials" description="Manage your editorial submissions" variant="glass">
+            {editorials.length > 0 ? (
+              <DataTable columns={getColumns('Editorial')} data={editorials} searchPlaceholder="Search editorials..." />
+            ) : (
+              <div className="text-center p-4 text-gray-500">No editorial submissions available.</div>
+            )}
+          </DataCard>
+        </TabsContent>
 
-            <div className="space-y-2">
-              <Label htmlFor="channel">Media Channel</Label>
-              <Select onValueChange={(value) => handleInputChange('channelId', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select channel" />
-                </SelectTrigger>
-                <SelectContent>
-                  {mediaChannels.map(channel => (
-                    <SelectItem key={channel.id} value={channel.id}>
-                      {channel.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+        <TabsContent value="daily-mentions" className="mt-6">
+          <DataCard title="Daily Mentions" description="Manage your daily mentions" variant="glass">
+            {dailyMentions.length > 0 ? (
+              <DataTable columns={getColumns('Daily Mention')} data={dailyMentions} searchPlaceholder="Search daily mentions..." />
+            ) : (
+              <div className="text-center p-4 text-gray-500">No daily mentions available.</div>
+            )}
+          </DataCard>
+        </TabsContent>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="date">Date</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={newEntry.date}
-                  onChange={(e) => handleInputChange('date', e.target.value)}
-                />
-              </div>
+        <TabsContent value="swot" className="mt-6">
+          <DataCard title="SWOT Analysis" description="Manage your SWOT analysis entries" variant="glass">
+            {swotAnalysis.length > 0 ? (
+              <DataTable columns={getColumns('SWOT Analysis')} data={swotAnalysis} searchPlaceholder="Search SWOT analysis..." />
+            ) : (
+              <div className="text-center p-4 text-gray-500">No SWOT analysis submissions available.</div>
+            )}
+          </DataCard>
+        </TabsContent>
 
-              <div className="space-y-2">
-                <Label htmlFor="value">Value</Label>
-                <Input
-                  id="value"
-                  type="number"
-                  placeholder="Enter value"
-                  value={newEntry.value}
-                  onChange={(e) => handleInputChange('value', e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter className="flex space-x-2 sm:justify-end">
-            <Button variant="outline" onClick={() => submitEntry(true)}>
-              <Save className="mr-2 h-4 w-4" />
-              Save as Draft
-            </Button>
-            <Button onClick={() => submitEntry(false)}>
-              <SendHorizontal className="mr-2 h-4 w-4" />
-              Submit for Review
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        <TabsContent value="social" className="mt-6">
+          <DataCard title="Social Media Mentions" description="Manage your social media mentions" variant="glass">
+            {socialMentions.length > 0 ? (
+              <DataTable columns={getColumns('Social Media Mention')} data={socialMentions} searchPlaceholder="Search social mentions..." />
+            ) : (
+              <div className="text-center p-4 text-gray-500">No social media mentions available.</div>
+            )}
+          </DataCard>
+        </TabsContent>
+
+        <TabsContent value="insights" className="mt-6">
+          <DataCard title="Outcome Insights" description="Manage your outcome insights" variant="glass">
+            {outcomeInsights.length > 0 ? (
+              <DataTable columns={getColumns('Outcome Insight')} data={outcomeInsights} searchPlaceholder="Search insights..." />
+            ) : (
+              <div className="text-center p-4 text-gray-500">No outcome insights available.</div>
+            )}
+          </DataCard>
+        </TabsContent>
+      </Tabs>
+
+      {/* View Details Dialog */}
+      <ViewDetailsDialog
+        open={viewDetailsDialog}
+        onClose={() => setViewDetailsDialog(false)}
+        entry={selectedEntry}
+        type={selectedType}
+      />
     </div>
   );
 }

@@ -69,6 +69,14 @@ export function SocialMediaMentionForm({ mode, initialData, onSuccess }: SocialM
   const [loading, setLoading] = useState(false);
   const [companySearchTerm, setCompanySearchTerm] = useState('');
   const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  // Fetch user role
+  useEffect(() => {
+    // Assuming user role is stored in localStorage; adjust to your auth system
+    const role = localStorage.getItem('userRole');
+    setUserRole(role); // e.g., 'analyst' or 'supervisor'
+  }, []);
 
   // Fetch companies
   useEffect(() => {
@@ -108,10 +116,10 @@ export function SocialMediaMentionForm({ mode, initialData, onSuccess }: SocialM
         social_media_type: initialData.social_media_type,
         metrics: initialData.metrics.map(m => ({ ...m })),
         analyst_note: initialData.analyst_note || '',
-        supervisor_note: initialData.supervisor_note || '',
+        supervisor_note: userRole === 'supervisor' ? initialData.supervisor_note || '' : '',
       });
     }
-  }, [initialData, mode]);
+  }, [initialData, mode, userRole]);
 
   const filteredCompanies = React.useMemo(() => {
     if (!companySearchTerm) return companies;
@@ -136,6 +144,10 @@ export function SocialMediaMentionForm({ mode, initialData, onSuccess }: SocialM
       }
     } else if (name === 'company_id') {
       setFormData(prev => ({ ...prev, [name]: Number(value) || 0 }));
+    } else if (name === 'supervisor_note' && userRole !== 'supervisor') {
+      // Prevent analysts from modifying supervisor_note
+      toast.error('Only Supervisors can set supervisor notes.');
+      return;
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
@@ -180,6 +192,12 @@ export function SocialMediaMentionForm({ mode, initialData, onSuccess }: SocialM
       return;
     }
 
+    // Validate supervisor_note for analysts
+    if (userRole !== 'supervisor' && formData.supervisor_note && formData.supervisor_note.trim() !== '') {
+      toast.error('Only Supervisors can set supervisor notes.');
+      return;
+    }
+
     setLoading(true);
 
     const url = mode === 'create'
@@ -191,7 +209,12 @@ export function SocialMediaMentionForm({ mode, initialData, onSuccess }: SocialM
       const token = localStorage.getItem('token') || '';
       const storedUserId = Number(localStorage.getItem('userId') || 0);
 
-      const payload = { ...formData, ...(storedUserId ? { created_by: storedUserId } : {}) };
+      // Ensure supervisor_note is not sent for analysts
+      const payload = {
+        ...formData,
+        ...(storedUserId ? { created_by: storedUserId } : {}),
+        supervisor_note: userRole === 'supervisor' ? formData.supervisor_note : undefined,
+      };
 
       const response = await fetch(url, {
         method,
@@ -221,7 +244,19 @@ export function SocialMediaMentionForm({ mode, initialData, onSuccess }: SocialM
         }
         onSuccess?.();
       } else {
-        toast.error(result.message || `Failed to ${mode} social media mention`);
+        // Handle array of error objects
+        if (Array.isArray(result.message)) {
+          const errorMessages = result.message.map((err: { field: string; message: string }) => {
+            // Map backend error to custom message for supervisor_note
+            if (err.field === 'supervisor_note' && userRole !== 'supervisor') {
+              return 'Only Supervisors can set supervisor notes.';
+            }
+            return `${err.field}: ${err.message}`;
+          }).join('; ');
+          toast.error(`Failed to ${mode} social media mention: ${errorMessages}`);
+        } else {
+          toast.error(result.message || `Failed to ${mode} social media mention`);
+        }
       }
     } catch (error) {
       toast.error(`Error ${mode === 'create' ? 'creating' : 'updating'} social media mention`);
@@ -475,17 +510,19 @@ export function SocialMediaMentionForm({ mode, initialData, onSuccess }: SocialM
                 className="min-h-[80px]"
               />
             </div>
-            <div>
-              <Label htmlFor="supervisor_note">Supervisor Note</Label>
-              <Textarea
-                id="supervisor_note"
-                name="supervisor_note"
-                value={formData.supervisor_note}
-                onChange={handleInputChange}
-                placeholder="Add supervisor notes..."
-                className="min-h-[80px]"
-              />
-            </div>
+            {userRole === 'supervisor' && (
+              <div>
+                <Label htmlFor="supervisor_note">Supervisor Note</Label>
+                <Textarea
+                  id="supervisor_note"
+                  name="supervisor_note"
+                  value={formData.supervisor_note}
+                  onChange={handleInputChange}
+                  placeholder="Add supervisor notes..."
+                  className="min-h-[80px]"
+                />
+              </div>
+            )}
           </div>
 
           <Button

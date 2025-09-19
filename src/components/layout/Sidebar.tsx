@@ -141,7 +141,7 @@ const adminRoutes: NavItem[] = [
 // Supervisor-specific navigation items
 const supervisorItems: NavItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Review', href: '/dashboard/supervisordashboard', icon: CheckSquare },
+  // { name: 'Review', href: '/dashboard/supervisordashboard', icon: CheckSquare },
   { name: 'Editorial', href: '/dashboard/editorial', icon: Newspaper },
   { name: 'Daily Mentions', href: '/dashboard/daily-mentions', icon: FileText },
   { name: 'SWOT Mentions', href: '/dashboard/swot-mentions', icon: Target },
@@ -219,7 +219,7 @@ export function Sidebar({ className, isOpen = true, onClose }: SidebarProps) {
       { name: 'SWOT Mentions', href: '/dashboard/swot-mentions', icon: Target },
       { name: 'Social Media Mentions', href: '/dashboard/social-media-mentions', icon: Share2 },
       { name: 'Outcome & Insights', href: '/dashboard/outcome-insights', icon: LineChart },
-      { name: 'Submissions', href: '/dashboard/submissions', icon: ClipboardList }
+      // { name: 'Submissions', href: '/dashboard/submissions', icon: ClipboardList }
     ];
     navigation = analystItems;
   }

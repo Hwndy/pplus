@@ -36,7 +36,7 @@ import ReportsPage from './dashboard/ReportsPage';
 import AnalyticsPage from './dashboard/AnalyticsPage';
 import AuditPage from './dashboard/AuditPage';
 import DataEntryPage from './dashboard/DataEntryPage';
-import SubmissionsPage from './dashboard/SubmissionsPage';
+// import SubmissionsPage from './dashboard/SubmissionsPage';
 import MediaReportsPage from './dashboard/MediaReportsPage';
 import PerformancePage from './dashboard/PerformancePage';
 import SwotAnalysisPage from './dashboard/SwotAnalysisPage';
@@ -186,9 +186,9 @@ const Dashboard = () => {
         } />
 
         {/* Analyst routes */}
-        <Route path="submissions" element={
+        {/* <Route path="submissions" element={
           hasRole(user.role, 'analyst') ? <SubmissionsPage /> : <Navigate to="/dashboard" replace />
-        } />
+        } /> */}
 
         {/* Client routes */}
         <Route path="media-reports" element={

@@ -126,6 +126,10 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
   apiMediaTypes = [],
   apiSentimentKeywords = [],
 }) => {
+  // Ensure editorials is an array
+  const safeEditorials = Array.isArray(editorials) ? editorials : [];
+  const currentEditorial = safeEditorials[activeIndex] || {};
+
   const isFieldReadOnly = (fieldName: string): boolean => {
     if (isReviewMode) return true;
     if (fieldName === 'analyst_note' && userRole !== 'Analyst') return true;
@@ -136,7 +140,7 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
 
   const handleAddRow = () => {
     const newEditorial: Editorial = {
-      ...editorials[activeIndex],
+      ...currentEditorial,
       id: Date.now() + Math.random(),
       title: '',
       source: '',
@@ -158,12 +162,12 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
       supervisor_note: '',
       admin_note: '',
     };
-    onEditorialChange([...editorials, newEditorial]);
+    onEditorialChange([...safeEditorials, newEditorial]);
   };
 
   const handleRemoveRow = (indexToRemove: number) => {
-    if (editorials.length > 1) {
-      const newEditorials = editorials.filter((_, index) => index !== indexToRemove);
+    if (safeEditorials.length > 1) {
+      const newEditorials = safeEditorials.filter((_, index) => index !== indexToRemove);
       onEditorialChange(newEditorials);
       if (activeIndex >= indexToRemove) {
         onSwitchEditorial(Math.max(0, activeIndex - 1));
@@ -188,7 +192,7 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                     id="date"
                     name="date"
                     type="date"
-                    value={editorials[activeIndex]?.date.split('T')[0] || ''}
+                    value={currentEditorial.date?.split('T')[0] || ''}
                     onChange={(e) => onFieldChange(activeIndex, 'date', e.target.value)}
                     className={errors.date ? 'border-red-500' : ''}
                     readOnly={isFieldReadOnly('date')}
@@ -201,7 +205,7 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                     Company <span className="text-red-500">*</span>
                   </Label>
                   <Select
-                    value={editorials[activeIndex]?.company_id?.toString() || ''}
+                    value={currentEditorial.company_id?.toString() || ''}
                     onValueChange={(value) => onFieldChange(activeIndex, 'company_id', parseInt(value))}
                     disabled={isFieldReadOnly('company_id')}
                   >
@@ -227,7 +231,7 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                 <div className="flex-1">
                   <Label htmlFor="media_type">Media Type</Label>
                   <Select
-                    value={editorials[activeIndex]?.media_type || ''}
+                    value={currentEditorial.media_type || ''}
                     onValueChange={(value) => onFieldChange(activeIndex, 'media_type', value)}
                     disabled={isFieldReadOnly('media_type')}
                   >
@@ -252,399 +256,403 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
               </div>
               <div className="overflow-x-auto">
                 <div className="min-w-max space-y-4">
-                  {editorials.map((editorial, index) => (
-                    <div key={editorial.id} className="flex gap-4 min-w-max">
-                      <div className="flex flex-col items-center pt-6 min-w-[40px]">
-                        {index === editorials.length - 1 ? (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={handleAddRow}
-                            className="h-8 w-8 p-0 rounded-full border-2 border-dashed border-gray-300 hover:border-blue-500 hover:bg-blue-50"
+                  {safeEditorials.length > 0 ? (
+                    safeEditorials.map((editorial, index) => (
+                      <div key={editorial.id || index} className="flex gap-4 min-w-max">
+                        <div className="flex flex-col items-center pt-6 min-w-[40px]">
+                          {index === safeEditorials.length - 1 ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={handleAddRow}
+                              className="h-8 w-8 p-0 rounded-full border-2 border-dashed border-gray-300 hover:border-blue-500 hover:bg-blue-50"
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          ) : (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemoveRow(index)}
+                              className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                            >
+                              <MinusCircle className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                        <div className="min-w-[160px]">
+                          {index === 0 && (
+                            <Label htmlFor="source">
+                              Source <span className="text-red-500">*</span>
+                            </Label>
+                          )}
+                          <Select
+                            value={editorial.source || ''}
+                            onValueChange={(value) => onFieldChange(index, 'source', value)}
                           >
-                            <Plus className="h-4 w-4" />
-                          </Button>
-                        ) : (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRemoveRow(index)}
-                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                            <SelectTrigger className={index === 0 && errors.source ? 'border-red-500' : ''}>
+                              <SelectValue placeholder="Select source" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {apiPublications.length > 0 ? (
+                                apiPublications.map((pub) => (
+                                  <SelectItem key={pub} value={pub}>
+                                    {pub}
+                                  </SelectItem>
+                                ))
+                              ) : (
+                                <SelectItem value="loading" disabled>
+                                  Loading...
+                                </SelectItem>
+                              )}
+                            </SelectContent>
+                          </Select>
+                          {index === 0 && errors.source && <p className="text-red-500 text-sm">{errors.source}</p>}
+                        </div>
+                        <div className="min-w-[160px]">
+                          {index === 0 && <Label htmlFor="placement">Placement</Label>}
+                          <Select
+                            value={editorial.placement || ''}
+                            onValueChange={(value) => onFieldChange(index, 'placement', value)}
                           >
-                            <MinusCircle className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                      <div className="min-w-[160px]">
-                        {index === 0 && (
-                          <Label htmlFor="source">
-                            Source <span className="text-red-500">*</span>
-                          </Label>
-                        )}
-                        <Select
-                          value={editorial.source}
-                          onValueChange={(value) => onFieldChange(index, 'source', value)}
-                        >
-                          <SelectTrigger className={index === 0 && errors.source ? 'border-red-500' : ''}>
-                            <SelectValue placeholder="Select source" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {apiPublications.length > 0 ? (
-                              apiPublications.map((pub) => (
-                                <SelectItem key={pub} value={pub}>
-                                  {pub}
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select placement" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {apiPlacements.length > 0 ? (
+                                apiPlacements.map((placement) => (
+                                  <SelectItem key={placement} value={placement}>
+                                    {placement}
+                                  </SelectItem>
+                                ))
+                              ) : (
+                                <SelectItem value="loading" disabled>
+                                  Loading...
                                 </SelectItem>
-                              ))
-                            ) : (
-                              <SelectItem value="loading" disabled>
-                                Loading...
-                              </SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
-                        {index === 0 && errors.source && <p className="text-red-500 text-sm">{errors.source}</p>}
-                      </div>
-                      <div className="min-w-[160px]">
-                        {index === 0 && <Label htmlFor="placement">Placement</Label>}
-                        <Select
-                          value={editorial.placement}
-                          onValueChange={(value) => onFieldChange(index, 'placement', value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select placement" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {apiPlacements.length > 0 ? (
-                              apiPlacements.map((placement) => (
-                                <SelectItem key={placement} value={placement}>
-                                  {placement}
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="min-w-[160px]">
+                          {index === 0 && (
+                            <Label htmlFor="title">
+                              Title <span className="text-red-500">*</span>
+                            </Label>
+                          )}
+                          <Input
+                            id="title"
+                            name="title"
+                            value={editorial.title || ''}
+                            onChange={(e) => onFieldChange(index, 'title', e.target.value)}
+                            className={index === 0 && errors.title ? 'border-red-500' : ''}
+                            placeholder="Enter article title"
+                          />
+                          {index === 0 && errors.title && <p className="text-red-500 text-sm">{errors.title}</p>}
+                        </div>
+                        <div className="min-w-[160px]">
+                          {index === 0 && <Label htmlFor="print_web_clips">Print/Web Clips (URL)</Label>}
+                          <Input
+                            id="print_web_clips"
+                            name="print_web_clips"
+                            value={editorial.print_web_clips || ''}
+                            onChange={(e) => onFieldChange(index, 'print_web_clips', e.target.value)}
+                            placeholder="Enter URL"
+                          />
+                        </div>
+                        <div className="min-w-[160px]">
+                          {index === 0 && <Label htmlFor="reporter">Reporter</Label>}
+                          <Input
+                            id="reporter"
+                            name="reporter"
+                            value={editorial.reporter || ''}
+                            onChange={(e) => onFieldChange(index, 'reporter', e.target.value)}
+                            placeholder="Enter reporter name"
+                          />
+                        </div>
+                        <div className="min-w-[160px]">
+                          {index === 0 && (
+                            <Label htmlFor="country">
+                              Country <span className="text-red-500">*</span>
+                            </Label>
+                          )}
+                          <Select
+                            value={editorial.country || ''}
+                            onValueChange={(value) => onFieldChange(index, 'country', value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select country" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {apiCountries.length > 0 ? (
+                                apiCountries.map((country) => (
+                                  <SelectItem key={country} value={country}>
+                                    {country}
+                                  </SelectItem>
+                                ))
+                              ) : (
+                                <SelectItem value="loading" disabled>
+                                  Loading...
                                 </SelectItem>
-                              ))
-                            ) : (
-                              <SelectItem value="loading" disabled>
-                                Loading...
-                              </SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="min-w-[160px]">
-                        {index === 0 && (
-                          <Label htmlFor="title">
-                            Title <span className="text-red-500">*</span>
-                          </Label>
-                        )}
-                        <Input
-                          id="title"
-                          name="title"
-                          value={editorial.title}
-                          onChange={(e) => onFieldChange(index, 'title', e.target.value)}
-                          className={index === 0 && errors.title ? 'border-red-500' : ''}
-                          placeholder="Enter article title"
-                        />
-                        {index === 0 && errors.title && <p className="text-red-500 text-sm">{errors.title}</p>}
-                      </div>
-                      <div className="min-w-[160px]">
-                        {index === 0 && <Label htmlFor="print_web_clips">Print/Web Clips (URL)</Label>}
-                        <Input
-                          id="print_web_clips"
-                          name="print_web_clips"
-                          value={editorial.print_web_clips || ''}
-                          onChange={(e) => onFieldChange(index, 'print_web_clips', e.target.value)}
-                          placeholder="Enter URL"
-                        />
-                      </div>
-                      <div className="min-w-[160px]">
-                        {index === 0 && <Label htmlFor="reporter">Reporter</Label>}
-                        <Input
-                          id="reporter"
-                          name="reporter"
-                          value={editorial.reporter}
-                          onChange={(e) => onFieldChange(index, 'reporter', e.target.value)}
-                          placeholder="Enter reporter name"
-                        />
-                      </div>
-                      <div className="min-w-[160px]">
-                        {index === 0 && (
-                          <Label htmlFor="country">
-                            Country <span className="text-red-500">*</span>
-                          </Label>
-                        )}
-                        <Select
-                          value={editorial.country}
-                          onValueChange={(value) => onFieldChange(index, 'country', value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select country" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {apiCountries.length > 0 ? (
-                              apiCountries.map((country) => (
-                                <SelectItem key={country} value={country}>
-                                  {country}
+                              )}
+                            </SelectContent>
+                          </Select>
+                          {index === 0 && errors.country && <p className="text-red-500 text-sm">{errors.country}</p>}
+                        </div>
+                        <div className="min-w-[160px]">
+                          {index === 0 && (
+                            <Label htmlFor="language">
+                              Language <span className="text-red-500">*</span>
+                            </Label>
+                          )}
+                          <Select
+                            value={editorial.language || ''}
+                            onValueChange={(value) => onFieldChange(index, 'language', value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select language" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {apiLanguages.length > 0 ? (
+                                apiLanguages.map((language) => (
+                                  <SelectItem key={language} value={language}>
+                                    {language}
+                                  </SelectItem>
+                                ))
+                              ) : (
+                                <SelectItem value="loading" disabled>
+                                  Loading...
                                 </SelectItem>
-                              ))
-                            ) : (
-                              <SelectItem value="loading" disabled>
-                                Loading...
-                              </SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
-                        {index === 0 && errors.country && <p className="text-red-500 text-sm">{errors.country}</p>}
-                      </div>
-                      <div className="min-w-[160px]">
-                        {index === 0 && (
-                          <Label htmlFor="language">
-                            Language <span className="text-red-500">*</span>
-                          </Label>
-                        )}
-                        <Select
-                          value={editorial.language}
-                          onValueChange={(value) => onFieldChange(index, 'language', value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select language" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {apiLanguages.length > 0 ? (
-                              apiLanguages.map((language) => (
-                                <SelectItem key={language} value={language}>
-                                  {language}
+                              )}
+                            </SelectContent>
+                          </Select>
+                          {index === 0 && errors.language && <p className="text-red-500 text-sm">{errors.language}</p>}
+                        </div>
+                        <div className="min-w-[160px]">
+                          {index === 0 && <Label htmlFor="spokesperson">Spokesperson</Label>}
+                          <Select
+                            value={editorial.spokesperson || ''}
+                            onValueChange={(value) => onFieldChange(index, 'spokesperson', value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select spokesperson" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {apiSpokespersons.length > 0 ? (
+                                apiSpokespersons.map((spokesperson) => (
+                                  <SelectItem key={spokesperson} value={spokesperson}>
+                                    {spokesperson}
+                                  </SelectItem>
+                                ))
+                              ) : (
+                                <SelectItem value="loading" disabled>
+                                  Loading...
                                 </SelectItem>
-                              ))
-                            ) : (
-                              <SelectItem value="loading" disabled>
-                                Loading...
-                              </SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
-                        {index === 0 && errors.language && <p className="text-red-500 text-sm">{errors.language}</p>}
-                      </div>
-                      <div className="min-w-[160px]">
-                        {index === 0 && <Label htmlFor="spokesperson">Spokesperson</Label>}
-                        <Select
-                          value={editorial.spokesperson}
-                          onValueChange={(value) => onFieldChange(index, 'spokesperson', value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select spokesperson" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {apiSpokespersons.length > 0 ? (
-                              apiSpokespersons.map((spokesperson) => (
-                                <SelectItem key={spokesperson} value={spokesperson}>
-                                  {spokesperson}
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="min-w-[160px]">
+                          {index === 0 && <Label htmlFor="ceo_media_presence">CEO Media Presence</Label>}
+                          <Select
+                            value={editorial.ceo_media_presence || ''}
+                            onValueChange={(value) => onFieldChange(index, 'ceo_media_presence', value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select presence" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {apiCeoMediaPresence.length > 0 ? (
+                                apiCeoMediaPresence.map((option) => (
+                                  <SelectItem key={option} value={option}>
+                                    {option}
+                                  </SelectItem>
+                                ))
+                              ) : (
+                                <SelectItem value="loading" disabled>
+                                  Loading...
                                 </SelectItem>
-                              ))
-                            ) : (
-                              <SelectItem value="loading" disabled>
-                                Loading...
-                              </SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="min-w-[160px]">
-                        {index === 0 && <Label htmlFor="ceo_media_presence">CEO Media Presence</Label>}
-                        <Select
-                          value={editorial.ceo_media_presence}
-                          onValueChange={(value) => onFieldChange(index, 'ceo_media_presence', value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select presence" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {apiCeoMediaPresence.length > 0 ? (
-                              apiCeoMediaPresence.map((option) => (
-                                <SelectItem key={option} value={option}>
-                                  {option}
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="min-w-[160px]">
+                          {index === 0 && <Label htmlFor="ceo_thought_leadership">CEO Thought Leadership</Label>}
+                          <Select
+                            value={editorial.ceo_thought_leadership || ''}
+                            onValueChange={(value) => onFieldChange(index, 'ceo_thought_leadership', value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select leadership" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {apiCeoThoughtLeadership.length > 0 ? (
+                                apiCeoThoughtLeadership.map((option) => (
+                                  <SelectItem key={option} value={option}>
+                                    {option}
+                                  </SelectItem>
+                                ))
+                              ) : (
+                                <SelectItem value="loading" disabled>
+                                  Loading...
                                 </SelectItem>
-                              ))
-                            ) : (
-                              <SelectItem value="loading" disabled>
-                                Loading...
-                              </SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="min-w-[160px]">
-                        {index === 0 && <Label htmlFor="ceo_thought_leadership">CEO Thought Leadership</Label>}
-                        <Select
-                          value={editorial.ceo_thought_leadership}
-                          onValueChange={(value) => onFieldChange(index, 'ceo_thought_leadership', value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select leadership" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {apiCeoThoughtLeadership.length > 0 ? (
-                              apiCeoThoughtLeadership.map((option) => (
-                                <SelectItem key={option} value={option}>
-                                  {option}
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="min-w-[160px]">
+                          {index === 0 && <Label htmlFor="activity">Activity</Label>}
+                          <Select
+                            value={editorial.activity || ''}
+                            onValueChange={(value) => onFieldChange(index, 'activity', value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select activity" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {apiActivities.length > 0 ? (
+                                apiActivities.map((activity) => (
+                                  <SelectItem key={activity} value={activity}>
+                                    {activity}
+                                  </SelectItem>
+                                ))
+                              ) : (
+                                <SelectItem value="loading" disabled>
+                                  Loading...
                                 </SelectItem>
-                              ))
-                            ) : (
-                              <SelectItem value="loading" disabled>
-                                Loading...
-                              </SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="min-w-[160px]">
-                        {index === 0 && <Label htmlFor="activity">Activity</Label>}
-                        <Select
-                          value={editorial.activity}
-                          onValueChange={(value) => onFieldChange(index, 'activity', value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select activity" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {apiActivities.length > 0 ? (
-                              apiActivities.map((activity) => (
-                                <SelectItem key={activity} value={activity}>
-                                  {activity}
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="min-w-[160px]">
+                          {index === 0 && <Label htmlFor="circulation">Circulation</Label>}
+                          <Input
+                            id="circulation"
+                            name="circulation"
+                            type="number"
+                            value={editorial.circulation?.toString() || ''}
+                            onChange={(e) => onFieldChange(index, 'circulation', parseInt(e.target.value) || 0)}
+                            placeholder="Enter number"
+                          />
+                        </div>
+                        <div className="min-w-[160px]">
+                          {index === 0 && <Label htmlFor="audience_reach">Audience Reach</Label>}
+                          <Input
+                            id="audience_reach"
+                            name="audience_reach"
+                            type="number"
+                            value={editorial.audience_reach?.toString() || ''}
+                            onChange={(e) => onFieldChange(index, 'audience_reach', parseInt(e.target.value) || 0)}
+                            placeholder="Enter number"
+                          />
+                        </div>
+                        <div className="min-w-[160px]">
+                          {index === 0 && <Label htmlFor="online_channel">Online Channel</Label>}
+                          <Select
+                            value={editorial.online_channel || ''}
+                            onValueChange={(value) => onFieldChange(index, 'online_channel', value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select channel" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {apiOnlineChannels.length > 0 ? (
+                                apiOnlineChannels.map((channel) => (
+                                  <SelectItem key={channel} value={channel}>
+                                    {channel}
+                                  </SelectItem>
+                                ))
+                              ) : (
+                                <SelectItem value="loading" disabled>
+                                  Loading...
                                 </SelectItem>
-                              ))
-                            ) : (
-                              <SelectItem value="loading" disabled>
-                                Loading...
-                              </SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="min-w-[160px]">
-                        {index === 0 && <Label htmlFor="circulation">Circulation</Label>}
-                        <Input
-                          id="circulation"
-                          name="circulation"
-                          type="number"
-                          value={editorial.circulation?.toString() || ''}
-                          onChange={(e) => onFieldChange(index, 'circulation', parseInt(e.target.value) || 0)}
-                          placeholder="Enter number"
-                        />
-                      </div>
-                      <div className="min-w-[160px]">
-                        {index === 0 && <Label htmlFor="audience_reach">Audience Reach</Label>}
-                        <Input
-                          id="audience_reach"
-                          name="audience_reach"
-                          type="number"
-                          value={editorial.audience_reach?.toString() || ''}
-                          onChange={(e) => onFieldChange(index, 'audience_reach', parseInt(e.target.value) || 0)}
-                          placeholder="Enter number"
-                        />
-                      </div>
-                      <div className="min-w-[160px]">
-                        {index === 0 && <Label htmlFor="online_channel">Online Channel</Label>}
-                        <Select
-                          value={editorial.online_channel || ''}
-                          onValueChange={(value) => onFieldChange(index, 'online_channel', value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select channel" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {apiOnlineChannels.length > 0 ? (
-                              apiOnlineChannels.map((channel) => (
-                                <SelectItem key={channel} value={channel}>
-                                  {channel}
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="min-w-[160px]">
+                          {index === 0 && <Label htmlFor="sentiment">Sentiment</Label>}
+                          <Select
+                            value={editorial.sentiment || ''}
+                            onValueChange={(value) => onFieldChange(index, 'sentiment', value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select sentiment" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {SENTIMENT_OPTIONS.map((sentiment) => (
+                                <SelectItem key={sentiment} value={sentiment}>
+                                  {sentiment}
                                 </SelectItem>
-                              ))
-                            ) : (
-                              <SelectItem value="loading" disabled>
-                                Loading...
-                              </SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="min-w-[160px]">
-                        {index === 0 && <Label htmlFor="sentiment">Sentiment</Label>}
-                        <Select
-                          value={editorial.sentiment}
-                          onValueChange={(value) => onFieldChange(index, 'sentiment', value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select sentiment" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {SENTIMENT_OPTIONS.map((sentiment) => (
-                              <SelectItem key={sentiment} value={sentiment}>
-                                {sentiment}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="min-w-[160px]">
-                        {index === 0 && <Label htmlFor="sentiment_keyword_indicator_id">Sentiment Keyword</Label>}
-                        <Select
-                          value={editorial.sentiment_keyword_indicator_id?.toString() || ''}
-                          onValueChange={(value) => onFieldChange(index, 'sentiment_keyword_indicator_id', parseInt(value))}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select keyword" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {apiSentimentKeywords.length > 0 ? (
-                              apiSentimentKeywords.map((kw) => (
-                                <SelectItem key={kw.id} value={kw.id.toString()}>
-                                  {kw.keyword_indicator}
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="min-w-[160px]">
+                          {index === 0 && <Label htmlFor="sentiment_keyword_indicator_id">Sentiment Keyword</Label>}
+                          <Select
+                            value={editorial.sentiment_keyword_indicator_id?.toString() || ''}
+                            onValueChange={(value) => onFieldChange(index, 'sentiment_keyword_indicator_id', parseInt(value))}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select keyword" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {apiSentimentKeywords.length > 0 ? (
+                                apiSentimentKeywords.map((kw) => (
+                                  <SelectItem key={kw.id} value={kw.id.toString()}>
+                                    {kw.keyword_indicator}
+                                  </SelectItem>
+                                ))
+                              ) : (
+                                <SelectItem value="loading" disabled>
+                                  Loading...
                                 </SelectItem>
-                              ))
-                            ) : (
-                              <SelectItem value="loading" disabled>
-                                Loading...
-                              </SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="min-w-[160px]">
-                        {index === 0 && <Label htmlFor="advert_spend">Advert Spend</Label>}
-                        <Input
-                          id="advert_spend"
-                          name="advert_spend"
-                          type="number"
-                          value={editorial.advert_spend?.toString() || ''}
-                          onChange={(e) => onFieldChange(index, 'advert_spend', parseInt(e.target.value) || 0)}
-                          placeholder="Enter amount"
-                        />
-                      </div>
-                      <div className="min-w-[160px]">
-                        {index === 0 && <Label htmlFor="page_size">Page Size</Label>}
-                        <Select
-                          value={editorial.page_size || ''}
-                          onValueChange={(value) => onFieldChange(index, 'page_size', value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select page size" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {apiPageSizes.length > 0 ? (
-                              apiPageSizes.map((size) => (
-                                <SelectItem key={size} value={size}>
-                                  {size}
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="min-w-[160px]">
+                          {index === 0 && <Label htmlFor="advert_spend">Advert Spend</Label>}
+                          <Input
+                            id="advert_spend"
+                            name="advert_spend"
+                            type="number"
+                            value={editorial.advert_spend?.toString() || ''}
+                            onChange={(e) => onFieldChange(index, 'advert_spend', parseInt(e.target.value) || 0)}
+                            placeholder="Enter amount"
+                          />
+                        </div>
+                        <div className="min-w-[160px]">
+                          {index === 0 && <Label htmlFor="page_size">Page Size</Label>}
+                          <Select
+                            value={editorial.page_size || ''}
+                            onValueChange={(value) => onFieldChange(index, 'page_size', value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select page size" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {apiPageSizes.length > 0 ? (
+                                apiPageSizes.map((size) => (
+                                  <SelectItem key={size} value={size}>
+                                    {size}
+                                  </SelectItem>
+                                ))
+                              ) : (
+                                <SelectItem value="loading" disabled>
+                                  Loading...
                                 </SelectItem>
-                              ))
-                            ) : (
-                              <SelectItem value="loading" disabled>
-                                Loading...
-                              </SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
+                              )}
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    <div className="text-center text-gray-500">No editorials available</div>
+                  )}
                 </div>
               </div>
             </div>
@@ -658,7 +666,7 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                 <Textarea
                   id="analyst_note"
                   name="analyst_note"
-                  value={editorials[activeIndex]?.analyst_note || ''}
+                  value={currentEditorial.analyst_note || ''}
                   onChange={(e) => onFieldChange(activeIndex, 'analyst_note', e.target.value)}
                   className="h-32 resize-none"
                   placeholder="Add analyst notes here..."
@@ -673,7 +681,7 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                 <Textarea
                   id="supervisor_note"
                   name="supervisor_note"
-                  value={editorials[activeIndex]?.supervisor_note || ''}
+                  value={currentEditorial.supervisor_note || ''}
                   onChange={(e) => onFieldChange(activeIndex, 'supervisor_note', e.target.value)}
                   className="h-32 resize-none"
                   placeholder="Add supervisor notes here..."
@@ -688,7 +696,7 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                 <Textarea
                   id="admin_note"
                   name="admin_note"
-                  value={editorials[activeIndex]?.admin_note || ''}
+                  value={currentEditorial.admin_note || ''}
                   onChange={(e) => onFieldChange(activeIndex, 'admin_note', e.target.value)}
                   className="h-32 resize-none"
                   placeholder="Add admin notes here..."
@@ -725,38 +733,38 @@ const CreateEditorialPage = () => {
 
   const BASE_URL = 'https://p-skai.onrender.com/api';
   const { user, isSessionValidated } = useAuth();
-  const [editorials, setEditorials] = useState<Editorial[]>(
+  const [editorials, setEditorials] = useState<Editorial[]>([
     isEditMode && location.state?.editorialData
-      ? location.state.editorialData
-      : [
-          {
-            date: new Date().toISOString().split('T')[0],
-            online_channel: '',
-            source: '',
-            company_id: undefined,
-            media_type: '',
-            audience_reach: 0,
-            placement: '',
-            language: '',
-            ceo_media_presence: '',
-            ceo_thought_leadership: '',
-            title: '',
-            print_web_clips: '',
-            reporter: '',
-            country: '',
-            spokesperson: '',
-            activity: '',
-            sentiment: '',
-            sentiment_keyword_indicator_id: undefined,
-            advert_spend: 0,
-            circulation: 0,
-            page_size: '',
-            analyst_note: '',
-            supervisor_note: '',
-            admin_note: '',
-          },
-        ]
-  );
+      ? Array.isArray(location.state.editorialData)
+        ? location.state.editorialData
+        : [location.state.editorialData]
+      : {
+          date: new Date().toISOString().split('T')[0],
+          online_channel: '',
+          source: '',
+          company_id: undefined,
+          media_type: '',
+          audience_reach: 0,
+          placement: '',
+          language: '',
+          ceo_media_presence: '',
+          ceo_thought_leadership: '',
+          title: '',
+          print_web_clips: '',
+          reporter: '',
+          country: '',
+          spokesperson: '',
+          activity: '',
+          sentiment: '',
+          sentiment_keyword_indicator_id: undefined,
+          advert_spend: 0,
+          circulation: 0,
+          page_size: '',
+          analyst_note: '',
+          supervisor_note: '',
+          admin_note: '',
+        },
+  ].filter(Boolean)); // Ensure no undefined/null entries
   const [activeIndex, setActiveIndex] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -893,7 +901,6 @@ const CreateEditorialPage = () => {
     setIsSubmitting(true);
     setSubmissionType(status);
     try {
-      // Construct payload without status field
       const payload = {
         date: editorials[activeIndex].date,
         company_id: editorials[activeIndex].company_id,
@@ -936,7 +943,7 @@ const CreateEditorialPage = () => {
         title: 'Success',
         description: `Editorial ${isEditMode ? 'updated' : 'created'} successfully!`,
       });
-      navigate('/editorials');
+      navigate('/dashboard/editorial');
     } catch (err) {
       console.error('Submission error:', err);
       toast({

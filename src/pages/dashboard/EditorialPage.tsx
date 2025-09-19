@@ -47,6 +47,7 @@ interface Editorial {
   mime_type: string | null;
   file_type: string | null;
   is_deleted: boolean;
+  status?: string; // Added status field for consistency
 }
 
 const API_BASE = "https://p-skai.onrender.com/api";
@@ -62,11 +63,18 @@ const EditorialPage = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
 
+  // Get token for API calls
+  const token = localStorage.getItem('token');
+
   const fetchEditorials = async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API_BASE}/editorials?page=${currentPage}&limit=${editorialsPerPage}`);
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      };
+      const response = await fetch(`${API_BASE}/editorials?page=${currentPage}&limit=${editorialsPerPage}`, { headers });
       if (!response.ok) {
         throw new Error('Network response was not ok');
       }
@@ -87,10 +95,19 @@ const EditorialPage = () => {
   }, [currentPage]);
 
   const handleDelete = async (id: number) => {
+    if (!token) {
+      toast.error('Authentication required');
+      return;
+    }
     try {
       setLoading(true);
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      };
       const response = await fetch(`${API_BASE}/editorials/delete/${id}`, {
         method: 'PUT',
+        headers,
       });
       if (!response.ok) {
         throw new Error('Failed to delete editorial');
@@ -134,10 +151,10 @@ const EditorialPage = () => {
       cell: ({ row }: any) => {
         const status = row.getValue('status') || 'Pending';
         let statusColor = '';
-        switch(status) {
-          case 'Approved': statusColor = 'bg-green-100 text-green-800'; break;
-          case 'Rejected': statusColor = 'bg-red-100 text-red-800'; break;
-          case 'Pending': default: statusColor = 'bg-yellow-100 text-yellow-800'; break;
+        switch(status.toLowerCase()) {  // Safe toLowerCase after check
+          case 'approved': statusColor = 'bg-green-100 text-green-800'; break;
+          case 'rejected': statusColor = 'bg-red-100 text-red-800'; break;
+          case 'pending': default: statusColor = 'bg-yellow-100 text-yellow-800'; break;
         }
         return (
           <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColor}`}>

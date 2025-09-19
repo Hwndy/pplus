@@ -53,7 +53,7 @@ interface DailyMention {
   date?: string;
   analyst_id?: number;
   analyst?: Analyst;
-  status: 'draft' | 'published' | 'archived';
+  status: 'pending' | 'approved' | 'rejected';
   industry: MentionDetail[];
   competitors: MentionDetail[];
   subsidiaries: MentionDetail[];
@@ -157,7 +157,7 @@ const DailyMentionsTablePage: React.FC = () => {
     setCurrentPage(1);
   }, []);
 
-  // Helper functions for form updates (unchanged from previous)
+  // Helper functions for form updates
   const updateMention = (category: 'industry' | 'competitors' | 'subsidiaries' | 'passive' | 'advert', idx: number, field: keyof MentionDetail, value: any) => {
     setFormData((prev) => ({
       ...prev,
@@ -237,7 +237,7 @@ const DailyMentionsTablePage: React.FC = () => {
     }));
   };
 
-  // Render mention fields and category sections (unchanged)
+  // Render mention fields and category sections
   const renderMentionFields = (
     category: 'industry' | 'competitors' | 'subsidiaries' | 'passive' | 'advert',
     idx: number
@@ -376,7 +376,7 @@ const DailyMentionsTablePage: React.FC = () => {
     }
   }, [toast, navigate]);
 
-  // Fetch companies and publications (fixed alternative URL)
+  // Fetch companies and publications
   useEffect(() => {
     const fetchDropdownData = async () => {
       try {
@@ -397,7 +397,7 @@ const DailyMentionsTablePage: React.FC = () => {
         console.log('Fetched companies:', fetchedCompanies);
         console.log('Fetched publications:', fetchedPublications, 'Status:', publicationsRes.status);
 
-        // Try alternative endpoint if /publications/ fails (fixed URL)
+        // Try alternative endpoint if /publications/ fails
         if (fetchedPublications.length === 0) {
           console.warn('No publications from /publications/, trying /api/publications');
           const altPublicationsRes = await axios.get(`${BASE_URL}/publications`).catch((error) => {
@@ -431,7 +431,7 @@ const DailyMentionsTablePage: React.FC = () => {
     fetchDropdownData();
   }, [toast]);
 
-  // Fetch daily mentions (improved normalization for publication)
+  // Fetch daily mentions
   useEffect(() => {
     if (!isSessionValidated) {
       toast({
@@ -461,7 +461,7 @@ const DailyMentionsTablePage: React.FC = () => {
           throw new Error('Expected mentionsData to be an array');
         }
 
-        // Normalize data (handle publication as string or object)
+        // Normalize data
         const normalizedMentions = mentionsData
           .filter((item) => !item.is_deleted)
           .map((mention: DailyMention) => ({
@@ -471,7 +471,7 @@ const DailyMentionsTablePage: React.FC = () => {
               ? mention.publication 
               : (mention.publication as Publication)?.name || 'Unknown',
             analyst: mention.analyst || { username: 'Unknown' },
-            status: mention.status || 'draft',
+            status: mention.status || 'pending',
             industry: Array.isArray(mention.industry) ? mention.industry : [],
             competitors: Array.isArray(mention.competitors) ? mention.competitors : [],
             subsidiaries: Array.isArray(mention.subsidiaries) ? mention.subsidiaries : [],
@@ -479,7 +479,7 @@ const DailyMentionsTablePage: React.FC = () => {
             advert: Array.isArray(mention.advert) ? mention.advert : [],
           }));
 
-        // Map to table data (improved headline/sentiment fallback)
+        // Map to table data
         const mappedData = normalizedMentions.map((item) => ({
           id: item.id,
           companyName: item.company.company_name,
@@ -524,7 +524,7 @@ const DailyMentionsTablePage: React.FC = () => {
     };
 
     fetchDailyMentions();
-  }, [currentPage, isSessionValidated, navigate, toast]);  // Note: refetch() resets currentPage to trigger this
+  }, [currentPage, isSessionValidated, navigate, toast]);
 
   // Handle create new
   const handleCreateNew = () => {
@@ -532,7 +532,7 @@ const DailyMentionsTablePage: React.FC = () => {
       company_id: undefined,
       publication: '',
       date: '',
-      status: 'draft',
+      status: 'pending',
       industry: [],
       competitors: [],
       subsidiaries: [],
@@ -543,7 +543,7 @@ const DailyMentionsTablePage: React.FC = () => {
     setCreateModalOpen(true);
   };
 
-  // Handle view (now fetches by ID)
+  // Handle view
   const handleView = async (id: number) => {
     const mention = await fetchMentionById(id);
     if (mention) {
@@ -552,7 +552,7 @@ const DailyMentionsTablePage: React.FC = () => {
     }
   };
 
-  // Handle edit (now fetches by ID)
+  // Handle edit
   const handleEdit = async (id: number) => {
     const mention = await fetchMentionById(id);
     if (mention) {
@@ -562,7 +562,7 @@ const DailyMentionsTablePage: React.FC = () => {
         company_id: mention.company_id,
         publication: typeof mention.publication === 'string' ? mention.publication : mention.publication?.name || '',
         date: mention.date || '',
-        status: mention.status || 'draft',
+        status: mention.status || 'pending',
         industry: mention.industry || [],
         competitors: mention.competitors || [],
         subsidiaries: mention.subsidiaries || [],
@@ -574,7 +574,7 @@ const DailyMentionsTablePage: React.FC = () => {
     }
   };
 
-  // Handle delete (add refetch)
+  // Handle delete
   const handleDelete = async (id: number) => {
     if (window.confirm('Are you sure you want to delete this daily mention?')) {
       try {
@@ -583,7 +583,7 @@ const DailyMentionsTablePage: React.FC = () => {
           title: 'Success',
           description: 'Daily mention deleted successfully',
         });
-        refetch();  // Refetch to update table
+        refetch();
       } catch (error: any) {
         console.error('Error deleting daily mention:', error.response?.data || error.message);
         toast({
@@ -595,7 +595,7 @@ const DailyMentionsTablePage: React.FC = () => {
     }
   };
 
-  // Validate form data (added check for at least one industry mention)
+  // Validate form data
   const validateForm = () => {
     const errors: Record<string, string> = {};
     if (!formData.company_id) errors.company_id = 'Company is required';
@@ -629,7 +629,7 @@ const DailyMentionsTablePage: React.FC = () => {
     return errors;
   };
 
-  // Handle create/edit submission (add refetch)
+  // Handle create/edit submission
   const handleSubmit = async (e: React.FormEvent, isEdit: boolean) => {
     e.preventDefault();
     const errors = validateForm();
@@ -648,7 +648,7 @@ const DailyMentionsTablePage: React.FC = () => {
         company_id: formData.company_id,
         publication: formData.publication,
         date: formData.date,
-        status: formData.status || 'draft',
+        status: formData.status || 'pending',
         industry: (formData.industry || []).map((item) => ({
           ...item,
           urls: item.urls.filter((url) => url && isValidUrl(url)),
@@ -689,7 +689,7 @@ const DailyMentionsTablePage: React.FC = () => {
       setCreateModalOpen(false);
       setEditModalOpen(false);
       setFormErrors({});
-      refetch();  // Refetch to update table
+      refetch();
     } catch (error: any) {
       console.error('Error submitting daily mention:', error.response?.data || error.message);
       const backendErrors = Array.isArray(error.response?.data?.message)
@@ -710,7 +710,7 @@ const DailyMentionsTablePage: React.FC = () => {
     }
   };
 
-  // Table columns (updated publication cell)
+  // Table columns
   const columns: ColumnDef<TableRow>[] = useMemo(
     () => [
       {
@@ -761,16 +761,16 @@ const DailyMentionsTablePage: React.FC = () => {
         accessorKey: 'status',
         header: 'Status',
         cell: ({ row }) => {
-          const status = row.original.status || 'draft';
+          const status = row.original.status || 'pending';
           let statusColor = '';
           switch (status.toLowerCase()) {
-            case 'published':
+            case 'approved':
               statusColor = 'bg-green-100 text-green-800';
               break;
-            case 'archived':
+            case 'rejected':
               statusColor = 'bg-red-100 text-red-800';
               break;
-            case 'draft':
+            case 'pending':
             default:
               statusColor = 'bg-yellow-100 text-yellow-800';
           }
@@ -882,14 +882,14 @@ const DailyMentionsTablePage: React.FC = () => {
                 </div>
                 <div>
                   <Label>Status <span className="text-red-500">*</span></Label>
-                  <Select value={formData.status || 'draft'} onValueChange={(value) => setFormData({ ...formData, status: value as 'draft' | 'published' | 'archived' })}>
+                  <Select value={formData.status || 'pending'} onValueChange={(value) => setFormData({ ...formData, status: value as 'pending' | 'approved' | 'rejected' })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="draft">Draft</SelectItem>
-                      <SelectItem value="published">Published</SelectItem>
-                      <SelectItem value="archived">Archived</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="approved">Approved</SelectItem>
+                      <SelectItem value="rejected">Rejected</SelectItem>
                     </SelectContent>
                   </Select>
                   {formErrors.status && <p className="text-red-500 text-sm">{formErrors.status}</p>}
@@ -948,7 +948,7 @@ const DailyMentionsTablePage: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* View Modal (improved publication display) */}
+      {/* View Modal */}
       <Dialog open={viewModalOpen} onOpenChange={setViewModalOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -1009,7 +1009,7 @@ const DailyMentionsTablePage: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Modal (same as create, with industry error display) */}
+      {/* Edit Modal */}
       <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -1063,14 +1063,14 @@ const DailyMentionsTablePage: React.FC = () => {
             </div>
             <div>
               <Label>Status <span className="text-red-500">*</span></Label>
-              <Select value={formData.status || 'draft'} onValueChange={(value) => setFormData({ ...formData, status: value as 'draft' | 'published' | 'archived' })}>
+              <Select value={formData.status || 'pending'} onValueChange={(value) => setFormData({ ...formData, status: value as 'pending' | 'approved' | 'rejected' })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="published">Published</SelectItem>
-                  <SelectItem value="archived">Archived</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
                 </SelectContent>
               </Select>
               {formErrors.status && <p className="text-red-500 text-sm">{formErrors.status}</p>}

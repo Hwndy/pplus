@@ -3,18 +3,15 @@ import { DataCard } from '@/components/ui/DataCard';
 import { Stat } from '@/components/ui/Stat';
 import { DataTable } from '@/components/ui/DataTable';
 import { ColumnDef } from '@tanstack/react-table';
-import { BarChart, CheckSquare, AlertTriangle, Eye, FileText, Target, LineChart, Newspaper, Clock, Plus, MessageCircle, Edit, Trash2 } from 'lucide-react';
+import { BarChart, CheckSquare, AlertTriangle, Eye, FileText, Target, LineChart, Newspaper, Clock, MessageCircle, Edit, Trash2, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '../auth/AuthContext';
 
 // API Base
@@ -39,8 +36,8 @@ interface GenericEntry {
   subsidiaries?: { headline: string; content: string; reporter: string | null; source: string; sentiment: string; urls: string[]; page?: string; publication_date?: string }[];
   passive?: { headline: string; content: string; reporter: string | null; source: string; sentiment: string; urls: string[]; page?: string; publication_date?: string }[];
   advert?: { headline: string; content: string; reporter: string | null; source: string; sentiment: string; urls: string[]; page?: string; publication_date?: string }[];
-  metrics?: any[]; // For SocialMediaMention
-  strengths?: any[]; // For SwotAnalysis
+  metrics?: any[];
+  strengths?: any[];
   weaknesses?: any[];
   opportunities?: any[];
   threats?: any[];
@@ -48,7 +45,6 @@ interface GenericEntry {
   brand_awareness?: any[];
   media_coverage?: any[];
   competitor_analysis?: any[];
-  // Editorial-specific fields
   source?: string;
   audience_reach?: number;
   brand?: string;
@@ -135,7 +131,7 @@ type ContentTypeKey = keyof typeof contentTypes;
 // Status Badge Component
 function StatusBadge({ status }: { status: string }) {
   const getStatusStyles = () => {
-    switch (status) {
+    switch (status?.toLowerCase()) {
       case 'approved':
         return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
       case 'rejected':
@@ -149,14 +145,14 @@ function StatusBadge({ status }: { status: string }) {
 
   return (
     <Badge variant="outline" className={`${getStatusStyles()} capitalize`}>
-      {status}
+      {status || 'Unknown'}
     </Badge>
   );
 }
 
 // Supervisor Dashboard Component
 export function SupervisorDashboard() {
-  const { token, isAuthenticated, logout, user } = useAuth();
+  const { token, isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const headers = token ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } : {};
 
@@ -180,31 +176,24 @@ export function SupervisorDashboard() {
   const [activeTab, setActiveTab] = useState<ContentTypeKey>('editorials');
   const [loading, setLoading] = useState(true);
   const [tableLoading, setTableLoading] = useState(false);
-
-  // Dialog States
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [showEditDialog, setShowEditDialog] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [currentEntry, setCurrentEntry] = useState<GenericEntry | null>(null);
-  const [formData, setFormData] = useState<Partial<GenericEntry>>({ title: '', content: '', status: 'draft', comments: '' });
 
   // Handle Unauthorized Access
   useEffect(() => {
     if (!isAuthenticated || !token || !user?.id) {
       toast.error('Please log in to access the dashboard');
-      logout();
       navigate('/login', { replace: true });
       setLoading(false);
     }
-  }, [isAuthenticated, token, user, navigate, logout]);
+  }, [isAuthenticated, token, user, navigate]);
 
   // Fetch Stats
   const fetchStats = async () => {
     if (!token || !user?.id) {
       toast.error('Authentication required');
-      logout();
       setLoading(false);
       return;
     }
@@ -262,7 +251,6 @@ export function SupervisorDashboard() {
       console.error('Error fetching stats:', error);
       toast.error('Failed to load stats');
       if ((error as Error).message.includes('Unauthorized')) {
-        logout();
         navigate('/login', { replace: true });
       }
     } finally {
@@ -393,7 +381,6 @@ export function SupervisorDashboard() {
   const fetchEntries = async (type: ContentTypeKey, page: number = 1) => {
     if (!token || !user?.id) {
       toast.error('Authentication required');
-      logout();
       return;
     }
     if (data[type]?.length > 0 && pagination[type].currentPage === page) return;
@@ -415,13 +402,11 @@ export function SupervisorDashboard() {
         throw new Error(`Failed to fetch ${type} entries: ${errorMessage}`);
       }
       const json = await res.json();
-      console.log(`Fetch ${type} response:`, json); // Debug log
       let entries: any[] = [];
       let paginationData: Pagination = { currentPage: page, totalPages: 1, total: 0, pageSize: PAGE_SIZE };
 
       if (json.success) {
         if (type === 'editorials') {
-          // Editorial response has data.editorial and data.meta
           entries = Array.isArray(json.data?.editorial) ? json.data.editorial : [];
           paginationData = {
             currentPage: json.data?.meta?.currentPage || page,
@@ -430,7 +415,6 @@ export function SupervisorDashboard() {
             pageSize: json.data?.meta?.pageSize || PAGE_SIZE,
           };
         } else {
-          // Other content types use data.data and data.pagination
           entries = Array.isArray(json.data?.data) ? json.data.data : (Array.isArray(json.data) ? json.data : []);
           paginationData = {
             currentPage: json.data?.pagination?.page || json.pagination?.page || page,
@@ -450,7 +434,6 @@ export function SupervisorDashboard() {
       console.error(`Error fetching ${type}:`, error);
       toast.error(`Failed to load ${contentTypes[type].displayName}: ${(error as Error).message}`);
       if ((error as Error).message.includes('Unauthorized')) {
-        logout();
         navigate('/login', { replace: true });
       }
     } finally {
@@ -458,11 +441,25 @@ export function SupervisorDashboard() {
     }
   };
 
+  // Refresh Data
+  const handleRefresh = () => {
+    setData({});
+    setPagination({
+      editorials: { currentPage: 1, totalPages: 1, total: 0, pageSize: PAGE_SIZE },
+      dailyMentions: { currentPage: 1, totalPages: 1, total: 0, pageSize: PAGE_SIZE },
+      swotAnalysis: { currentPage: 1, totalPages: 1, total: 0, pageSize: PAGE_SIZE },
+      outcomeInsights: { currentPage: 1, totalPages: 1, total: 0, pageSize: PAGE_SIZE },
+      socialMediaMentions: { currentPage: 1, totalPages: 1, total: 0, pageSize: PAGE_SIZE },
+    });
+    fetchStats();
+    fetchEntries(activeTab, 1);
+    toast.success('Data refreshed');
+  };
+
   // Update Entry Status
   const updateStatus = async (entry: GenericEntry, newStatus: 'approved' | 'rejected', comments?: string) => {
     if (!token || !user?.id) {
       toast.error('Authentication required: Missing token or user ID');
-      logout();
       navigate('/login', { replace: true });
       return;
     }
@@ -478,7 +475,6 @@ export function SupervisorDashboard() {
       ...(type === 'dailyMentions' ? { approver_id: user.id } : { approved_by: user.id }),
     };
     try {
-      console.log('Updating status:', { endpoint, updateBody });
       const res = await fetch(endpoint, {
         method: 'PATCH',
         headers,
@@ -497,7 +493,6 @@ export function SupervisorDashboard() {
         }
         throw new Error(`Failed to update status: ${errorMessage}`);
       }
-      const updatedEntry = await res.json();
       toast.success(`${contentTypes[type].displayName} ${newStatus}`);
       setData(prev => ({
         ...prev,
@@ -513,11 +508,11 @@ export function SupervisorDashboard() {
             : e
         ),
       }));
+      fetchStats(); // Refresh stats after status update
     } catch (error) {
       console.error('Error updating status:', error);
       toast.error(`Failed to update status: ${(error as Error).message}`);
       if ((error as Error).message.includes('Unauthorized')) {
-        logout();
         navigate('/login', { replace: true });
       }
     }
@@ -555,14 +550,12 @@ export function SupervisorDashboard() {
   const handleDelete = async (entry: GenericEntry) => {
     if (!token || !user?.id) {
       toast.error('Authentication required');
-      logout();
       return;
     }
     if (!confirm('Are you sure you want to delete this entry?')) return;
     const type = activeTab;
     const endpoint = `${API_BASE}${contentTypes[type].deleteEndpoint}/${entry.id}`;
     try {
-      console.log('Deleting entry:', { endpoint });
       const res = await fetch(endpoint, {
         method: 'PUT',
         headers,
@@ -582,249 +575,14 @@ export function SupervisorDashboard() {
       }
       toast.success('Entry deleted');
       setData(prev => ({ ...prev, [type]: prev[type].filter(e => e.id !== entry.id) }));
+      fetchStats(); // Refresh stats after deletion
     } catch (error) {
       console.error('Error deleting:', error);
       toast.error(`Failed to delete entry: ${(error as Error).message}`);
       if ((error as Error).message.includes('Unauthorized')) {
-        logout();
         navigate('/login', { replace: true });
       }
     }
-  };
-
-  // Open Create Dialog
-  const openCreateDialog = () => {
-    setFormData({ title: '', content: '', status: 'draft', comments: '' });
-    setShowCreateDialog(true);
-  };
-
-  // Submit Create
-  const submitCreate = async () => {
-    if (!formData.title?.trim() || !formData.content?.trim()) {
-      toast.error('Title and content are required');
-      return;
-    }
-    if (!token || !user?.id) {
-      toast.error('Authentication required');
-      logout();
-      return;
-    }
-    const type = activeTab;
-    const endpoint = `${API_BASE}${contentTypes[type].endpoint}`;
-    let createBody: any = {
-      status: formData.status || 'pending',
-      supervisor_note: formData.comments || '',
-      date: new Date().toISOString(),
-      created_by: user.id,
-    };
-
-    if (type === 'editorials') {
-      createBody.title = formData.title;
-      createBody.analyst_note = formData.content;
-      createBody.source = 'Unknown';
-      createBody.online_channel = 'Online';
-      createBody.audience_reach = 0;
-      createBody.brand = 'Unknown';
-      createBody.placement = 'Unknown';
-      createBody.reporter = null;
-      createBody.country = 'Unknown';
-      createBody.spokesperson = null;
-      createBody.activity = 'Unknown';
-      createBody.sentiment = 'neutral';
-      createBody.advert_spend = 0;
-      createBody.circulation = 0;
-      createBody.page_size = 'Unknown';
-      createBody.language = 'English';
-    } else if (type === 'dailyMentions') {
-      createBody.publication = 'Unknown';
-      createBody.industry = [{
-        headline: formData.title || '',
-        content: formData.content || '',
-        reporter: null,
-        source: 'Unknown',
-        sentiment: 'neutral',
-        page: 'Unknown',
-        publication_date: new Date().toISOString(),
-        urls: [],
-      }];
-      createBody.analyst_id = user.id;
-    } else if (type === 'swotAnalysis') {
-      createBody.title = formData.title;
-      createBody.strengths = [{ title: formData.title, description: formData.content }];
-      createBody.weaknesses = [];
-      createBody.opportunities = [];
-      createBody.threats = [];
-      createBody.analyst_note = formData.content;
-      createBody.analyst_id = user.id;
-    } else if (type === 'outcomeInsights') {
-      createBody.title = formData.title;
-      createBody.social_media_engagement = { percentage: 0, description: formData.content };
-      createBody.media_coverage = { percentage: 0, description: '' };
-      createBody.competitor_analysis = { percentage: 0, description: '' };
-      createBody.analyst_note = formData.content;
-      createBody.analyst_id = user.id;
-    } else if (type === 'socialMediaMentions') {
-      createBody.social_media_type = 'X';
-      createBody.metrics = [{ page_likes: 0, average_likes: 0, average_comments: 0 }];
-      createBody.analyst_note = formData.content;
-      createBody.created_by = user.id;
-    }
-
-    try {
-      console.log('Creating entry:', { endpoint, createBody });
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(createBody),
-      });
-      if (res.status === 401) {
-        throw new Error('Unauthorized access. Please log in again.');
-      }
-      if (!res.ok) {
-        let errorMessage = res.statusText;
-        try {
-          const errorData = await res.json();
-          errorMessage = errorData.message || errorData.error || res.statusText;
-        } catch (parseError) {
-          // If JSON parse fails, use status text
-        }
-        throw new Error(`Failed to create: ${errorMessage}`);
-      }
-      const newEntry = await res.json();
-      toast.success('Entry created');
-      setData(prev => ({
-        ...prev,
-        [type]: [...(prev[type] || []), transformToGenericEntry(type, newEntry.data || newEntry)],
-      }));
-      setShowCreateDialog(false);
-      setFormData({ title: '', content: '', status: 'draft', comments: '' });
-    } catch (error) {
-      console.error('Error creating:', error);
-      toast.error(`Failed to create entry: ${(error as Error).message}`);
-      if ((error as Error).message.includes('Unauthorized')) {
-        logout();
-        navigate('/login', { replace: true });
-      }
-    }
-  };
-
-  // Open Edit Dialog
-  const openEditDialog = (entry: GenericEntry) => {
-    setFormData({ 
-      title: entry.title, 
-      content: entry.content || '', 
-      status: entry.status, 
-      comments: entry.comments || '' 
-    });
-    setCurrentEntry(entry);
-    setShowEditDialog(true);
-  };
-
-  // Submit Edit
-  const submitEdit = async () => {
-    if (!formData.title?.trim() || !formData.content?.trim() || !currentEntry) {
-      toast.error('Title and content are required');
-      return;
-    }
-    if (!token || !user?.id) {
-      toast.error('Authentication required');
-      logout();
-      return;
-    }
-    const type = activeTab;
-    const endpoint = `${API_BASE}${contentTypes[type].updateEndpoint}/${currentEntry.id}`;
-    let updateBody: any = {
-      updatedAt: new Date().toISOString(),
-      status: formData.status,
-      supervisor_note: formData.comments,
-    };
-
-    if (type === 'editorials') {
-      updateBody.title = formData.title;
-      updateBody.analyst_note = formData.content;
-    } else if (type === 'dailyMentions') {
-      const updatedIndustry = currentEntry.industry
-        ? currentEntry.industry.map((item, index) =>
-            index === 0
-              ? { ...item, headline: formData.title || '', content: formData.content || '' }
-              : item
-          )
-        : [{
-            headline: formData.title || '',
-            content: formData.content || '',
-            reporter: null,
-            source: 'Unknown',
-            sentiment: 'neutral',
-            page: 'Unknown',
-            publication_date: new Date().toISOString(),
-            urls: [],
-          }];
-      updateBody.industry = updatedIndustry;
-    } else if (type === 'swotAnalysis') {
-      updateBody.title = formData.title;
-      updateBody.strengths = currentEntry.strengths
-        ? currentEntry.strengths.map((item, index) =>
-            index === 0
-              ? { ...item, title: formData.title, description: formData.content }
-              : item
-          )
-        : [{ title: formData.title, description: formData.content }];
-      updateBody.analyst_note = formData.content;
-    } else if (type === 'outcomeInsights') {
-      updateBody.title = formData.title;
-      updateBody.social_media_engagement = { ...currentEntry.social_media_engagement, description: formData.content };
-      updateBody.analyst_note = formData.content;
-    } else if (type === 'socialMediaMentions') {
-      updateBody.title = formData.title;
-      updateBody.metrics = currentEntry.metrics
-        ? currentEntry.metrics.map((item, index) =>
-            index === 0
-              ? { ...item, average_likes: 0, average_comments: 0 }
-              : item
-          )
-        : [{ page_likes: 0, average_likes: 0, average_comments: 0 }];
-      updateBody.analyst_note = formData.content;
-    }
-
-    try {
-      console.log('Updating entry:', { endpoint, updateBody });
-      const res = await fetch(endpoint, {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify(updateBody),
-      });
-      if (res.status === 401) {
-        throw new Error('Unauthorized access. Please log in again.');
-      }
-      if (!res.ok) {
-        let errorMessage = res.statusText;
-        try {
-          const errorData = await res.json();
-          errorMessage = errorData.message || errorData.error || res.statusText;
-        } catch (parseError) {
-          // If JSON parse fails, use status text
-        }
-        throw new Error(`Failed to update: ${errorMessage}`);
-      }
-      toast.success('Entry updated');
-      setData(prev => ({
-        ...prev,
-        [type]: prev[type].map(e => (e.id === currentEntry.id ? { ...e, title: formData.title, content: formData.content, status: formData.status, comments: formData.comments } : e)),
-      }));
-      setShowEditDialog(false);
-    } catch (error) {
-      console.error('Error updating:', error);
-      toast.error(`Failed to update entry: ${(error as Error).message}`);
-      if ((error as Error).message.includes('Unauthorized')) {
-        logout();
-        navigate('/login', { replace: true });
-      }
-    }
-  };
-
-  // Handle Pagination
-  const handlePageChange = (type: ContentTypeKey, page: number) => {
-    fetchEntries(type, page);
   };
 
   // Columns Definition
@@ -867,9 +625,6 @@ export function SupervisorDashboard() {
           <div className="flex space-x-2">
             <Button size="sm" variant="outline" onClick={() => openDetailsDialog(entry)}>
               <Eye className="mr-2 h-4 w-4" /> View
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => openEditDialog(entry)}>
-              <Edit className="mr-2 h-4 w-4" /> Edit
             </Button>
             {entry.status === 'pending' && (
               <>
@@ -933,12 +688,9 @@ export function SupervisorDashboard() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Supervisor Dashboard</h1>
         <div className="flex space-x-2">
-          <Button variant="outline" onClick={openCreateDialog}>
-            <Plus className="mr-2 h-4 w-4" />
-            Create New
-          </Button>
-          <Button variant="outline" onClick={logout}>
-            Logout
+          <Button variant="outline" onClick={handleRefresh}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Refresh
           </Button>
         </div>
       </div>
@@ -992,7 +744,7 @@ export function SupervisorDashboard() {
                   pagination={{
                     currentPage: pagination[key as ContentTypeKey].currentPage,
                     totalPages: pagination[key as ContentTypeKey].totalPages,
-                    onPageChange: (page: number) => handlePageChange(key as ContentTypeKey, page),
+                    onPageChange: (page: number) => fetchEntries(key as ContentTypeKey, page),
                   }}
                 />
               </CardContent>
@@ -1393,107 +1145,6 @@ export function SupervisorDashboard() {
           </div>
           <DialogFooter>
             <Button onClick={() => setShowDetailsDialog(false)}>Close</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Create Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create New Entry</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Title</Label>
-              <Input value={formData.title as string || ''} onChange={(e) => setFormData({ ...formData, title: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>Content</Label>
-              <Textarea
-                value={formData.content as string || ''}
-                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                className="min-h-32"
-                placeholder="Enter content..."
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Select value={formData.status as string || 'draft'} onValueChange={(value) => setFormData({ ...formData, status: value })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Comments</Label>
-              <Textarea
-                value={formData.comments as string || ''}
-                onChange={(e) => setFormData({ ...formData, comments: e.target.value })}
-                placeholder="Enter comments..."
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>Cancel</Button>
-            <Button onClick={submitCreate}>Create</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Dialog */}
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Entry</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Title</Label>
-              <Input value={formData.title as string || ''} onChange={(e) => setFormData({ ...formData, title: e.target.value })} />
-            </div>
-            <div className="space-y-2">
-              <Label>Content</Label>
-              <Textarea
-                value={formData.content as string || ''}
-                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                className="min-h-32"
-                placeholder="Enter content..."
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Select value={formData.status as string || 'draft'} onValueChange={(value) => setFormData({ ...formData, status: value })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Comments</Label>
-              <Textarea
-                value={formData.comments as string || ''}
-                onChange={(e) => setFormData({ ...formData, comments: e.target.value })}
-                placeholder="Enter comments..."
-                className="min-h-32"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEditDialog(false)}>Cancel</Button>
-            <Button onClick={submitEdit}>Update</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
