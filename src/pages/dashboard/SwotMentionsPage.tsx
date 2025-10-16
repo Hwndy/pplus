@@ -3,12 +3,13 @@ import { Button } from "@/components/ui/button";
 import { ThumbsUp, ThumbsDown, ArrowUpRight, AlertTriangle, Plus, Edit, Trash2, Eye, MoreHorizontal } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { SwotMentionForm } from '../../components/admin/SwotMentionForm';
-import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card"; // Added CardHeader and CardTitle
+import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useAuth } from '@/components/auth/AuthContext';
 
 interface SwotAnalysis {
   id: string;
@@ -29,6 +30,7 @@ interface SwotAnalysis {
 }
 
 export function SwotMentionsPage() {
+  const { user, token } = useAuth(); // Use AuthContext to get user and token
   const [currentDate] = useState(new Date());
   const [swotData, setSwotData] = useState<SwotAnalysis[]>([]);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -39,13 +41,24 @@ export function SwotMentionsPage() {
   // Replace with your actual token retrieval logic
   const getAuthHeaders = () => ({
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${localStorage.getItem('token') || ''}`, // Adjust based on your auth mechanism
+    'Authorization': `Bearer ${token || ''}`,
   });
 
   // Fetch SWOT analyses
   const fetchSwotData = async () => {
     try {
-      const response = await fetch('https://pplus-fbec.onrender.com/api/swot-analysis', {
+      if (!token || !user) {
+        throw new Error('Authentication required');
+      }
+
+      // Determine endpoint based on user role
+      const endpoint = user.role.name === 'Supervisor'
+        ? 'https://pplus-fbec.onrender.com/api/swot-analysis/supervisor-mentions'
+        : user.role.name === 'Analyst'
+        ? 'https://pplus-fbec.onrender.com/api/swot-analysis/my-analysis'
+        : 'https://pplus-fbec.onrender.com/api/swot-analysis';
+
+      const response = await fetch(endpoint, {
         headers: getAuthHeaders(),
       });
       const result = await response.json();
@@ -63,7 +76,7 @@ export function SwotMentionsPage() {
 
   useEffect(() => {
     fetchSwotData();
-  }, []);
+  }, [user, token]); // Add user and token to dependencies
 
   // Handle edit button click
   const handleEdit = (swot: SwotAnalysis) => {
@@ -261,12 +274,12 @@ export function SwotMentionsPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card>
-                  <CardHeader className="bg-green-50 pb-3"> {/* Fixed: Now imported */}
+                  <CardHeader className="bg-green-50 pb-3">
                     <div className="flex items-center gap-2">
                       <div className="rounded-full bg-green-100 p-2">
                         <ThumbsUp className="h-4 w-4 text-green-500" />
                       </div>
-                      <CardTitle className="text-lg text-green-700">Strengths</CardTitle> {/* Fixed: Now imported */}
+                      <CardTitle className="text-lg text-green-700">Strengths</CardTitle>
                     </div>
                   </CardHeader>
                   <CardContent className="pt-4">

@@ -120,7 +120,7 @@ axios.interceptors.request.use(
 const DailyMentionsTablePage: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { isSessionValidated } = useAuth();
+  const { user, isSessionValidated, token } = useAuth(); // Updated to include user and token
   const [dailyMentions, setDailyMentions] = useState<DailyMention[]>([]);
   const [tableData, setTableData] = useState<TableRow[]>([]);
   const [totalPages, setTotalPages] = useState(1);
@@ -153,7 +153,6 @@ const DailyMentionsTablePage: React.FC = () => {
 
   // Refetch function
   const refetch = useCallback(() => {
-    // Trigger the useEffect by resetting currentPage or adding a dependency
     setCurrentPage(1);
   }, []);
 
@@ -433,7 +432,7 @@ const DailyMentionsTablePage: React.FC = () => {
 
   // Fetch daily mentions
   useEffect(() => {
-    if (!isSessionValidated) {
+    if (!isSessionValidated || !user || !token) {
       toast({
         title: 'Session not validated',
         description: 'Please log in to view daily mentions.',
@@ -446,7 +445,14 @@ const DailyMentionsTablePage: React.FC = () => {
     const fetchDailyMentions = async () => {
       try {
         setLoading(true);
-        const response = await axios.get<ApiResponse>(`${BASE_URL}/daily-mentions/`, {
+        // Determine endpoint based on user role
+        const endpoint = user.role.name === 'Supervisor'
+          ? `${BASE_URL}/daily-mentions/supervisor-mentions`
+          : user.role.name === 'Analyst'
+          ? `${BASE_URL}/daily-mentions/my-mentions`
+          : `${BASE_URL}/daily-mentions/`;
+
+        const response = await axios.get<ApiResponse>(endpoint, {
           params: {
             page: currentPage,
             limit: mentionsPerPage,
@@ -524,7 +530,7 @@ const DailyMentionsTablePage: React.FC = () => {
     };
 
     fetchDailyMentions();
-  }, [currentPage, isSessionValidated, navigate, toast]);
+  }, [currentPage, isSessionValidated, user, token, navigate, toast]); // Added user and token to dependencies
 
   // Handle create new
   const handleCreateNew = () => {

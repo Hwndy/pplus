@@ -4,6 +4,9 @@ import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/DataTable';
 import { toast } from 'sonner';
 import { useNavigate, useLocation } from 'react-router-dom';
+// Update the import path to the correct location of AuthContext
+// import { useAuth } from '@/contexts/AuthContext'; // Import useAuth from AuthContext
+import { useAuth } from '@/components/auth/AuthContext';
 
 interface Editorial {
   id: number;
@@ -47,7 +50,7 @@ interface Editorial {
   mime_type: string | null;
   file_type: string | null;
   is_deleted: boolean;
-  status?: string; // Added status field for consistency
+  status?: string;
 }
 
 const API_BASE = "https://pplus-fbec.onrender.com/api";
@@ -55,6 +58,7 @@ const API_BASE = "https://pplus-fbec.onrender.com/api";
 const EditorialPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, token } = useAuth(); // Use AuthContext to get user and token
   const [editorials, setEditorials] = useState<Editorial[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -63,18 +67,27 @@ const EditorialPage = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
 
-  // Get token for API calls
-  const token = localStorage.getItem('token');
-
   const fetchEditorials = async () => {
     setLoading(true);
     setError(null);
     try {
+      if (!token || !user) {
+        throw new Error('Authentication required');
+      }
+
       const headers = {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       };
-      const response = await fetch(`${API_BASE}/editorials?page=${currentPage}&limit=${editorialsPerPage}`, { headers });
+
+      // Determine endpoint based on user role
+      const endpoint = user.role.name === 'Supervisor'
+        ? `${API_BASE}/editorials/supervisor-mentions?page=${currentPage}&limit=${editorialsPerPage}`
+        : user.role.name === 'Analyst'
+        ? `${API_BASE}/editorials/my-editorials?page=${currentPage}&limit=${editorialsPerPage}`
+        : `${API_BASE}/editorials?page=${currentPage}&limit=${editorialsPerPage}`;
+
+      const response = await fetch(endpoint, { headers });
       if (!response.ok) {
         throw new Error('Network response was not ok');
       }
@@ -85,6 +98,7 @@ const EditorialPage = () => {
     } catch (err: any) {
       setError(err.message || 'Failed to fetch editorials');
       setEditorials([]);
+      toast.error(err.message || 'Failed to fetch editorials');
     } finally {
       setLoading(false);
     }
@@ -92,7 +106,7 @@ const EditorialPage = () => {
 
   useEffect(() => {
     fetchEditorials();
-  }, [currentPage]);
+  }, [currentPage, user, token]); // Add user and token to dependencies
 
   const handleDelete = async (id: number) => {
     if (!token) {
@@ -151,7 +165,7 @@ const EditorialPage = () => {
       cell: ({ row }: any) => {
         const status = row.getValue('status') || 'Pending';
         let statusColor = '';
-        switch(status.toLowerCase()) {  // Safe toLowerCase after check
+        switch(status.toLowerCase()) {
           case 'approved': statusColor = 'bg-green-100 text-green-800'; break;
           case 'rejected': statusColor = 'bg-red-100 text-red-800'; break;
           case 'pending': default: statusColor = 'bg-yellow-100 text-yellow-800'; break;

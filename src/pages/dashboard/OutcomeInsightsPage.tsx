@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { useAuth } from '@/components/auth/AuthContext';
 
 interface OutcomeInsight {
   id: number;
@@ -37,6 +38,7 @@ interface Pagination {
 }
 
 export default function OutcomeInsightsPage() {
+  const { user, token } = useAuth(); // Use AuthContext to get user and token
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedOutcome, setSelectedOutcome] = useState<OutcomeInsight | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -47,14 +49,25 @@ export default function OutcomeInsightsPage() {
 
   const getAuthHeaders = () => ({
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
+    'Authorization': `Bearer ${token || ''}`,
   });
 
   const fetchOutcomeInsights = async (page = 1, limit = 10) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`https://pplus-fbec.onrender.com/api/outcome-insights?page=${page}&limit=${limit}`, {
+      if (!token || !user) {
+        throw new Error('Authentication required');
+      }
+
+      // Determine endpoint based on user role
+      const endpoint = user.role.name === 'Supervisor'
+        ? `https://pplus-fbec.onrender.com/api/outcome-insights/supervisor-mentions?page=${page}&limit=${limit}`
+        : user.role.name === 'Analyst'
+        ? `https://pplus-fbec.onrender.com/api/outcome-insights/my-insights?page=${page}&limit=${limit}`
+        : `https://pplus-fbec.onrender.com/api/outcome-insights?page=${page}&limit=${limit}`;
+
+      const response = await fetch(endpoint, {
         headers: getAuthHeaders(),
       });
       const result = await response.json();
@@ -63,9 +76,11 @@ export default function OutcomeInsightsPage() {
         setPagination(result.data.pagination || { total: 0, page, limit, totalPages: 0 });
       } else {
         setError(result.message || 'Failed to fetch outcome insights');
+        toast.error(result.message || 'Failed to fetch outcome insights');
       }
     } catch (err) {
       setError('Error fetching outcome insights');
+      toast.error('Error fetching outcome insights');
       console.error(err);
     } finally {
       setLoading(false);
@@ -74,7 +89,7 @@ export default function OutcomeInsightsPage() {
 
   useEffect(() => {
     fetchOutcomeInsights();
-  }, []);
+  }, [user, token]); // Add user and token to dependencies
 
   const handleView = (outcome: OutcomeInsight) => {
     setSelectedOutcome(outcome);
@@ -89,7 +104,7 @@ export default function OutcomeInsightsPage() {
   };
 
   const handleDelete = async (outcome: OutcomeInsight) => {
-    if (window.confirm(`Are you sure you want to delete the outcome insight for ${outcome.company.name}?`)) {
+    if (window.confirm(`Are you sure you want to delete the outcome insight for ${outcome.company.company_name}?`)) {
       try {
         const response = await fetch(`https://pplus-fbec.onrender.com/api/outcome-insights/delete/${outcome.id}`, {
           method: 'PUT',
@@ -234,7 +249,7 @@ export default function OutcomeInsightsPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  outcomeInsights.map((outcome, index) => (
+                  outcomeInsights.filter(outcome => !outcome.is_deleted).map((outcome, index) => (
                     <TableRow key={outcome.id}>
                       <TableCell className="font-medium text-center">{index + 1}</TableCell>
                       <TableCell className="font-medium">{outcome.company.company_name}</TableCell>
@@ -303,6 +318,32 @@ export default function OutcomeInsightsPage() {
               </TableBody>
             </Table>
           </div>
+          {pagination.totalPages > 1 && (
+            <div className="flex items-center justify-between space-x-2 py-4">
+              <div className="text-sm text-muted-foreground">
+                Showing {Math.min((pagination.page - 1) * pagination.limit + 1, pagination.total)} to{' '}
+                {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} entries
+              </div>
+              <div className="flex space-x-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchOutcomeInsights(pagination.page - 1, pagination.limit)}
+                  disabled={pagination.page === 1}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchOutcomeInsights(pagination.page + 1, pagination.limit)}
+                  disabled={pagination.page === pagination.totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
