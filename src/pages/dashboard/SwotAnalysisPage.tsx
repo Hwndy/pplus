@@ -108,7 +108,7 @@ const SwotAnalysisPage: React.FC = () => {
   const [companies, setCompanies] = useState<Company[]>([]);
   const analysesPerPage = 10;
 
-  const BASE_URL = 'https://p-skai.onrender.com/api';
+  const BASE_URL = 'https://pplus-fbec.onrender.com/api';
 
   // Helper functions for form updates
   const updateCategory = (

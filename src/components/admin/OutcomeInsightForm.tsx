@@ -138,8 +138,8 @@ export function OutcomeInsightForm({
     const method = isEdit ? 'PUT' : 'POST';
 
     try {
-      console.log('Sending request to:', `https://p-skai.onrender.com${url}`, 'with method:', method, 'and payload:', payload); // Debug log
-      const response = await fetch(`https://p-skai.onrender.com${url}`, {
+      console.log('Sending request to:', `https://pplus-fbec.onrender.com${url}`, 'with method:', method, 'and payload:', payload); // Debug log
+      const response = await fetch(`https://pplus-fbec.onrender.com${url}`, {
         method,
         headers: {
           'Content-Type': 'application/json',

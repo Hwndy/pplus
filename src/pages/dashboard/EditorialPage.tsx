@@ -50,7 +50,7 @@ interface Editorial {
   status?: string; // Added status field for consistency
 }
 
-const API_BASE = "https://p-skai.onrender.com/api";
+const API_BASE = "https://pplus-fbec.onrender.com/api";
 
 const EditorialPage = () => {
   const navigate = useNavigate();

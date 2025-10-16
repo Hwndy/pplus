@@ -52,7 +52,7 @@ const CompaniesPage = () => {
   const fetchCompanies = async () => {
     setLoading(true);
     try {
-      const res = await axios.get('https://p-skai.onrender.com/api/companies/', {
+      const res = await axios.get('https://pplus-fbec.onrender.com/api/companies/', {
         params: apiParams
       });
       const apiData = res.data?.data;

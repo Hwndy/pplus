@@ -50,7 +50,7 @@ export type Parameter = {
 };
 
 // -------------------- Config --------------------
-const API_BASE = "https://p-skai.onrender.com/api";
+const API_BASE = "https://pplus-fbec.onrender.com/api";
 
 // -------------------- jsonFetch helper --------------------
 async function jsonFetch<T = any>(path: string, options: RequestInit = {}): Promise<T> {

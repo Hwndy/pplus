@@ -16,7 +16,7 @@ import { useAuth } from '../auth/AuthContext';
 import {Label} from '../ui/label';
 
 // API Base
-const API_BASE = 'https://p-skai.onrender.com/api';
+const API_BASE = 'https://pplus-fbec.onrender.com/api';
 const PAGE_SIZE = 10;
 
 // Generic Entry Interface
