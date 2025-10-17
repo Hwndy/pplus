@@ -249,12 +249,12 @@ export default function CreateCompanyForm({
         let res;
         if (initialValues && initialValues.id && index === 0) {
           res = await axios.put(
-            `https://pplus-fbec.onrender.com/api/companies/update/${initialValues.id}`,
+            `https://backend-e79r.onrender.com/api/companies/update/${initialValues.id}`,
             payload
           );
         } else {
           res = await axios.post(
-            'https://pplus-fbec.onrender.com/api/companies/create',
+            'https://backend-e79r.onrender.com/api/companies/create',
             payload
           );
         }

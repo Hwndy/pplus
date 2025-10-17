@@ -25,7 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Link } from 'react-router-dom';
 
 // Base URL for API
-const BASE_URL = 'https://pplus-fbec.onrender.com/api';
+const BASE_URL = 'https://backend-e79r.onrender.com/api';
 
 // Interface for normalized submission data
 interface Submission {

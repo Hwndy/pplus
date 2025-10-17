@@ -66,7 +66,7 @@ export const SwotMentionForm: React.FC<SwotMentionFormProps> = ({
   useEffect(() => {
     const fetchCompanies = async () => {
       try {
-        const response = await fetch('https://pplus-fbec.onrender.com/api/companies', {
+        const response = await fetch('https://backend-e79r.onrender.com/api/companies', {
           headers: getAuthHeaders(),
         });
         const result = await response.json();
@@ -133,8 +133,8 @@ export const SwotMentionForm: React.FC<SwotMentionFormProps> = ({
 
     try {
       const url = isEdit && initialData?.id
-        ? `https://pplus-fbec.onrender.com/api/swot-analysis/update/${initialData.id}`
-        : 'https://pplus-fbec.onrender.com/api/swot-analysis/create';
+        ? `https://backend-e79r.onrender.com/api/swot-analysis/update/${initialData.id}`
+        : 'https://backend-e79r.onrender.com/api/swot-analysis/create';
       const method = isEdit ? 'PUT' : 'POST';
 
       const response = await fetch(url, {
