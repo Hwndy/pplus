@@ -96,7 +96,7 @@ export default function CreateCompanyForm({
   useEffect(() => {
     const fetchCompanies = async () => {
       try {
-        const res = await axios.get('https://pplus-y9m6.onrender.com/api/companies/?limit=1000');
+        const res = await axios.get('https://backend-e79r.onrender.com/api/companies/?limit=1000');
         const companies = res.data?.data?.data || [];
         const validCompanies = companies.filter((company: Company) => company.id && company.id.toString().length > 0);
         setApiCompanies(validCompanies);
