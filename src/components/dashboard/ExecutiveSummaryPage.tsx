@@ -23,14 +23,14 @@ import {
   Award,
   PieChart as PieChartIcon
 } from 'lucide-react';
-import { useAuth } from './AuthContext';
+import { useAuth } from '@/components/auth/AuthContext';
 import { toast } from 'sonner';
 
 // Enhanced color palette for better visual appeal
 const COLORS = ['#4F46E5', '#06B6D4', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6'];
 const SENTIMENT_COLORS = ['#10B981', '#F59E0B', '#EF4444'];
 
-const API_BASE_URL = 'https://backend-e79r.onrender.com/api';
+const API_BASE_URL = 'https://pplus-2myh.onrender.com/api';
 
 export function ExecutiveSummaryPage() {
   const { user, token, isAuthenticated, isLoading: authLoading } = useAuth();
@@ -45,51 +45,13 @@ export function ExecutiveSummaryPage() {
   const currentDate = new Date();
   const formattedDate = `${currentDate.getDate()} ${currentDate.toLocaleString('default', { month: 'short' })} ${currentDate.getFullYear()}`;
 
-  // Filter options for Executive Summary
+  // Simplified filter options - only date range for month selection
   const filterOptions: FilterOption[] = [
     {
       key: 'dateRange',
       label: 'Date Range',
       type: 'daterange',
       placeholder: 'Select date range'
-    },
-    {
-      key: 'mediaType',
-      label: 'Media Type',
-      type: 'multiselect',
-      options: [
-        { value: 'online', label: 'Online Media' },
-        { value: 'print', label: 'Print Media' }
-      ]
-    },
-    {
-      key: 'language',
-      label: 'Language',
-      type: 'multiselect',
-      options: [
-        { value: 'English', label: 'English' },
-        { value: 'Portuguese', label: 'Portuguese' },
-        { value: 'Turkish', label: 'Turkish' }
-      ]
-    },
-    {
-      key: 'sentiment',
-      label: 'Sentiment',
-      type: 'multiselect',
-      options: [
-        { value: 'positive', label: 'Positive' },
-        { value: 'neutral', label: 'Neutral' },
-        { value: 'negative', label: 'Negative' }
-      ]
-    },
-    {
-      key: 'region',
-      label: 'Region',
-      type: 'select',
-      options: [
-        { value: 'local', label: 'Local Media' },
-        { value: 'international', label: 'International Media' }
-      ]
     }
   ];
 
@@ -209,10 +171,6 @@ export function ExecutiveSummaryPage() {
     fetchData();
   }, [selectedCompany, filterValues, token, authLoading, isAuthenticated]);
 
-  if (authLoading || dataLoading || !selectedCompany) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>;
-  }
-
   // Calculate sentiment data
   const totalMentions = (summaryData.positiveMediaExposure || 0) +
                        (summaryData.neutralMediaExposure || 0) +
@@ -258,6 +216,10 @@ export function ExecutiveSummaryPage() {
     value: s.percentage
   }));
 
+  if (authLoading || dataLoading || !selectedCompany) {
+    return <div className="flex justify-center items-center h-screen">Loading...</div>;
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex justify-between items-center">
@@ -293,7 +255,7 @@ export function ExecutiveSummaryPage() {
         >
           <div className="flex flex-col items-center justify-center p-4">
             <div className="text-3xl font-bold text-cyan-600">{summaryData.brandMediaReputationScore || 0}</div>
-            <div className="text-sm text-gray-500">out of 1.0</div>
+            <div className="text-sm text-gray-500">Score</div>
           </div>
         </DataCard>
 
@@ -553,7 +515,7 @@ export function ExecutiveSummaryPage() {
               <BarChart
                 data={competitiveData}
                 layout="vertical"
-                margin={{ top: 10, right: 10, left: 0, bottom: 10 }}
+                margin={{ top: 10, right: 30, left: 200, bottom: 10 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={true} vertical={false} />
                 <XAxis
@@ -561,15 +523,15 @@ export function ExecutiveSummaryPage() {
                   domain={[0, 100]}
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fontSize: 14, fill: '#666' }}
+                  tick={{ fontSize: 12, fill: '#666' }}
                 />
                 <YAxis
                   dataKey="name"
                   type="category"
-                  width={0}
+                  width={190}
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fontSize: 14, fill: '#666' }}
+                  tick={{ fontSize: 12, fill: '#666', dx: -10, textAnchor: 'end' }}
                 />
                 <Tooltip
                   formatter={(value) => [`${value}%`, 'Media Share']}
