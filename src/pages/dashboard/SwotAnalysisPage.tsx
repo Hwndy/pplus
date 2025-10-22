@@ -1,685 +1,360 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import axios from 'axios';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Plus, Eye, Edit, Trash2, Filter, X } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { DataTable } from '@/components/ui/DataTable';
-import { ColumnDef } from '@tanstack/react-table';
-import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/components/auth/AuthContext';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
+import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { Mail, MailOpen, Clock } from 'lucide-react';
 
-// Define interfaces
-interface Company {
-  id: number;
-  company_name: string;
-  industry: string;
-  sub_industry: string;
+// Utility function for className concatenation
+function cn(...classes: (string | undefined | null | false)[]): string {
+  return classes.filter(Boolean).join(' ');
 }
 
-interface SwotCategory {
-  description: string;
-  bullets: string[];
-}
-
-interface SwotAnalysis {
-  id: number;
-  company_id?: number;
-  company?: Company;
-  date?: string;
+// Interface for EmailItem
+interface EmailItem {
+  id: string;
   title?: string;
-  status: 'draft' | 'published' | 'archived';
-  strengths: SwotCategory;
-  weaknesses: SwotCategory;
-  opportunities: SwotCategory;
-  threats: SwotCategory;
-  is_deleted: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface ApiResponse {
-  success: boolean;
-  data: {
-    data: SwotAnalysis[];
-    pagination: {
-      total: number;
-      page: number;
-      limit: number;
-      totalPages: number;
-    };
+  sender?: {
+    name: string;
+    email: string;
   };
-  message: string;
+  date?: string;
+  content: string;
+  isRead: boolean;
+  preview?: string;
 }
 
-interface BackendError {
-  field: string;
-  message: string;
+// Convert SWOT data to EmailItem format
+function convertSwotDataToEmailFormat(analyses: any[]): EmailItem[] {
+  return analyses.map((item) => ({
+    id: item.id.toString(),
+    title: item.analyst_note || `SWOT Analysis - ${format(new Date(item.date), 'MMM d, yyyy')}`,
+    sender: {
+      name: item.created_by?.username || 'Unknown Analyst',
+      email: item.created_by?.email || 'N/A',
+    },
+    date: item.date,
+    content: `
+      <h3>Status: ${item.status}</h3>
+      <h3>Strengths</h3>
+      <ul>${item.strengths.map((s: any) => `<li>${s.analysis}</li>`).join('')}</ul>
+      <h3>Weaknesses</h3>
+      <ul>${item.weaknesses.map((s: any) => `<li>${s.analysis}</li>`).join('')}</ul>
+      <h3>Opportunities</h3>
+      <ul>${item.opportunities.map((s: any) => `<li>${s.analysis}</li>`).join('')}</ul>
+      <h3>Threats</h3>
+      <ul>${item.threats.map((s: any) => `<li>${s.analysis}</li>`).join('')}</ul>
+      <p><strong>Analyst Note:</strong> ${item.analyst_note || 'N/A'}</p>
+      <p><strong>Supervisor Note:</strong> ${item.supervisor_note || 'N/A'}</p>
+      ${item.approved_by ? `<p><strong>Approved by:</strong> ${item.approved_by.username} (${item.approved_by.email})</p>` : '<p><strong>Approved by:</strong> Not yet approved</p>'}
+      <p><strong>Created at:</strong> ${format(new Date(item.created_at), 'MMM d, yyyy HH:mm')}</p>
+      <p><strong>Updated at:</strong> ${format(new Date(item.updated_at), 'MMM d, yyyy HH:mm')}</p>
+    `,
+    isRead: false,
+    preview: item.analyst_note ? item.analyst_note.substring(0, 120) + '...' : 'SWOT analysis details...',
+  }));
 }
 
-interface TableRow {
-  id: number;
-  companyName: string;
-  title: string;
-  formattedDate: string;
-  status: string;
-}
+// Embedded EmailListView component
+function EmailListView({ emails, title, description }: { emails: EmailItem[], title: string, description: string }) {
+  const [selectedEmail, setSelectedEmail] = useState<EmailItem | null>(null);
+  const [emailsState, setEmailsState] = useState<EmailItem[]>(emails);
 
-// Axios interceptor for Bearer token
-axios.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+  useEffect(() => {
+    setEmailsState(emails);
+    setSelectedEmail(null); // Reset selection when emails change
+  }, [emails]);
+
+  const handleEmailClick = (email: EmailItem) => {
+    if (!email.isRead) {
+      const updatedEmails = emailsState.map(e =>
+        e.id === email.id ? { ...e, isRead: true } : e
+      );
+      setEmailsState(updatedEmails);
     }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
-
-const SwotAnalysisPage: React.FC = () => {
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const { isSessionValidated } = useAuth();
-  const [swotAnalyses, setSwotAnalyses] = useState<SwotAnalysis[]>([]);
-  const [tableData, setTableData] = useState<TableRow[]>([]);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [viewModalOpen, setViewModalOpen] = useState(false);
-  const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [editModalOpen, setEditModalOpen] = useState(false);
-  const [selectedSwot, setSelectedSwot] = useState<SwotAnalysis | null>(null);
-  const [formData, setFormData] = useState<Partial<SwotAnalysis>>({
-    status: 'draft',
-    strengths: { description: '', bullets: [] },
-    weaknesses: { description: '', bullets: [] },
-    opportunities: { description: '', bullets: [] },
-    threats: { description: '', bullets: [] },
-  });
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const analysesPerPage = 10;
-
-  const BASE_URL = 'https://pplus-2myh.onrender.com/api';
-
-  // Helper functions for form updates
-  const updateCategory = (
-    category: 'strengths' | 'weaknesses' | 'opportunities' | 'threats',
-    field: 'description' | 'bullets',
-    value: string | string[]
-  ) => {
-    setFormData((prev) => ({
-      ...prev,
-      [category]: {
-        ...(prev[category] as SwotCategory),
-        [field]: value,
-      },
-    }));
+    setSelectedEmail(email);
   };
 
-  const addBullet = (category: 'strengths' | 'weaknesses' | 'opportunities' | 'threats') => {
-    setFormData((prev) => ({
-      ...prev,
-      [category]: {
-        ...(prev[category] as SwotCategory),
-        bullets: [...(prev[category] as SwotCategory).bullets, ''],
-      },
-    }));
-  };
-
-  const updateBullet = (
-    category: 'strengths' | 'weaknesses' | 'opportunities' | 'threats',
-    bidx: number,
-    value: string
-  ) => {
-    setFormData((prev) => ({
-      ...prev,
-      [category]: {
-        ...(prev[category] as SwotCategory),
-        bullets: (prev[category] as SwotCategory).bullets.map((bullet, i) => (i === bidx ? value : bullet)),
-      },
-    }));
-  };
-
-  const removeBullet = (
-    category: 'strengths' | 'weaknesses' | 'opportunities' | 'threats',
-    bidx: number
-  ) => {
-    setFormData((prev) => ({
-      ...prev,
-      [category]: {
-        ...(prev[category] as SwotCategory),
-        bullets: (prev[category] as SwotCategory).bullets.filter((_, i) => i !== bidx),
-      },
-    }));
-  };
-
-  // Render category form section
-  const renderCategorySection = (
-    category: 'strengths' | 'weaknesses' | 'opportunities' | 'threats',
-    title: string
-  ) => (
-    <div className="space-y-4">
-      <Label>{title}</Label>
-      <Textarea
-        value={(formData[category] as SwotCategory)?.description || ''}
-        onChange={(e) => updateCategory(category, 'description', e.target.value)}
-        placeholder={`Enter description for ${title.toLowerCase()}...`}
-      />
-      <div>
-        <Label>Bullets</Label>
-        {(formData[category] as SwotCategory)?.bullets.map((bullet, bidx) => (
-          <div key={bidx} className="flex items-center space-x-2 mb-2">
-            <Input
-              value={bullet}
-              onChange={(e) => updateBullet(category, bidx, e.target.value)}
-              placeholder={`Bullet point ${bidx + 1}`}
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => removeBullet(category, bidx)}
-              disabled={((formData[category] as SwotCategory)?.bullets.length || 0) <= 1}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        ))}
-        <Button type="button" variant="outline" size="sm" onClick={() => addBullet(category)}>
-          Add Bullet
-        </Button>
+  return (
+    <div className="border rounded-lg overflow-hidden bg-white shadow-sm">
+      <div className="p-4 border-b bg-gray-50">
+        <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
+        <p className="text-sm text-gray-500">{description}</p>
+      </div>
+      <div className="flex flex-col md:flex-row h-[600px]">
+        {/* Email List */}
+        <div className="w-full md:w-2/5 border-r overflow-y-auto">
+          {emailsState.length === 0 ? (
+            <div className="p-4 text-center text-gray-500">No SWOT analyses available</div>
+          ) : (
+            emailsState.map((email) => (
+              <div
+                key={email.id}
+                onClick={() => handleEmailClick(email)}
+                className={cn(
+                  "p-4 border-b cursor-pointer transition-colors",
+                  "hover:bg-blue-50",
+                  selectedEmail?.id === email.id ? "bg-blue-50" : "",
+                  email.isRead ? "bg-gray-50" : ""
+                )}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="mt-1">
+                    {email.isRead ? (
+                      <MailOpen size={18} className="text-gray-400" />
+                    ) : (
+                      <Mail size={18} className="text-blue-500" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className={cn(
+                      "text-sm font-medium truncate mb-1",
+                      email.isRead ? "text-gray-500" : "text-gray-900"
+                    )}>
+                      {email.title}
+                    </h4>
+                    {email.sender && (
+                      <p className="text-xs text-gray-500 font-medium">{email.sender.name}</p>
+                    )}
+                    {email.preview && (
+                      <p className={cn(
+                        "text-xs line-clamp-2 mt-1",
+                        email.isRead ? "text-gray-400" : "text-gray-600"
+                      )}>
+                        {email.preview}
+                      </p>
+                    )}
+                    {email.date && (
+                      <div className="flex items-center mt-2 text-xs text-gray-400">
+                        <Clock size={12} className="mr-1" />
+                        {format(new Date(email.date), 'MMM d, yyyy')}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+        {/* Email Content */}
+        <div className="w-full md:w-3/5 p-6 overflow-y-auto bg-white">
+          {selectedEmail ? (
+            <div className="animate-fade-in">
+              <div className="mb-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                  {selectedEmail.title}
+                </h2>
+                <div className="flex items-center justify-between text-sm text-gray-500 mb-1">
+                  {selectedEmail.sender && (
+                    <div>
+                      From: <span className="font-medium">{selectedEmail.sender.name}</span> &lt;{selectedEmail.sender.email}&gt;
+                    </div>
+                  )}
+                  {selectedEmail.date && (
+                    <div>
+                      {format(new Date(selectedEmail.date), 'MMM d, yyyy')}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="prose prose-sm max-w-none text-gray-700 border-t pt-4">
+                <div dangerouslySetInnerHTML={{ __html: selectedEmail.content }} />
+              </div>
+            </div>
+          ) : (
+            <div className="h-full flex flex-col items-center justify-center text-gray-400">
+              <Mail size={48} className="mb-4 opacity-20" />
+              <p className="text-sm">Select an item to view its content</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
+}
 
-  // Fetch companies
-  useEffect(() => {
-    const fetchCompanies = async () => {
-      try {
-        const response = await axios.get(`${BASE_URL}/companies/`);
-        setCompanies(response.data.data?.data || []);
-      } catch (error: any) {
-        console.error('Error fetching companies:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load companies.',
-          variant: 'destructive',
-        });
-      }
-    };
-    fetchCompanies();
-  }, [toast]);
+const SwotAnalysisPage: React.FC = () => {
+  const { user, token, isAuthenticated, isLoading: authLoading } = useAuth();
+  const [filterValues, setFilterValues] = useState<{ dateRange?: { start: string; end: string } }>({});
+  const [swotData, setSwotData] = useState<any[]>([]);
+  const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
+  const [dataLoading, setDataLoading] = useState(true);
 
-  // Fetch SWOT analyses
-  useEffect(() => {
-    if (!isSessionValidated) {
-      navigate('/login');
-      return;
-    }
+  // Simplified filter component embedded in the file
+  const FilterComponent: React.FC<{
+    onChange: (values: { dateRange?: { start: string; end: string } }) => void;
+    onReset: () => void;
+    values: { dateRange?: { start: string; end: string } };
+  }> = ({ onChange, onReset, values }) => {
+    const [startDate, setStartDate] = useState(values.dateRange?.start || '');
+    const [endDate, setEndDate] = useState(values.dateRange?.end || '');
 
-    const fetchSwotAnalyses = async () => {
-      try {
-        setLoading(true);
-        const response = await axios.get<ApiResponse>(`${BASE_URL}/swot-analysis/`, {
-          params: { page: currentPage, limit: analysesPerPage },
-        });
-
-        const analysesData = response.data?.data?.data || [];
-        const pagination = response.data?.data?.pagination || { total: 0, totalPages: 1 };
-
-        const normalizedAnalyses = analysesData
-          .filter((item) => !item.is_deleted)
-          .map((analysis: SwotAnalysis) => ({
-            ...analysis,
-            company: analysis.company || { company_name: 'Unknown' },
-            status: analysis.status || 'draft',
-          }));
-
-        const mappedData = normalizedAnalyses.map((item) => ({
-          id: item.id,
-          companyName: item.company.company_name,
-          title: item.title || 'No title',
-          formattedDate: item.date ? new Date(item.date).toLocaleDateString('en-US') : 'Invalid Date',
-          status: item.status,
-        }));
-
-        setSwotAnalyses(normalizedAnalyses);
-        setTableData(mappedData);
-        setTotalPages(pagination.totalPages || 1);
-        setTotalCount(pagination.total || 0);
-      } catch (error: any) {
-        console.error('Error fetching SWOT analyses:', error);
-        toast({
-          title: 'Error',
-          description: error.response?.data?.message || 'Failed to load SWOT analyses.',
-          variant: 'destructive',
-        });
-        if (error.response?.status === 401) {
-          navigate('/login');
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchSwotAnalyses();
-  }, [currentPage, isSessionValidated, navigate, toast]);
-
-  // Handle create new
-  const handleCreateNew = () => {
-    setFormData({
-      date: '',
-      title: '',
-      status: 'draft',
-      strengths: { description: '', bullets: [] },
-      weaknesses: { description: '', bullets: [] },
-      opportunities: { description: '', bullets: [] },
-      threats: { description: '', bullets: [] },
-    });
-    setFormErrors({});
-    setCreateModalOpen(true);
-  };
-
-  // Handle view
-  const handleView = (id: number) => {
-    const analysis = swotAnalyses.find((a) => a.id === id);
-    if (analysis) {
-      setSelectedSwot(analysis);
-      setViewModalOpen(true);
-    } else {
-      toast({ title: 'Error', description: 'Analysis not found', variant: 'destructive' });
-    }
-  };
-
-  // Handle edit
-  const handleEdit = (id: number) => {
-    const analysis = swotAnalyses.find((a) => a.id === id);
-    if (analysis) {
-      setSelectedSwot(analysis);
-      setFormData({
-        id: analysis.id,
-        company_id: analysis.company_id,
-        date: analysis.date || '',
-        title: analysis.title || '',
-        status: analysis.status || 'draft',
-        strengths: analysis.strengths || { description: '', bullets: [] },
-        weaknesses: analysis.weaknesses || { description: '', bullets: [] },
-        opportunities: analysis.opportunities || { description: '', bullets: [] },
-        threats: analysis.threats || { description: '', bullets: [] },
-      });
-      setFormErrors({});
-      setEditModalOpen(true);
-    } else {
-      toast({ title: 'Error', description: 'Analysis not found', variant: 'destructive' });
-    }
-  };
-
-  // Handle delete
-  const handleDelete = async (id: number) => {
-    if (window.confirm('Are you sure you want to delete this SWOT analysis?')) {
-      try {
-        await axios.put(`${BASE_URL}/swot-analysis/delete/${id}`, { is_deleted: true });
-        setSwotAnalyses((prev) => prev.filter((a) => a.id !== id));
-        setTableData((prev) => prev.filter((a) => a.id !== id));
-        toast({ title: 'Success', description: 'SWOT analysis deleted successfully' });
-      } catch (error: any) {
-        console.error('Error deleting SWOT analysis:', error);
-        toast({
-          title: 'Error',
-          description: error.response?.data?.message || 'Failed to delete SWOT analysis',
-          variant: 'destructive',
-        });
-      }
-    }
-  };
-
-  // Validate form
-  const validateForm = () => {
-    const errors: Record<string, string> = {};
-    if (!formData.company_id) errors.company_id = 'Company is required';
-    if (!formData.date) errors.date = 'Date is required';
-    if (!formData.title) errors.title = 'Title is required';
-    if (!formData.status) errors.status = 'Status is required';
-    return errors;
-  };
-
-  // Handle submit
-  const handleSubmit = async (e: React.FormEvent, isEdit: boolean) => {
-    e.preventDefault();
-    const errors = validateForm();
-    if (Object.keys(errors).length > 0) {
-      setFormErrors(errors);
-      toast({ title: 'Error', description: 'Please fix the form errors', variant: 'destructive' });
-      return;
-    }
-
-    try {
-      const payload = {
-        company_id: formData.company_id,
-        date: formData.date,
-        title: formData.title,
-        status: formData.status,
-        strengths: formData.strengths,
-        weaknesses: formData.weaknesses,
-        opportunities: formData.opportunities,
-        threats: formData.threats,
-      };
-
-      if (isEdit && selectedSwot) {
-        await axios.put(`${BASE_URL}/swot-analysis/update/${selectedSwot.id}`, payload);
-        toast({ title: 'Success', description: 'SWOT analysis updated successfully' });
+    const handleApply = () => {
+      if (startDate && endDate) {
+        onChange({ dateRange: { start: startDate, end: endDate } });
       } else {
-        await axios.post(`${BASE_URL}/swot-analysis/create`, payload);
-        toast({ title: 'Success', description: 'SWOT analysis created successfully' });
+        toast.error('Please select both start and end dates');
       }
-      setCreateModalOpen(false);
-      setEditModalOpen(false);
-      setFormErrors({});
-      setCurrentPage(1);
-    } catch (error: any) {
-      console.error('Error submitting SWOT analysis:', error);
-      const backendErrors = Array.isArray(error.response?.data?.message) ? error.response.data.message : [];
-      if (backendErrors.length > 0) {
-        const newErrors: Record<string, string> = {};
-        backendErrors.forEach((err: BackendError) => {
-          newErrors[err.field] = err.message;
-        });
-        setFormErrors(newErrors);
-      }
-      toast({
-        title: 'Error',
-        description: error.response?.data?.message || 'Failed to submit SWOT analysis',
-        variant: 'destructive',
-      });
-    }
-  };
+    };
 
-  // Table columns
-  const columns: ColumnDef<TableRow>[] = useMemo(
-    () => [
-      {
-        accessorKey: 'companyName',
-        header: 'Company',
-      },
-      {
-        accessorKey: 'title',
-        header: 'Title',
-        cell: ({ row }) => <div className="max-w-xs truncate" title={row.original.title}>{row.original.title}</div>,
-      },
-      {
-        accessorKey: 'formattedDate',
-        header: 'Date',
-      },
-      {
-        accessorKey: 'status',
-        header: 'Status',
-        cell: ({ row }) => {
-          const status = row.original.status;
-          let statusColor = '';
-          switch (status) {
-            case 'published':
-              statusColor = 'bg-green-100 text-green-800';
-              break;
-            case 'archived':
-              statusColor = 'bg-red-100 text-red-800';
-              break;
-            case 'draft':
-            default:
-              statusColor = 'bg-yellow-100 text-yellow-800';
-          }
-          return <Badge className={statusColor}>{status}</Badge>;
-        },
-      },
-      {
-        id: 'actions',
-        header: 'Actions',
-        cell: ({ row }) => (
-          <div className="flex space-x-2">
-            <Button variant="ghost" size="sm" onClick={() => handleView(row.original.id)}>
-              <Eye className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => handleEdit(row.original.id)}>
-              <Edit className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => handleDelete(row.original.id)} className="text-red-600">
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        ),
-      },
-    ],
-    []
-  );
+    const handleReset = () => {
+      setStartDate('');
+      setEndDate('');
+      onReset();
+    };
 
-  if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>Loading SWOT analyses...</p>
+      <div className="flex flex-col sm:flex-row gap-4 p-4 bg-gray-50 rounded-lg">
+        <div className="flex flex-col">
+          <label className="text-sm font-medium text-gray-700">Date Range</label>
+          <div className="flex gap-2">
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="border rounded px-2 py-1 text-sm"
+            />
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="border rounded px-2 py-1 text-sm"
+            />
+          </div>
+        </div>
+        <div className="flex items-end gap-2">
+          <button
+            onClick={handleApply}
+            className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
+          >
+            Apply
+          </button>
+          <button
+            onClick={handleReset}
+            className="border border-gray-300 px-4 py-2 rounded hover:bg-gray-100"
+          >
+            Reset
+          </button>
         </div>
       </div>
     );
+  };
+
+  // Function to get month from date range
+  const getMonthFromDateRange = (dateRange: any): string | null => {
+    if (!dateRange?.start) return null;
+    const start = new Date(dateRange.start);
+    return `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}`;
+  };
+
+  // Determine company based on user role
+  useEffect(() => {
+    if (authLoading || !isAuthenticated || !user) return;
+
+    const determineCompany = async () => {
+      setDataLoading(true);
+      try {
+        console.log('Determining company...');
+        const month = getMonthFromDateRange(filterValues.dateRange);
+        let url = 'https://pplus-2myh.onrender.com/api/report/competitive-intelligence';
+        if (month) url += `?month=${month}`;
+
+        const response = await fetch(url, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        console.log('Competitive Intelligence Response:', await response.clone().json());
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+        const result = await response.json();
+        if (result.success) {
+          const compInt = result.data.competitive_intelligence;
+          const subSectors = Object.keys(compInt);
+          if (subSectors.length > 0) {
+            const firstSub = subSectors[0];
+            const companies = compInt[firstSub].companies_in_category;
+            if (companies.length > 0) {
+              setSelectedCompany(companies[0]);
+              return;
+            }
+          }
+        }
+        // Fallback to default if no competitive data
+        setSelectedCompany('Glo Nigeria');
+      } catch (err) {
+        console.error('Error determining company:', err);
+        toast.error('Error determining company');
+        setSelectedCompany('Glo Nigeria');
+      } finally {
+        setDataLoading(false);
+      }
+    };
+
+    determineCompany();
+  }, [authLoading, isAuthenticated, user, token, filterValues]);
+
+  // Fetch SWOT data once company is determined
+  useEffect(() => {
+    if (!selectedCompany || authLoading || !isAuthenticated) return;
+
+    const fetchSwot = async () => {
+      setDataLoading(true);
+      try {
+        console.log('Fetching SWOT data for company:', selectedCompany);
+        const month = getMonthFromDateRange(filterValues.dateRange);
+        let url = 'https://pplus-2myh.onrender.com/api/report/swot-analysis';
+        url += `?company=${encodeURIComponent(selectedCompany)}`;
+        if (month) url += `&month=${month}`;
+
+        const response = await fetch(url, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        console.log('SWOT Analysis Response:', await response.clone().json());
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+        const result = await response.json();
+        if (result.success) {
+          setSwotData(result.data.analyses || []);
+        } else {
+          throw new Error(result.message || 'Failed to fetch SWOT analyses');
+        }
+      } catch (err) {
+        console.error('Error fetching SWOT data:', err);
+        toast.error('Error fetching SWOT data');
+        setSwotData([]);
+      } finally {
+        setDataLoading(false);
+      }
+    };
+
+    fetchSwot();
+  }, [selectedCompany, filterValues, token, authLoading, isAuthenticated]);
+
+  const emails = useMemo(() => convertSwotDataToEmailFormat(swotData), [swotData]);
+
+  if (authLoading || dataLoading) {
+    return <div className="flex justify-center items-center h-screen">Loading...</div>;
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">SWOT Analyses</h1>
-        <div className="flex space-x-2">
-          <Button variant="outline">
-            <Filter className="mr-2 h-4 w-4" />
-            Filter
-          </Button>
-          <Dialog open={createModalOpen} onOpenChange={setCreateModalOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={handleCreateNew}>
-                <Plus className="mr-2 h-4 w-4" />
-                Create New
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Create SWOT Analysis</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-4">
-                <div>
-                  <Label>Company <span className="text-red-500">*</span></Label>
-                  <Select value={formData.company_id?.toString() || ''} onValueChange={(value) => setFormData({ ...formData, company_id: parseInt(value) })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select company" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {companies.map((company) => (
-                        <SelectItem key={company.id} value={company.id.toString()}>
-                          {company.company_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {formErrors.company_id && <p className="text-red-500 text-sm">{formErrors.company_id}</p>}
-                </div>
-                <div>
-                  <Label>Date <span className="text-red-500">*</span></Label>
-                  <Input
-                    type="date"
-                    value={formData.date ? new Date(formData.date).toISOString().split('T')[0] : ''}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                  />
-                  {formErrors.date && <p className="text-red-500 text-sm">{formErrors.date}</p>}
-                </div>
-                <div>
-                  <Label>Title <span className="text-red-500">*</span></Label>
-                  <Input
-                    value={formData.title || ''}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  />
-                  {formErrors.title && <p className="text-red-500 text-sm">{formErrors.title}</p>}
-                </div>
-                <div>
-                  <Label>Status <span className="text-red-500">*</span></Label>
-                  <Select value={formData.status || 'draft'} onValueChange={(value) => setFormData({ ...formData, status: value as 'draft' | 'published' | 'archived' })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="draft">Draft</SelectItem>
-                      <SelectItem value="published">Published</SelectItem>
-                      <SelectItem value="archived">Archived</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {formErrors.status && <p className="text-red-500 text-sm">{formErrors.status}</p>}
-                </div>
-                {renderCategorySection('strengths', 'Strengths')}
-                {renderCategorySection('weaknesses', 'Weaknesses')}
-                {renderCategorySection('opportunities', 'Opportunities')}
-                {renderCategorySection('threats', 'Threats')}
-                <Button type="submit">Create</Button>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </div>
+    <div className="space-y-6 animate-fade-in">
+      <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-blue-500 text-transparent bg-clip-text">SWOT Analysis</h2>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>SWOT Analyses List</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <DataTable columns={columns} data={tableData} searchPlaceholder="Search SWOT analyses..." />
+      <FilterComponent
+        values={filterValues}
+        onChange={setFilterValues}
+        onReset={() => setFilterValues({})}
+      />
 
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between space-x-2 py-4">
-              <div className="text-sm text-muted-foreground">
-                Showing {Math.min((currentPage - 1) * analysesPerPage + 1, totalCount)} to {Math.min(currentPage * analysesPerPage, totalCount)} of {totalCount} entries
-              </div>
-              <div className="flex space-x-2">
-                <Button variant="outline" size="sm" onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))} disabled={currentPage === 1}>
-                  Previous
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages}>
-                  Next
-                </Button>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* View Modal */}
-      <Dialog open={viewModalOpen} onOpenChange={setViewModalOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>View SWOT Analysis</DialogTitle>
-          </DialogHeader>
-          {selectedSwot && (
-            <div className="space-y-6">
-              <div>
-                <Label>Company</Label>
-                <p>{selectedSwot.company?.company_name || 'Unknown'}</p>
-              </div>
-              <div>
-                <Label>Date</Label>
-                <p>{selectedSwot.date ? new Date(selectedSwot.date).toLocaleDateString() : 'Invalid Date'}</p>
-              </div>
-              <div>
-                <Label>Title</Label>
-                <p>{selectedSwot.title}</p>
-              </div>
-              <div>
-                <Label>Status</Label>
-                <p>{selectedSwot.status}</p>
-              </div>
-              {['strengths', 'weaknesses', 'opportunities', 'threats'].map((cat) => (
-                <div key={cat}>
-                  <Label>{cat.charAt(0).toUpperCase() + cat.slice(1)}</Label>
-                  <div className="ml-4 space-y-2">
-                    <p><strong>Description:</strong> {(selectedSwot[cat as keyof SwotAnalysis] as SwotCategory)?.description || 'N/A'}</p>
-                    <p><strong>Bullets:</strong></p>
-                    <ul className="list-disc pl-5">
-                      {(selectedSwot[cat as keyof SwotAnalysis] as SwotCategory)?.bullets.map((bullet, idx) => (
-                        <li key={idx}>{bullet}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Modal */}
-      <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit SWOT Analysis</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={(e) => handleSubmit(e, true)} className="space-y-4">
-            <div>
-              <Label>Company <span className="text-red-500">*</span></Label>
-              <Select value={formData.company_id?.toString() || ''} onValueChange={(value) => setFormData({ ...formData, company_id: parseInt(value) })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select company" />
-                </SelectTrigger>
-                <SelectContent>
-                  {companies.map((company) => (
-                    <SelectItem key={company.id} value={company.id.toString()}>
-                      {company.company_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {formErrors.company_id && <p className="text-red-500 text-sm">{formErrors.company_id}</p>}
-            </div>
-            <div>
-              <Label>Date <span className="text-red-500">*</span></Label>
-              <Input
-                type="date"
-                value={formData.date ? new Date(formData.date).toISOString().split('T')[0] : ''}
-                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-              />
-              {formErrors.date && <p className="text-red-500 text-sm">{formErrors.date}</p>}
-            </div>
-            <div>
-              <Label>Title <span className="text-red-500">*</span></Label>
-              <Input
-                value={formData.title || ''}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              />
-              {formErrors.title && <p className="text-red-500 text-sm">{formErrors.title}</p>}
-            </div>
-            <div>
-              <Label>Status <span className="text-red-500">*</span></Label>
-              <Select value={formData.status || 'draft'} onValueChange={(value) => setFormData({ ...formData, status: value as 'draft' | 'published' | 'archived' })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="published">Published</SelectItem>
-                  <SelectItem value="archived">Archived</SelectItem>
-                </SelectContent>
-              </Select>
-              {formErrors.status && <p className="text-red-500 text-sm">{formErrors.status}</p>}
-            </div>
-            {renderCategorySection('strengths', 'Strengths')}
-            {renderCategorySection('weaknesses', 'Weaknesses')}
-            {renderCategorySection('opportunities', 'Opportunities')}
-            {renderCategorySection('threats', 'Threats')}
-            <Button type="submit">Update</Button>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <EmailListView
+        emails={emails}
+        title="SWOT Analyses Inbox"
+        description={`Latest SWOT analyses for ${selectedCompany || 'your business'}`}
+      />
     </div>
   );
 };

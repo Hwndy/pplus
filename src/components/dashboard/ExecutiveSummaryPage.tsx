@@ -14,7 +14,8 @@ import {
   YAxis,
   CartesianGrid,
   BarChart,
-  Bar
+  Bar,
+  LabelList
 } from 'recharts';
 import {
   BarChart2,
@@ -113,7 +114,7 @@ export function ExecutiveSummaryPage() {
     if (user.role.name === 'Client') {
       fetchCompetitive();
     } else {
-      setSelectedCompany('Glo Nigeria'); // Set based on backend response
+      setSelectedCompany('Glo Nigeria');
       setDataLoading(false);
     }
   }, [authLoading, isAuthenticated, user, token, filterValues]);
@@ -210,11 +211,15 @@ export function ExecutiveSummaryPage() {
     }));
   }, [brandAnalysisData]);
 
-  // Competitive media share data
-  const competitiveData = compShares.map((s: any) => ({
-    name: s.company,
-    value: s.percentage
-  }));
+  // Competitive media share data (sorted by percentage)
+  const competitiveData = useMemo(() => {
+    return compShares
+      .map((s: any) => ({
+        name: s.company,
+        value: s.percentage
+      }))
+      .sort((a, b) => b.value - a.value); // Sort descending
+  }, [compShares]);
 
   if (authLoading || dataLoading || !selectedCompany) {
     return <div className="flex justify-center items-center h-screen">Loading...</div>;
@@ -514,39 +519,56 @@ export function ExecutiveSummaryPage() {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={competitiveData}
-                layout="vertical"
-                margin={{ top: 10, right: 30, left: 200, bottom: 10 }}
+                layout="horizontal"
+                margin={{ top: 20, right: 30, left: 60, bottom: 40 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={true} vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis
                   type="number"
                   domain={[0, 100]}
-                  axisLine={false}
-                  tickLine={false}
+                  ticks={[0, 20, 40, 60, 80, 100]}
+                  label={{ value: 'Media Share (%)', position: 'insideBottom', offset: -10 }}
                   tick={{ fontSize: 12, fill: '#666' }}
                 />
                 <YAxis
                   dataKey="name"
                   type="category"
-                  width={190}
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 12, fill: '#666', dx: -10, textAnchor: 'end' }}
+                  tick={{ fontSize: 11, fill: '#555' }}
+                  width={140}
+                  interval={0}
+                  tickFormatter={(value) => value.length > 15 ? value.substring(0, 15) + '...' : value}
                 />
                 <Tooltip
                   formatter={(value) => [`${value}%`, 'Media Share']}
+                  labelFormatter={(label) => `Company: ${label}`}
                   contentStyle={{
                     backgroundColor: 'rgba(255, 255, 255, 0.95)',
                     borderRadius: '8px',
+                    border: '1px solid #e0e0e0',
                     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                    border: 'none',
                     fontSize: '12px'
                   }}
+                  cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }}
                 />
-                <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={24}>
-                  {competitiveData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={index === 0 ? COLORS[5] : '#e5e7eb'} />
+                <Bar
+                  dataKey="value"
+                  radius={[4, 4, 4, 4]}
+                  barSize={20}
+                >
+                  {competitiveData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                      stroke={COLORS[index % COLORS.length]}
+                      strokeWidth={1}
+                    />
                   ))}
+                  <LabelList
+                    dataKey="value"
+                    position="right"
+                    formatter={(value: number) => `${value}%`}
+                    style={{ fill: '#333', fontSize: 11, fontWeight: 500 }}
+                  />
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
