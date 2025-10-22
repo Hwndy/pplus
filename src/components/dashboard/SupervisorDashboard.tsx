@@ -16,7 +16,7 @@ import { useAuth } from '../auth/AuthContext';
 import {Label} from '../ui/label';
 
 // API Base
-const API_BASE = 'https://backend-e79r.onrender.com/api';
+const API_BASE = 'https://pplus-2myh.onrender.com/api';
 const PAGE_SIZE = 10;
 
 // Generic Entry Interface

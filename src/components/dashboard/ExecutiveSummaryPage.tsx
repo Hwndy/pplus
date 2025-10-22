@@ -1,6 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { DataCard } from '@/components/ui/DataCard';
-import { Stat } from '@/components/ui/Stat';
 import { UniversalFilter, FilterOption, FilterValues } from '@/components/ui/UniversalFilter';
 import {
   PieChart,
@@ -17,26 +16,30 @@ import {
   BarChart,
   Bar
 } from 'recharts';
-import { executiveSummaryData, brandMediaAnalysisData } from '@/utils/clientDashboardData';
 import {
   BarChart2,
   Globe,
   Newspaper,
-  ThumbsUp,
-  Minus,
-  ThumbsDown,
-  TrendingUp,
-  Users,
   Award,
   PieChart as PieChartIcon
 } from 'lucide-react';
+import { useAuth } from './AuthContext';
+import { toast } from 'sonner';
 
 // Enhanced color palette for better visual appeal
 const COLORS = ['#4F46E5', '#06B6D4', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6'];
 const SENTIMENT_COLORS = ['#10B981', '#F59E0B', '#EF4444'];
 
+const API_BASE_URL = 'https://backend-e79r.onrender.com/api';
+
 export function ExecutiveSummaryPage() {
+  const { user, token, isAuthenticated, isLoading: authLoading } = useAuth();
   const [filterValues, setFilterValues] = useState<FilterValues>({});
+  const [summaryData, setSummaryData] = useState<any>({});
+  const [brandAnalysisData, setBrandAnalysisData] = useState<any>({});
+  const [compShares, setCompShares] = useState<any[]>([]);
+  const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
+  const [dataLoading, setDataLoading] = useState(true);
 
   // Get current date for display
   const currentDate = new Date();
@@ -90,20 +93,170 @@ export function ExecutiveSummaryPage() {
     }
   ];
 
-  // Calculate sentiment percentages (filtered data would be applied here)
-  const totalMentions = executiveSummaryData.positiveMediaExposure +
-                        executiveSummaryData.neutralMediaExposure +
-                        executiveSummaryData.negativeMediaExposure;
-
-  const sentimentData = [
-    { name: 'Positive', value: Math.round((executiveSummaryData.positiveMediaExposure / totalMentions) * 100) },
-    { name: 'Neutral', value: Math.round((executiveSummaryData.neutralMediaExposure / totalMentions) * 100) },
-    { name: 'Negative', value: Math.round((executiveSummaryData.negativeMediaExposure / totalMentions) * 100) }
-  ];
-
   const resetFilters = () => {
     setFilterValues({});
   };
+
+  // Function to get month from date range
+  const getMonthFromDateRange = (dateRange: any): string | null => {
+    if (!dateRange?.start) return null;
+    const start = new Date(dateRange.start);
+    return `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}`;
+  };
+
+  // Fetch competitive intelligence if user is Client to determine company
+  useEffect(() => {
+    if (authLoading || !isAuthenticated || !user) return;
+
+    const fetchCompetitive = async () => {
+      setDataLoading(true);
+      try {
+        const month = getMonthFromDateRange(filterValues.dateRange);
+        let url = `${API_BASE_URL}/report/competitive-intelligence`;
+        if (month) url += `?month=${month}`;
+
+        const response = await fetch(url, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        const result = await response.json();
+        if (result.success) {
+          const compInt = result.data.competitive_intelligence;
+          const subSectors = Object.keys(compInt);
+          if (subSectors.length > 0) {
+            const firstSub = subSectors[0];
+            const companies = compInt[firstSub].companies_in_category;
+            if (companies.length > 0) {
+              setSelectedCompany(companies[0]);
+            }
+            const shares = compInt[firstSub].analysis.competitive_media_share.shares.map((s: any) => ({
+              ...s,
+              percentage: parseFloat(s.percentage),
+            }));
+            setCompShares(shares);
+          }
+        } else {
+          toast.error(result.message || 'Failed to fetch competitive data');
+        }
+      } catch (err) {
+        toast.error('Error fetching competitive intelligence');
+      } finally {
+        setDataLoading(false);
+      }
+    };
+
+    if (user.role.name === 'Client') {
+      fetchCompetitive();
+    } else {
+      setSelectedCompany('Glo Nigeria'); // Set based on backend response
+      setDataLoading(false);
+    }
+  }, [authLoading, isAuthenticated, user, token, filterValues]);
+
+  // Fetch summary and brand analysis once company is determined
+  useEffect(() => {
+    if (!selectedCompany || authLoading || !isAuthenticated) return;
+
+    const fetchData = async () => {
+      setDataLoading(true);
+      const month = getMonthFromDateRange(filterValues.dateRange);
+      const companyParam = encodeURIComponent(selectedCompany);
+
+      try {
+        // Fetch executive summary
+        let summaryUrl = `${API_BASE_URL}/report/executive-summary?company=${companyParam}`;
+        if (month) summaryUrl += `&month=${month}`;
+
+        const summaryResponse = await fetch(summaryUrl, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        const summaryResult = await summaryResponse.json();
+        if (summaryResult.success) {
+          setSummaryData(summaryResult.data.summary);
+        } else {
+          toast.error(summaryResult.message || 'Failed to fetch executive summary');
+        }
+
+        // Fetch brand media analysis
+        let brandUrl = `${API_BASE_URL}/report/brand-media-analysis?company=${companyParam}`;
+        if (month) brandUrl += `&month=${month}`;
+
+        const brandResponse = await fetch(brandUrl, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        const brandResult = await brandResponse.json();
+        if (brandResult.success) {
+          setBrandAnalysisData(brandResult.data.analysis);
+        } else {
+          toast.error(brandResult.message || 'Failed to fetch brand media analysis');
+        }
+      } catch (err) {
+        toast.error('Error fetching data');
+      } finally {
+        setDataLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [selectedCompany, filterValues, token, authLoading, isAuthenticated]);
+
+  if (authLoading || dataLoading || !selectedCompany) {
+    return <div className="flex justify-center items-center h-screen">Loading...</div>;
+  }
+
+  // Calculate sentiment data
+  const totalMentions = (summaryData.positiveMediaExposure || 0) +
+                       (summaryData.neutralMediaExposure || 0) +
+                       (summaryData.negativeMediaExposure || 0);
+
+  const sentimentData = [
+    { name: 'Positive', value: totalMentions > 0 ? Math.round((summaryData.positiveMediaExposure / totalMentions) * 100) : 0 },
+    { name: 'Neutral', value: totalMentions > 0 ? Math.round((summaryData.neutralMediaExposure / totalMentions) * 100) : 0 },
+    { name: 'Negative', value: totalMentions > 0 ? Math.round((summaryData.negativeMediaExposure / totalMentions) * 100) : 0 }
+  ];
+
+  // Calculate language distribution
+  const languageBreakdown = summaryData.language?.breakdown || {};
+  const languageTotal = Object.values(languageBreakdown).reduce((sum: number, val: any) => sum + val, 0);
+  const languageDistribution = Object.entries(languageBreakdown).map(([name, value]: any) => ({
+    name: name.charAt(0).toUpperCase() + name.slice(1),
+    value: languageTotal > 0 ? Math.round((value / languageTotal) * 100) : 0
+  }));
+
+  // Calculate media vehicle distribution
+  const mediaVehicle = summaryData.mediaVehicle || { online: 0, print: 0 };
+  const mediaTotal = mediaVehicle.online + mediaVehicle.print;
+  const mediaVehicleDistribution = [
+    { name: 'Online', value: mediaTotal > 0 ? Math.round((mediaVehicle.online / mediaTotal) * 100) : 0 },
+    { name: 'Print', value: mediaTotal > 0 ? Math.round((mediaVehicle.print / mediaTotal) * 100) : 0 }
+  ];
+
+  // Calculate weekly trend
+  const weeklyTrend = useMemo(() => {
+    if (!brandAnalysisData.weekly_volume_trend) return [];
+    const onlineBreakdown = brandAnalysisData.weekly_volume_trend.online?.weekly_breakdown || [];
+    const printBreakdown = brandAnalysisData.weekly_volume_trend.print?.weekly_breakdown || [];
+    return ['Week 1', 'Week 2', 'Week 3', 'Week 4'].map(week => ({
+      week,
+      onlineMedia: onlineBreakdown.find((w: any) => w.week === week)?.count || 0,
+      printMedia: printBreakdown.find((w: any) => w.week === week)?.count || 0
+    }));
+  }, [brandAnalysisData]);
+
+  // Competitive media share data
+  const competitiveData = compShares.map((s: any) => ({
+    name: s.company,
+    value: s.percentage
+  }));
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -112,7 +265,6 @@ export function ExecutiveSummaryPage() {
         <div className="text-sm text-gray-500">{formattedDate}</div>
       </div>
 
-      {/* Filters */}
       <UniversalFilter
         filters={filterOptions}
         values={filterValues}
@@ -128,12 +280,8 @@ export function ExecutiveSummaryPage() {
           className="lg:col-span-1 border-indigo-100 hover:border-indigo-300 transition-all shadow-sm hover:shadow-md"
         >
           <div className="flex flex-col items-center justify-center p-4">
-            <div className="text-3xl font-bold text-indigo-600">{executiveSummaryData.totalMedia}</div>
+            <div className="text-3xl font-bold text-indigo-600">{summaryData.totalMediaExposure || 0}</div>
             <div className="text-sm text-gray-500">Total mentions</div>
-            <div className="mt-2 text-xs text-green-500 flex items-center">
-              <TrendingUp size={14} className="mr-1" />
-              <span>+18% from last month</span>
-            </div>
           </div>
         </DataCard>
 
@@ -144,12 +292,8 @@ export function ExecutiveSummaryPage() {
           className="lg:col-span-1 border-cyan-100 hover:border-cyan-300 transition-all shadow-sm hover:shadow-md"
         >
           <div className="flex flex-col items-center justify-center p-4">
-            <div className="text-3xl font-bold text-cyan-600">{executiveSummaryData.brandMediaReputationScore}</div>
+            <div className="text-3xl font-bold text-cyan-600">{summaryData.brandMediaReputationScore || 0}</div>
             <div className="text-sm text-gray-500">out of 1.0</div>
-            <div className="mt-2 text-xs text-green-500 flex items-center">
-              <TrendingUp size={14} className="mr-1" />
-              <span>+0.1 from last month</span>
-            </div>
           </div>
         </DataCard>
 
@@ -160,12 +304,8 @@ export function ExecutiveSummaryPage() {
           className="lg:col-span-1 border-emerald-100 hover:border-emerald-300 transition-all shadow-sm hover:shadow-md"
         >
           <div className="flex flex-col items-center justify-center p-4">
-            <div className="text-3xl font-bold text-emerald-600">{executiveSummaryData.brandExposureLocalMedia}</div>
+            <div className="text-3xl font-bold text-emerald-600">{summaryData.brandExposureInLocalMedia || 0}</div>
             <div className="text-sm text-gray-500">Local mentions</div>
-            <div className="mt-2 text-xs text-green-500 flex items-center">
-              <TrendingUp size={14} className="mr-1" />
-              <span>+12% from last month</span>
-            </div>
           </div>
         </DataCard>
 
@@ -176,46 +316,10 @@ export function ExecutiveSummaryPage() {
           className="lg:col-span-1 border-amber-100 hover:border-amber-300 transition-all shadow-sm hover:shadow-md"
         >
           <div className="flex flex-col items-center justify-center p-4">
-            <div className="text-3xl font-bold text-amber-600">{executiveSummaryData.brandExposureInternationalMedia}</div>
+            <div className="text-3xl font-bold text-amber-600">{summaryData.brandExposureInInternationalMedia || 0}</div>
             <div className="text-sm text-gray-500">International mentions</div>
-            <div className="mt-2 text-xs text-green-500 flex items-center">
-              <TrendingUp size={14} className="mr-1" />
-              <span>+8% from last month</span>
-            </div>
           </div>
         </DataCard>
-
-        {/* <DataCard
-          title="Positive Mentions"
-          variant="glass"
-          icon={<ThumbsUp size={24} className="text-green-600" />}
-          className="lg:col-span-1 border-green-100 hover:border-green-300 transition-all shadow-sm hover:shadow-md"
-        >
-          <div className="flex flex-col items-center justify-center p-4">
-            <div className="text-3xl font-bold text-green-600">{executiveSummaryData.positiveMediaExposure}</div>
-            <div className="text-sm text-gray-500">Positive mentions</div>
-            <div className="mt-2 text-xs text-green-500 flex items-center">
-              <TrendingUp size={14} className="mr-1" />
-              <span>+15% from last month</span>
-            </div>
-          </div>
-        </DataCard>
-
-        <DataCard
-          title="Negative Mentions"
-          variant="glass"
-          icon={<ThumbsDown size={24} className="text-red-600" />}
-          className="lg:col-span-1 border-red-100 hover:border-red-300 transition-all shadow-sm hover:shadow-md"
-        >
-          <div className="flex flex-col items-center justify-center p-4">
-            <div className="text-3xl font-bold text-red-600">{executiveSummaryData.negativeMediaExposure}</div>
-            <div className="text-sm text-gray-500">Negative mentions</div>
-            <div className="mt-2 text-xs text-red-500 flex items-center">
-              <TrendingUp size={14} className="mr-1" />
-              <span>-5% from last month</span>
-            </div>
-          </div>
-        </DataCard> */}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -263,7 +367,7 @@ export function ExecutiveSummaryPage() {
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
-              <div className="text-2xl font-bold text-green-600">{sentimentData[0].value}%</div>
+              <div className="text-2xl font-bold text-green-600">{sentimentData[0]?.value || 0}%</div>
               <div className="text-xs text-gray-500 font-medium">Positive</div>
             </div>
           </div>
@@ -279,7 +383,7 @@ export function ExecutiveSummaryPage() {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={executiveSummaryData.languageDistribution}
+                  data={languageDistribution}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
@@ -291,7 +395,7 @@ export function ExecutiveSummaryPage() {
                   startAngle={90}
                   endAngle={450}
                 >
-                  {executiveSummaryData.languageDistribution.map((_, index) => (
+                  {languageDistribution.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
@@ -314,10 +418,10 @@ export function ExecutiveSummaryPage() {
             </ResponsiveContainer>
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
               <div className="text-2xl font-bold text-cyan-600">
-                {executiveSummaryData.languageDistribution[0].value}%
+                {languageDistribution[0]?.value || 0}%
               </div>
               <div className="text-xs text-gray-500 font-medium">
-                {executiveSummaryData.languageDistribution[0].name}
+                {languageDistribution[0]?.name || 'N/A'}
               </div>
             </div>
           </div>
@@ -333,7 +437,7 @@ export function ExecutiveSummaryPage() {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={executiveSummaryData.mediaVehicleDistribution}
+                  data={mediaVehicleDistribution}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
@@ -345,7 +449,7 @@ export function ExecutiveSummaryPage() {
                   startAngle={90}
                   endAngle={450}
                 >
-                  {executiveSummaryData.mediaVehicleDistribution.map((_, index) => (
+                  {mediaVehicleDistribution.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
@@ -368,10 +472,10 @@ export function ExecutiveSummaryPage() {
             </ResponsiveContainer>
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
               <div className="text-2xl font-bold text-emerald-600">
-                {executiveSummaryData.mediaVehicleDistribution[0].value}%
+                {mediaVehicleDistribution[0]?.value || 0}%
               </div>
               <div className="text-xs text-gray-500 font-medium">
-                {executiveSummaryData.mediaVehicleDistribution[0].name}
+                {mediaVehicleDistribution[0]?.name || 'N/A'}
               </div>
             </div>
           </div>
@@ -388,7 +492,7 @@ export function ExecutiveSummaryPage() {
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart
-                data={brandMediaAnalysisData.weeklyTrend}
+                data={weeklyTrend}
                 margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
               >
                 <defs>
@@ -447,20 +551,14 @@ export function ExecutiveSummaryPage() {
           <div className="h-80 p-2">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
-                data={[
-                  { name: 'Cawry Asset Mgt', value: 30 },
-                  { name: 'Quantum Zenith', value: 25 },
-                  { name: 'Stanbic IBTC Asset Mgt', value: 20 },
-                  { name: 'ARM Holding Company', value: 15 },
-                  { name: 'Anchoria Asset Mgt', value: 10 }
-                ]}
+                data={competitiveData}
                 layout="vertical"
                 margin={{ top: 10, right: 10, left: 0, bottom: 10 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={true} vertical={false} />
                 <XAxis
                   type="number"
-                  domain={[0, 35]}
+                  domain={[0, 100]}
                   axisLine={false}
                   tickLine={false}
                   tick={{ fontSize: 14, fill: '#666' }}
@@ -484,13 +582,7 @@ export function ExecutiveSummaryPage() {
                   }}
                 />
                 <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={24}>
-                  {[
-                    { name: 'Cawry Asset Mgt', value: 30 },
-                    { name: 'Quantum Zenith', value: 25 },
-                    { name: 'Stanbic IBTC Asset Mgt', value: 20 },
-                    { name: 'ARM Holding Company', value: 15 },
-                    { name: 'Anchoria Asset Mgt', value: 10 }
-                  ].map((_, index) => (
+                  {competitiveData.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={index === 0 ? COLORS[5] : '#e5e7eb'} />
                   ))}
                 </Bar>

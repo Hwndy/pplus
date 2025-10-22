@@ -53,10 +53,10 @@ export function SwotMentionsPage() {
 
       // Determine endpoint based on user role
       const endpoint = user.role.name === 'Supervisor'
-        ? 'https://backend-e79r.onrender.com/api/swot-analysis/supervisor-mentions'
+        ? 'https://pplus-2myh.onrender.com/api/swot-analysis/supervisor-mentions'
         : user.role.name === 'Analyst'
-        ? 'https://backend-e79r.onrender.com/api/swot-analysis/my-analysis'
-        : 'https://backend-e79r.onrender.com/api/swot-analysis';
+        ? 'https://pplus-2myh.onrender.com/api/swot-analysis/my-analysis'
+        : 'https://pplus-2myh.onrender.com/api/swot-analysis';
 
       const response = await fetch(endpoint, {
         headers: getAuthHeaders(),
@@ -94,7 +94,7 @@ export function SwotMentionsPage() {
   const handleDelete = async (swot: SwotAnalysis) => {
     if (window.confirm(`Are you sure you want to delete the SWOT analysis for ${swot.company.company_name}?`)) {
       try {
-        const response = await fetch(`https://backend-e79r.onrender.com/api/swot-analysis/delete/${swot.id}`, {
+        const response = await fetch(`https://pplus-2myh.onrender.com/api/swot-analysis/delete/${swot.id}`, {
           method: 'PUT',
           headers: getAuthHeaders(),
         });
