@@ -1,65 +1,130 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/components/auth/AuthContext';
+import { toast } from 'sonner';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { DataCard } from '@/components/ui/DataCard';
-import { Users, BarChart2, TrendingUp } from 'lucide-react';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  Cell
-} from 'recharts';
-import { competitiveCEOsData } from '@/utils/competitiveIntelligenceData';
+import { BarChart2, Users } from 'lucide-react';
 
-// Company logos/icons mapping
-const CompanyIcon = ({ name }: { name: string }) => {
-  if (name.includes('Alawuba') || name.includes('UBA')) {
-    return <div className="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center text-white font-bold text-xs">UB</div>;
-  } else if (name.includes('Adedeji') || name.includes('Stanbic')) {
-    return <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-xs">SI</div>;
-  } else if (name.includes('Edun') || name.includes('FCMB')) {
-    return <div className="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center text-white font-bold text-xs">FC</div>;
-  } else if (name.includes('Agbaje') || name.includes('GTCO')) {
-    return <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-xs">GT</div>;
-  } else if (name.includes('Oyedeji') || name.includes('HoldCo')) {
-    return <div className="w-6 h-6 rounded-full bg-gray-500 flex items-center justify-center text-white font-bold text-xs">FH</div>;
+const CompanyIcon = ({ company }: { company: string }) => {
+  if (company.includes('MTN') || company.includes('Airtel')) {
+    return <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-xs">T</div>;
+  } else if (company.includes('Ecobank')) {
+    return <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center text-white font-bold text-xs">E</div>;
+  } else if (company.includes('Interswitch')) {
+    return <div className="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center text-white font-bold text-xs">I</div>;
+  } else if (company.includes('Flutterwave')) {
+    return <div className="w-6 h-6 rounded-full bg-yellow-500 flex items-center justify-center text-white font-bold text-xs">F</div>;
   }
   return <div className="w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center text-white font-bold text-xs">?</div>;
 };
 
 export function CompetitiveCEOsPage() {
-  // Colors for sentiment bars
-  const positiveColor = "#10b981"; // Green
-  const negativeColor = "#ef4444"; // Red
-  const neutralColor = "#9ca3af"; // Gray
+  const { user, token, isAuthenticated, isLoading: authLoading } = useAuth();
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const currentDate = new Date();
+  const formattedDate = `${currentDate.getDate()} ${currentDate.toLocaleString('default', { month: 'short' })} ${currentDate.getFullYear()} ${currentDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZoneName: 'short', hour12: true })}`;
+
+  useEffect(() => {
+    if (authLoading || !isAuthenticated || !user) return;
+
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch('https://pplus-2myh.onrender.com/api/report/competitive-intelligence', {
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        });
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+        const result = await response.json();
+        if (result.success) {
+          setData(result.data);
+        } else {
+          throw new Error(result.message || 'Failed to fetch competitive intelligence');
+        }
+      } catch (err) {
+        console.error('Error fetching competitive intelligence:', err);
+        toast.error('Error fetching competitive intelligence');
+        setData(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [authLoading, isAuthenticated, user, token]);
+
+  if (loading) {
+    return <div className="flex justify-center items-center h-screen">Loading...</div>;
+  }
+
+  if (!data || !data.competitive_intelligence) {
+    return <div className="text-center text-gray-500">No data available</div>;
+  }
+
+  // Prepare media share data
+  const mediaShareData = Object.entries(data.competitive_intelligence).flatMap(([_, sector]) =>
+    sector.analysis.competitive_media_share.shares.map(share => ({
+      name: share.company,
+      value: parseFloat(share.percentage),
+    }))
+  );
+
+  // Prepare thought leadership data (using Market Share prominence as proxy)
+  const thoughtLeadershipData = Object.entries(data.competitive_intelligence).flatMap(([_, sector]) => {
+    const prominence = sector.analysis.media_prominence_analysis['Market Share'];
+    return prominence ? prominence.companies.map(company => ({
+      name: company.company,
+      value: parseFloat(company.percentage),
+    })) : [];
+  });
+
+  // Prepare top CEOs data
+  const topCEOsData = Object.entries(data.competitive_intelligence).flatMap(([_, sector]) => {
+    const ceos = sector.analysis.top_ceos_with_media_prominence.ceos;
+    return ceos.map(ceo => ({
+      name: ceo.ceo,
+      value: parseFloat(ceo.percentage),
+    }));
+  });
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <h2 className="text-2xl font-bold">Competitive CEOs Intelligence - Holdings</h2>
-      
+      <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-2xl p-6 text-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-black/10"></div>
+        <div className="relative z-10 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Competitive CEOs Intelligence - Holdings</h1>
+            <p className="text-indigo-100">Insights across monitored sub-sectors</p>
+          </div>
+          <div className="text-right">
+            <div className="text-sm text-indigo-100">Last Updated</div>
+            <div className="text-white font-medium">{formattedDate}</div>
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Top - Competitive Media Share */}
         <DataCard title="Top – Competitive Media Share" variant="glass" icon={<BarChart2 size={24} />}>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
-                data={competitiveCEOsData.mediaShare}
+                data={mediaShareData}
                 layout="vertical"
                 margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" domain={[0, 40]} />
-                <YAxis 
-                  dataKey="name" 
-                  type="category" 
+                <XAxis type="number" domain={[0, 100]} />
+                <YAxis
+                  dataKey="name"
+                  type="category"
                   width={0}
                   tick={(props) => {
                     const { x, y, payload } = props;
                     return (
                       <g transform={`translate(${x},${y})`}>
-                        <CompanyIcon name={payload.value} />
+                        <CompanyIcon company={payload.value} />
                         <text x={10} y={4} textAnchor="start" fill="#666" fontSize={12}>
                           {payload.value}
                         </text>
@@ -79,21 +144,21 @@ export function CompetitiveCEOsPage() {
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
-                data={competitiveCEOsData.thoughtLeadership}
+                data={thoughtLeadershipData}
                 layout="vertical"
                 margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" domain={[0, 60]} />
-                <YAxis 
-                  dataKey="name" 
-                  type="category" 
+                <XAxis type="number" domain={[0, 100]} />
+                <YAxis
+                  dataKey="name"
+                  type="category"
                   width={0}
                   tick={(props) => {
                     const { x, y, payload } = props;
                     return (
                       <g transform={`translate(${x},${y})`}>
-                        <CompanyIcon name={payload.value} />
+                        <CompanyIcon company={payload.value} />
                         <text x={10} y={4} textAnchor="start" fill="#666" fontSize={12}>
                           {payload.value}
                         </text>
@@ -108,101 +173,36 @@ export function CompetitiveCEOsPage() {
           </div>
         </DataCard>
 
-        {/* Top - Competitive Media Sentiment Score */}
-        <DataCard title="Top – Competitive Media Sentiment Score" variant="glass" icon={<TrendingUp size={24} />}>
-          <div className="p-2 text-xs text-center text-gray-500">
-            Sentiment Score (-1 to +1)
-          </div>
+        {/* Top - CEOs with Media Prominence */}
+        <DataCard title="Top – CEOs with Media Prominence" variant="glass" icon={<Users size={24} />}>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
-                data={competitiveCEOsData.sentimentScore}
+                data={topCEOsData}
                 layout="vertical"
                 margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis 
-                  type="number" 
-                  domain={[-0.3, 0.4]} 
-                  tickCount={8}
-                />
-                <YAxis 
-                  dataKey="name" 
-                  type="category" 
-                  width={0}
+                <XAxis type="number" domain={[0, 100]} />
+                <YAxis
+                  dataKey="name"
+                  type="category"
+                  width={150}
                   tick={(props) => {
                     const { x, y, payload } = props;
                     return (
                       <g transform={`translate(${x},${y})`}>
-                        <CompanyIcon name={payload.value} />
-                        <text x={10} y={4} textAnchor="start" fill="#666" fontSize={12}>
+                        <text x={0} y={4} textAnchor="start" fill="#666" fontSize={12} width={150} style={{ wordWrap: 'break-word', maxWidth: '150px' }}>
                           {payload.value}
                         </text>
                       </g>
                     );
                   }}
                 />
-                <Tooltip formatter={(value) => value.toFixed(2)} />
-                <Bar dataKey="value" name="Score">
-                  {competitiveCEOsData.sentimentScore.map((entry, index) => (
-                    <Cell 
-                      key={`cell-${index}`} 
-                      fill={entry.value >= 0 ? "#10b981" : "#ef4444"} 
-                    />
-                  ))}
-                </Bar>
+                <Tooltip formatter={(value) => `${value}%`} />
+                <Bar dataKey="value" fill="#0088FE" name="Percentage" />
               </BarChart>
             </ResponsiveContainer>
-          </div>
-        </DataCard>
-
-        {/* Top - Competitive Media Sentiment Frequency */}
-        <DataCard title="Top – Competitive Media Sentiment Frequency" variant="glass" icon={<BarChart2 size={24} />}>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={competitiveCEOsData.sentimentFrequency}
-                layout="vertical"
-                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" domain={[0, 35]} />
-                <YAxis 
-                  dataKey="name" 
-                  type="category" 
-                  width={0}
-                  tick={(props) => {
-                    const { x, y, payload } = props;
-                    return (
-                      <g transform={`translate(${x},${y})`}>
-                        <CompanyIcon name={payload.value} />
-                        <text x={10} y={4} textAnchor="start" fill="#666" fontSize={12}>
-                          {payload.value}
-                        </text>
-                      </g>
-                    );
-                  }}
-                />
-                <Tooltip />
-                <Bar dataKey="positive" stackId="a" fill={positiveColor} name="Positive" />
-                <Bar dataKey="negative" stackId="a" fill={negativeColor} name="Negative" />
-                <Bar dataKey="neutral" stackId="a" fill={neutralColor} name="Neutral" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="flex justify-center mt-2 space-x-4">
-            <div className="flex items-center">
-              <div className="w-3 h-3 bg-green-500 mr-1"></div>
-              <span className="text-xs">Positive</span>
-            </div>
-            <div className="flex items-center">
-              <div className="w-3 h-3 bg-red-500 mr-1"></div>
-              <span className="text-xs">Negative</span>
-            </div>
-            <div className="flex items-center">
-              <div className="w-3 h-3 bg-gray-400 mr-1"></div>
-              <span className="text-xs">Neutral</span>
-            </div>
           </div>
         </DataCard>
       </div>

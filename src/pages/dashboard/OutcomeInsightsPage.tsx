@@ -16,10 +16,10 @@ interface OutcomeInsight {
   company_id: number;
   company: { company_name: string };
   date: string;
-  social_media_engagement: { analysis: string }[];
-  brand_awareness: { analysis: string }[];
-  media_coverage: { analysis: string }[];
-  competitor_analysis: { analysis: string }[];
+  social_media_engagement: { analysis: string }[] | null;
+  brand_awareness: { analysis: string }[] | null;
+  media_coverage: { analysis: string }[] | null;
+  competitor_analysis: { analysis: string }[] | null;
   analyst_id: number | null;
   analyst: { username: string } | null;
   analyst_note: string | null;
@@ -51,6 +51,14 @@ export default function OutcomeInsightsPage() {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${token || ''}`,
   });
+
+  // Utility function to ensure a value is an array
+  const ensureArray = (value: any): { analysis: string }[] => {
+    if (Array.isArray(value)) {
+      return value;
+    }
+    return [];
+  };
 
   const fetchOutcomeInsights = async (page = 1, limit = 10) => {
     setLoading(true);
@@ -89,7 +97,7 @@ export default function OutcomeInsightsPage() {
 
   useEffect(() => {
     fetchOutcomeInsights();
-  }, [user, token]); // Add user and token to dependencies
+  }, [user, token]);
 
   const handleView = (outcome: OutcomeInsight) => {
     setSelectedOutcome(outcome);
@@ -255,17 +263,18 @@ export default function OutcomeInsightsPage() {
                       <TableCell className="font-medium">{outcome.company.company_name}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className="capitalize">
-                          {outcome.category || 'General'}
+                          {/* Replaced outcome.category with a fallback since it's not in the interface */}
+                          General
                         </Badge>
                       </TableCell>
                       <TableCell className="max-w-[300px]">
                         <div className="text-sm text-muted-foreground truncate">
                           {[
-                            ...outcome.social_media_engagement,
-                            ...outcome.brand_awareness,
-                            ...outcome.media_coverage,
-                            ...outcome.competitor_analysis,
-                          ].find(a => a.analysis)?.analysis || 'No analysis provided'}
+                            ...ensureArray(outcome.social_media_engagement),
+                            ...ensureArray(outcome.brand_awareness),
+                            ...ensureArray(outcome.media_coverage),
+                            ...ensureArray(outcome.competitor_analysis),
+                          ].find(a => a?.analysis)?.analysis || 'No analysis provided'}
                         </div>
                       </TableCell>
                       <TableCell>{format(new Date(outcome.createdAt), 'MMM d, yyyy')}</TableCell>

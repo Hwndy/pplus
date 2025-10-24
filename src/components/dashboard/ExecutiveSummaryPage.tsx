@@ -130,7 +130,7 @@ export function ExecutiveSummaryPage() {
 
       try {
         // Fetch executive summary
-        let summaryUrl = `${API_BASE_URL}/report/executive-summary?company=${companyParam}`;
+        let summaryUrl = `${API_BASE_URL}/report/executive-summary`;
         if (month) summaryUrl += `&month=${month}`;
 
         const summaryResponse = await fetch(summaryUrl, {
@@ -147,7 +147,7 @@ export function ExecutiveSummaryPage() {
         }
 
         // Fetch brand media analysis
-        let brandUrl = `${API_BASE_URL}/report/brand-media-analysis?company=${companyParam}`;
+        let brandUrl = `${API_BASE_URL}/report/brand-media-analysis`;
         if (month) brandUrl += `&month=${month}`;
 
         const brandResponse = await fetch(brandUrl, {

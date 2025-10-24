@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/components/auth/AuthContext';
 import { toast } from 'sonner';
 import { BarChart2, PieChart as PieChartIcon, LineChart as LineChartIcon, Newspaper, Image, Video, Users } from 'lucide-react';
@@ -98,7 +98,6 @@ export function BrandMediaAnalysisPage() {
         let url = 'https://pplus-2myh.onrender.com/api/report/brand-media-analysis';
         const month = getMonthFromDateRange(filterValues.dateRange);
         if (month) url += `?month=${month}`;
-        else url += '?company=Glo Nigeria'; // Default company if no filter
 
         const response = await fetch(url, {
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
