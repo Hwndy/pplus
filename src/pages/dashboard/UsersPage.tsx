@@ -17,7 +17,7 @@ import { apiService, User } from '@/services/apiService';
 import { useUsers, useDeleteUser, useCreateUser, useUpdateUser } from '@/hooks/useApi';
 import { toast } from 'sonner';
 import CreateUserForm from "@/components/admin/CreateUserForm";
-import { EditUserForm } from '@/components/admin/EditUserForm';
+import EditUserForm from '@/components/admin/EditUserForm';
 
 // --- Helpers ---
 const renderValue = (value: string | { id: string; name: string } | unknown): string => {
@@ -154,7 +154,7 @@ const UsersPage = () => {
               <Plus className="mr-2 h-4 w-4" /> Create User
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[1000px]">
             <DialogHeader><DialogTitle>Create User</DialogTitle></DialogHeader>
             <ScrollArea className="max-h-[calc(100vh-200px)] pr-4">
               <CreateUserForm onSave={handleSaveUser} onCancel={() => setIsCreateDialogOpen(false)} />
@@ -255,7 +255,7 @@ const UsersPage = () => {
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[1000px]">
           <DialogHeader><DialogTitle>Edit User</DialogTitle></DialogHeader>
           <ScrollArea className="max-h-[calc(100vh-200px)] pr-4">
             {selectedUser && (

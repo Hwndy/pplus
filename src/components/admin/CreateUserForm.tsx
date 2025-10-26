@@ -139,14 +139,12 @@ export default function CreateUserForm({
       password: '',
       confirmPassword: '',
       supervisorId: '',
-      company_monitorings: [],
-      subsidiary_monitorings: [],
+      company_monitorings: [],   // EMPTY
+      subsidiary_monitorings: [], // EMPTY
     },
   });
 
   const selectedRole = form.watch('role');
-  const companyMonitorings = form.getValues('company_monitorings') ?? [];
-  const subsidiaryMonitorings = form.getValues('subsidiary_monitorings') ?? [];
 
   // ────────────────────────────────────────────────────────────────────────
   // Load Data
@@ -206,22 +204,48 @@ export default function CreateUserForm({
   }, []);
 
   // ────────────────────────────────────────────────────────────────────────
-  // Role-Based UI
+  // Role-Based UI + Initialize Client Fields
   // ────────────────────────────────────────────────────────────────────────
   useEffect(() => {
-    setShowSupervisorField(selectedRole === 'Analyst');
-    setShowClientFields(selectedRole === 'Client');
+    const isClient = selectedRole === 'Client';
+    const isAnalyst = selectedRole === 'Analyst';
 
-    if (selectedRole !== 'Analyst') form.setValue('supervisorId', '');
-    if (selectedRole !== 'Client') {
-      form.reset(
-        {
-          ...form.getValues(),
-          company_monitorings: [],
-          subsidiary_monitorings: [],
-        },
-        { keepDirty: true }
-      );
+    setShowSupervisorField(isAnalyst);
+    setShowClientFields(isClient);
+
+    if (!isAnalyst) {
+      form.setValue('supervisorId', '');
+    }
+
+    if (isClient) {
+      // Initialize with full shape ONCE
+      const currentCompany = form.getValues('company_monitorings') ?? [];
+      const currentSubsidiary = form.getValues('subsidiary_monitorings') ?? [];
+
+      if (currentCompany.length === 0) {
+        form.setValue('company_monitorings', [
+          {
+            company_id: '',
+            competitor_company_ids: [],
+            media_prominence: [],
+            monitoring_date: null,
+          },
+        ], { shouldValidate: true });
+      }
+
+      if (currentSubsidiary.length === 0) {
+        form.setValue('subsidiary_monitorings', [
+          {
+            subsidiary_company_id: '',
+            competitor_subsidiary_ids: [],
+            media_prominence: [],
+          },
+        ], { shouldValidate: true });
+      }
+    } else {
+      // Clear when not Client
+      form.setValue('company_monitorings', [], { shouldValidate: true });
+      form.setValue('subsidiary_monitorings', [], { shouldValidate: true });
     }
   }, [selectedRole, form]);
 
@@ -229,45 +253,72 @@ export default function CreateUserForm({
   // Add/Remove Rows
   // ────────────────────────────────────────────────────────────────────────
   const addCompanyMonitoring = () => {
-    const newEntry = {
-      company_id: '',
-      competitor_company_ids: [],
-      media_prominence: [],
-      monitoring_date: null,
-      _key: Date.now(),
-    };
-    form.reset(
-      { ...form.getValues(), company_monitorings: [...companyMonitorings, newEntry] },
-      { keepDirty: true, keepTouched: true }
+    const current = form.getValues('company_monitorings') ?? [];
+    form.setValue(
+      'company_monitorings',
+      [
+        ...current,
+        {
+          company_id: '',
+          competitor_company_ids: [],
+          media_prominence: [],
+          monitoring_date: null,
+        },
+      ],
+      { shouldValidate: true, shouldDirty: true, shouldTouch: true }
     );
   };
 
   const removeCompanyMonitoring = (idx: number) => {
-    const updated = companyMonitorings.filter((_, i) => i !== idx);
-    form.reset(
-      { ...form.getValues(), company_monitorings: updated },
-      { keepDirty: true, keepTouched: true }
+    const current = form.getValues('company_monitorings') ?? [];
+    const updated = current.filter((_, i) => i !== idx);
+    form.setValue(
+      'company_monitorings',
+      updated.length > 0
+        ? updated
+        : [
+            {
+              company_id: '',
+              competitor_company_ids: [],
+              media_prominence: [],
+              monitoring_date: null,
+            },
+          ],
+      { shouldValidate: true, shouldDirty: true, shouldTouch: true }
     );
   };
 
   const addSubsidiaryMonitoring = () => {
-    const newEntry = {
-      subsidiary_company_id: '',
-      competitor_subsidiary_ids: [],
-      media_prominence: [],
-      _key: Date.now(),
-    };
-    form.reset(
-      { ...form.getValues(), subsidiary_monitorings: [...subsidiaryMonitorings, newEntry] },
-      { keepDirty: true, keepTouched: true }
+    const current = form.getValues('subsidiary_monitorings') ?? [];
+    form.setValue(
+      'subsidiary_monitorings',
+      [
+        ...current,
+        {
+          subsidiary_company_id: '',
+          competitor_subsidiary_ids: [],
+          media_prominence: [],
+        },
+      ],
+      { shouldValidate: true, shouldDirty: true, shouldTouch: true }
     );
   };
 
   const removeSubsidiaryMonitoring = (idx: number) => {
-    const updated = subsidiaryMonitorings.filter((_, i) => i !== idx);
-    form.reset(
-      { ...form.getValues(), subsidiary_monitorings: updated },
-      { keepDirty: true, keepTouched: true }
+    const current = form.getValues('subsidiary_monitorings') ?? [];
+    const updated = current.filter((_, i) => i !== idx);
+    form.setValue(
+      'subsidiary_monitorings',
+      updated.length > 0
+        ? updated
+        : [
+            {
+              subsidiary_company_id: '',
+              competitor_subsidiary_ids: [],
+              media_prominence: [],
+            },
+          ],
+      { shouldValidate: true, shouldDirty: true, shouldTouch: true }
     );
   };
 
@@ -335,6 +386,9 @@ export default function CreateUserForm({
       </div>
     );
   }
+
+  const companyMonitorings = form.getValues('company_monitorings') ?? [];
+  const subsidiaryMonitorings = form.getValues('subsidiary_monitorings') ?? [];
 
   return (
     <div className="p-4 max-w-6xl mx-auto">
