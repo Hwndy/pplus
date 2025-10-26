@@ -149,7 +149,7 @@ const DailyMentionsTablePage: React.FC = () => {
   ]);
   const mentionsPerPage = 10;
 
-  const BASE_URL = 'https://pplus-2myh.onrender.com/api';
+  const BASE_URL = 'https://pplus-nl5o.onrender.com/api';
 
   // Refetch function
   const refetch = useCallback(() => {

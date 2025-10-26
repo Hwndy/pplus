@@ -55,7 +55,7 @@ const PublicationsPage: React.FC = () => {
       setLoading(true);
       setError(null);
       const response = await fetch(
-        `https://pplus-2myh.onrender.com/api/publications?page=${page}&limit=${pageSize}&search=${search}`
+        `https://pplus-nl5o.onrender.com/api/publications?page=${page}&limit=${pageSize}&search=${search}`
       );
       const result = await response.json();
 
@@ -85,7 +85,7 @@ const PublicationsPage: React.FC = () => {
   const handleDelete = async (id: number) => {
     try {
       setDeletingId(id);
-      const response = await fetch(`https://pplus-2myh.onrender.com/api/publications/delete/${id}`, {
+      const response = await fetch(`https://pplus-nl5o.onrender.com/api/publications/delete/${id}`, {
         method: 'PUT',
       });
       const result = await response.json();
@@ -107,8 +107,8 @@ const PublicationsPage: React.FC = () => {
     try {
       setLoading(true);
       const url = editingPublication
-        ? `https://pplus-2myh.onrender.com/api/publications/update/${editingPublication.id}`
-        : `https://pplus-2myh.onrender.com/api/publications/create`;
+        ? `https://pplus-nl5o.onrender.com/api/publications/update/${editingPublication.id}`
+        : `https://pplus-nl5o.onrender.com/api/publications/create`;
 
       const response = await fetch(url, {
         method: editingPublication ? 'PUT' : 'POST',

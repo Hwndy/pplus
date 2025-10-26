@@ -95,7 +95,7 @@ export function BrandMediaAnalysisPage() {
     const fetchAnalysisData = async () => {
       setDataLoading(true);
       try {
-        let url = 'https://pplus-2myh.onrender.com/api/report/brand-media-analysis';
+        let url = 'https://pplus-nl5o.onrender.com/api/report/brand-media-analysis';
         const month = getMonthFromDateRange(filterValues.dateRange);
         if (month) url += `?month=${month}`;
 

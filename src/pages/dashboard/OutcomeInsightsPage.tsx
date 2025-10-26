@@ -70,10 +70,10 @@ export default function OutcomeInsightsPage() {
 
       // Determine endpoint based on user role
       const endpoint = user.role.name === 'Supervisor'
-        ? `https://pplus-2myh.onrender.com/api/outcome-insights/supervisor-mentions?page=${page}&limit=${limit}`
+        ? `https://pplus-nl5o.onrender.com/api/outcome-insights/supervisor-mentions?page=${page}&limit=${limit}`
         : user.role.name === 'Analyst'
-        ? `https://pplus-2myh.onrender.com/api/outcome-insights/my-insights?page=${page}&limit=${limit}`
-        : `https://pplus-2myh.onrender.com/api/outcome-insights?page=${page}&limit=${limit}`;
+        ? `https://pplus-nl5o.onrender.com/api/outcome-insights/my-insights?page=${page}&limit=${limit}`
+        : `https://pplus-nl5o.onrender.com/api/outcome-insights?page=${page}&limit=${limit}`;
 
       const response = await fetch(endpoint, {
         headers: getAuthHeaders(),
@@ -114,7 +114,7 @@ export default function OutcomeInsightsPage() {
   const handleDelete = async (outcome: OutcomeInsight) => {
     if (window.confirm(`Are you sure you want to delete the outcome insight for ${outcome.company.company_name}?`)) {
       try {
-        const response = await fetch(`https://pplus-2myh.onrender.com/api/outcome-insights/delete/${outcome.id}`, {
+        const response = await fetch(`https://pplus-nl5o.onrender.com/api/outcome-insights/delete/${outcome.id}`, {
           method: 'PUT',
           headers: getAuthHeaders(),
         });
@@ -139,7 +139,7 @@ export default function OutcomeInsightsPage() {
     const method = isEditMode ? 'PUT' : 'POST';
 
     try {
-      const response = await fetch(`https://pplus-2myh.onrender.com${url}`, {
+      const response = await fetch(`https://pplus-nl5o.onrender.com${url}`, {
         method,
         headers: getAuthHeaders(),
         body: JSON.stringify(formData),

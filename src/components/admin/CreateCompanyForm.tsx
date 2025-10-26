@@ -96,7 +96,7 @@ export default function CreateCompanyForm({
   useEffect(() => {
     const fetchCompanies = async () => {
       try {
-        const res = await axios.get('https://pplus-2myh.onrender.com/api/companies/?limit=1000');
+        const res = await axios.get('https://pplus-nl5o.onrender.com/api/companies/?limit=1000');
         const companies = res.data?.data?.data || [];
         const validCompanies = companies.filter((company: Company) => company.id && company.id.toString().length > 0);
         setApiCompanies(validCompanies);
@@ -249,12 +249,12 @@ export default function CreateCompanyForm({
         let res;
         if (initialValues && initialValues.id && index === 0) {
           res = await axios.put(
-            `https://pplus-2myh.onrender.com/api/companies/update/${initialValues.id}`,
+            `https://pplus-nl5o.onrender.com/api/companies/update/${initialValues.id}`,
             payload
           );
         } else {
           res = await axios.post(
-            'https://pplus-2myh.onrender.com/api/companies/create',
+            'https://pplus-nl5o.onrender.com/api/companies/create',
             payload
           );
         }
