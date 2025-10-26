@@ -62,86 +62,11 @@ interface NavItem {
   disabled?: boolean;
 }
 
-const adminItems: NavItem[] = [
-  { name: 'Users', href: '/dashboard/users', icon: Users },
-  { name: 'Companies', href: '/dashboard/companies', icon: Building2 },
-  { name: 'Publications', href: '/dashboard/publications', icon: BookOpenText },
-  { name: 'Placement', href: '/dashboard/placement', icon: Mountain },
-  { name: 'Editorial', href: '/dashboard/editorial', icon: Newspaper },
-];
-
-const reportModules: NavItem[] = [
-  {
-    name: 'Daily Mentions',
-    href: '/dashboard/daily-mentions',
-    icon: FileText,
-    hasSubmenu: true
-  },
-  {
-    name: 'SWOT Mentions',
-    href: '/dashboard/swot-mentions',
-    icon: Target,
-    hasSubmenu: true
-  },
-  {
-    name: 'Social Media Mentions',
-    href: '/dashboard/social-media-mentions',
-    icon: Share2,
-    hasSubmenu: true
-  },
-  {
-    name: 'Outcome & Insights',
-    href: '/dashboard/outcome-insights',
-    icon: LineChart,
-    hasSubmenu: true
-  },
-  {
-    name: 'Audit Log',
-    href: '/dashboard/audit-log',
-    icon: ClipboardList,
-    hasSubmenu: true
-  },
-];
-
-const navigationItems: NavItem[] = [
-  { name: 'Executive Summary', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'SWOT Analysis', href: '/dashboard/swot', icon: Target },
-  { name: 'Outcome & Insights', href: '/dashboard/insights', icon: LineChart },
-  { name: 'PR Drivers', href: '/dashboard/pr-drivers', icon: BarChart3 },
-  { name: 'Brand Media Analysis', href: '/dashboard/brand-media', icon: PieChart },
-  { name: 'Publication Analysis', href: '/dashboard/publication', icon: Newspaper },
-  {
-    name: 'Social Media Analysis',
-    href: '/dashboard/social-media',
-    icon: Share2,
-    hasSubmenu: true
-  },
-  {
-    name: 'Competitive Analysis',
-    href: '/dashboard/competitive',
-    icon: BarChart,
-    hasSubmenu: true
-  },
-  {
-    name: 'Competitive PR Drivers',
-    href: '/dashboard/competitive-pr',
-    icon: Target,
-    hasSubmenu: true
-  },
-  { name: 'Audit Report Process', href: '/dashboard/audit', icon: FileCog },
-  { name: 'Principle & Methodology', href: '/dashboard/methodology', icon: BookOpen },
-];
-
-const adminRoutes: NavItem[] = [
-  { name: 'User Management', href: '/dashboard/users', icon: Users },
-  { name: 'Data Parameters', href: '/dashboard/parameters', icon: Settings },
-  { name: 'Audit Logs', href: '/dashboard/audit-logs', icon: ArrowRightLeft },
-];
+const defaultNavigation: NavItem[] = [];
 
 // Supervisor-specific navigation items
 const supervisorItems: NavItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  // { name: 'Review', href: '/dashboard/supervisordashboard', icon: CheckSquare },
   { name: 'Editorial', href: '/dashboard/editorial', icon: Newspaper },
   { name: 'Daily Mentions', href: '/dashboard/daily-mentions', icon: FileText },
   { name: 'SWOT Mentions', href: '/dashboard/swot-mentions', icon: Target },
@@ -156,7 +81,11 @@ interface SidebarProps {
 
 export function Sidebar({ className, isOpen = true, onClose }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { user } = useAuth();
+  const location = useLocation();
+  const isMobile = useIsMobile();
 
+  // Load collapsed state from localStorage
   useEffect(() => {
     const savedState = localStorage.getItem('sidebarState');
     if (savedState === 'collapsed') {
@@ -164,18 +93,16 @@ export function Sidebar({ className, isOpen = true, onClose }: SidebarProps) {
     }
   }, []);
 
-  const { user } = useAuth();
-  const location = useLocation();
-  const isMobile = useIsMobile();
-
+  // Early return if no user
   if (!user) return null;
 
-  // Define the navigation items based on user role
-  let navigation = navigationItems;
+  // Safely extract role (with fallbacks)
+  const userRole = user.role?.name?.toLowerCase() ?? null;
 
-  // For admin users, include all functionality (admin, supervisor, and analyst)
-  if (user.role.name.toLowerCase() === 'admin') {
-    // Group navigation items by role
+  // Determine navigation based on role
+  let navigation: NavItem[] = defaultNavigation;
+
+  if (userRole === 'admin') {
     const adminItems: NavItem[] = [
       { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
       { name: 'Users', href: '/dashboard/users', icon: Users },
@@ -196,36 +123,30 @@ export function Sidebar({ className, isOpen = true, onClose }: SidebarProps) {
       { name: 'Outcome & Insights', href: '/dashboard/outcome-insights', icon: LineChart },
     ];
 
-    // Combine all items in the desired order
-    const adminFullItems: NavItem[] = [
+    navigation = [
       ...adminItems,
       { name: 'Supervisor Features', href: '', icon: Shield, disabled: true },
       ...supervisorItems,
       { name: 'Analyst Features', href: '', icon: PenTool, disabled: true },
       ...analystItems,
     ];
-    navigation = adminFullItems;
   }
-  // For supervisor users, use the supervisor-specific items
-  else if (user.role.name.toLowerCase() === 'supervisor') {
+  else if (userRole === 'supervisor') {
     navigation = supervisorItems;
   }
-  // For analyst users, include only essential pages
-  else if (user.role.name.toLowerCase() === 'analyst') {
-    const analystItems = [
+  else if (userRole === 'analyst') {
+    const analystItems: NavItem[] = [
       { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
       { name: 'Editorial', href: '/dashboard/editorial', icon: Newspaper },
       { name: 'Daily Mentions', href: '/dashboard/daily-mentions', icon: FileText },
       { name: 'SWOT Mentions', href: '/dashboard/swot-mentions', icon: Target },
       { name: 'Social Media Mentions', href: '/dashboard/social-media-mentions', icon: Share2 },
       { name: 'Outcome & Insights', href: '/dashboard/outcome-insights', icon: LineChart },
-      // { name: 'Submissions', href: '/dashboard/submissions', icon: ClipboardList }
     ];
     navigation = analystItems;
   }
-  // For client users, include client-specific pages
-  else if (user.role.name.toLowerCase() === 'client') {
-    const clientItems = [
+  else if (userRole === 'client') {
+    const clientItems: NavItem[] = [
       { name: 'Executive Summary', href: '/dashboard', icon: LayoutDashboard },
       { name: 'Daily Mentions Inbox', href: '/dashboard/mentions-inbox', icon: Inbox },
       { name: 'SWOT Analysis', href: '/dashboard/swot', icon: Target },
@@ -241,48 +162,75 @@ export function Sidebar({ className, isOpen = true, onClose }: SidebarProps) {
       { name: 'Competitive CEOs Intelligence', href: '/dashboard/competitive-ceos', icon: Users },
       { name: 'Competitive PR Drivers', href: '/dashboard/competitive-pr', icon: Target },
       { name: 'Glossary', href: '/dashboard/glossary', icon: BookOpen },
-      { name: 'Principle & Methodology', href: '/dashboard/methodology', icon: FileText }
+      { name: 'Principle & Methodology', href: '/dashboard/methodology', icon: FileText },
     ];
     navigation = clientItems;
   }
+  // Optional: Show loading state if role is not yet known
+  else if (userRole === null) {
+    return (
+      <aside className={cn(
+        "flex flex-col border-r bg-white pt-5 h-[calc(100vh-4rem)] w-[240px]",
+        isMobile && !isOpen && "hidden",
+        isMobile && isOpen && "fixed z-40 left-0 shadow-xl w-[80%] max-w-[300px]",
+        className
+      )}>
+        <div className="flex h-full items-center justify-center">
+          <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-indigo-600"></div>
+        </div>
+      </aside>
+    );
+  }
+
+  // Toggle collapse
+  const toggleCollapse = () => {
+    const newState = !isCollapsed;
+    setIsCollapsed(newState);
+    localStorage.setItem('sidebarState', newState ? 'collapsed' : 'expanded');
+  };
 
   return (
     <aside
       className={cn(
         "flex flex-col border-r bg-white pt-5 transition-all duration-300 h-[calc(100vh-4rem)]",
-        isCollapsed ? "!w-12" : "w-[240px]", // Force width with !important
+        isCollapsed ? "!w-12" : "w-[240px]",
         isMobile && !isOpen && "w-0 min-w-0 border-none opacity-0 pointer-events-none",
         isMobile && isOpen && "fixed z-40 left-0 shadow-xl w-[80%] max-w-[300px]",
         className
       )}
     >
       <ScrollArea className={cn(
-        "flex flex-col h-full",
-        isCollapsed ? "!px-0" : "px-3", // Remove padding in collapsed state
-        "py-2"
+        "flex flex-col h-full py-2",
+        isCollapsed ? "!px-0" : "px-3"
       )}>
         <nav className="grid gap-1">
           <TooltipProvider>
             {navigation.map((item) => {
               const Icon = item.icon;
               const isActive = location.pathname === item.href;
+              const isDisabled = item.disabled;
 
               return (
                 <Tooltip key={item.name}>
                   <TooltipTrigger asChild>
                     <Link
-                      to={item.href}
+                      to={isDisabled ? '#' : item.href}
                       className={cn(
                         "flex items-center rounded-md py-2 text-sm font-medium transition-all duration-300",
-                        isCollapsed ? "justify-center !px-0" : "px-3 gap-3", // Center icon and remove padding
+                        isCollapsed ? "justify-center !px-0" : "px-3 gap-3",
                         isActive
                           ? "bg-indigo-950 text-white"
-                          : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                          : isDisabled
+                            ? "text-gray-400 cursor-not-allowed"
+                            : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
                       )}
-                      onClick={isMobile ? onClose : undefined}
+                      onClick={(e) => {
+                        if (isDisabled) e.preventDefault();
+                        if (isMobile && !isDisabled) onClose?.();
+                      }}
                     >
                       <Icon className={cn(
-                        "h-5 w-5 min-w-[20px]", // Added min-width to maintain icon size
+                        "h-5 w-5 min-w-[20px]",
                         isActive ? "text-white" : "text-gray-500"
                       )} />
                       <span className={isCollapsed ? "hidden" : "block"}>{item.name}</span>
@@ -314,6 +262,7 @@ export function Sidebar({ className, isOpen = true, onClose }: SidebarProps) {
         </nav>
       </ScrollArea>
 
+      {/* Collapse Button (Desktop Only) */}
       {!isMobile && (
         <div className="mt-auto border-t py-3 px-4 flex justify-center">
           <Tooltip>
@@ -321,11 +270,7 @@ export function Sidebar({ className, isOpen = true, onClose }: SidebarProps) {
               <button
                 className="p-2 rounded-full hover:bg-gray-200 transition-colors"
                 aria-label="Toggle sidebar"
-                onClick={() => {
-                  const newState = !isCollapsed;
-                  setIsCollapsed(newState);
-                  localStorage.setItem('sidebarState', newState ? 'collapsed' : 'expanded');
-                }}
+                onClick={toggleCollapse}
               >
                 {isCollapsed ? (
                   <ArrowRight size={20} className="transition-all duration-300" />

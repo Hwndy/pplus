@@ -20,11 +20,15 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
   disabled = false,
 }) => {
   // Convert selected values to react-select format
-  const selectedOptions = options.filter((option) => selected.includes(option.value));
+  const selectedOptions = options.filter((option) =>
+    selected.includes(option.value)
+  );
 
-  // Handle change event
-  const handleChange = (selectedOptions: MultiValue<{ value: string; label: string }>) => {
-    onChange(selectedOptions.map((option) => option.value));
+  // ✅ Handle change safely (always returns array)
+  const handleChange = (
+    selectedOptions: MultiValue<{ value: string; label: string }> | null
+  ) => {
+    onChange(selectedOptions ? selectedOptions.map((o) => o.value) : []);
   };
 
   return (
@@ -43,42 +47,37 @@ export const MultiSelect: React.FC<MultiSelectProps> = ({
           backgroundColor: '#f9fafb', // bg-gray-50
           borderColor: '#e5e7eb', // border-gray-200
           minHeight: '40px',
-          '&:hover': {
-            borderColor: '#d1d5db', // hover:border-gray-300
-          },
+          '&:hover': { borderColor: '#d1d5db' },
         }),
         menu: (base) => ({
           ...base,
-          backgroundColor: '#ffffff', // bg-white
-          border: '1px solid #e5e7eb', // border-gray-200
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', // shadow-sm
+          backgroundColor: '#ffffff',
+          border: '1px solid #e5e7eb',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
         }),
         option: (base, { isFocused, isSelected }) => ({
           ...base,
           backgroundColor: isSelected
-            ? '#4f46e5' // bg-indigo-600
+            ? '#4f46e5'
             : isFocused
-            ? '#f3f4f6' // bg-gray-100
-            : '#ffffff', // bg-white
-          color: isSelected ? '#ffffff' : '#111827', // text-white or text-gray-900
-          '&:hover': {
-            backgroundColor: '#f3f4f6', // hover:bg-gray-100
-          },
+            ? '#f3f4f6'
+            : '#ffffff',
+          color: isSelected ? '#ffffff' : '#111827',
         }),
         multiValue: (base) => ({
           ...base,
-          backgroundColor: '#e5e7eb', // bg-gray-200
+          backgroundColor: '#e5e7eb',
         }),
         multiValueLabel: (base) => ({
           ...base,
-          color: '#111827', // text-gray-900
+          color: '#111827',
         }),
         multiValueRemove: (base) => ({
           ...base,
-          color: '#374151', // text-gray-700
+          color: '#374151',
           '&:hover': {
-            backgroundColor: '#dc2626', // bg-red-600
-            color: '#ffffff', // text-white
+            backgroundColor: '#dc2626',
+            color: '#ffffff',
           },
         }),
       }}
