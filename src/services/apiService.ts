@@ -27,13 +27,14 @@ export interface SubsidiaryCompany {
 export interface CompanyMonitoring {
   company_id: string;
   competitor_company_ids: string[];
+  media_prominence: string[];
   monitoring_date: string | null;
 }
 
 export interface SubsidiaryMonitoring {
   subsidiary_company_id: string;
   competitor_subsidiary_ids: string[];
-  media_prominence: string;
+  media_prominence: string[];
 }
 
 export interface Company {
@@ -449,6 +450,7 @@ class ApiService {
       company_monitorings: data.company_monitorings?.map(cm => ({
         company_id: Number(cm.company_id),
         competitor_company_ids: cm.competitor_company_ids.map(Number),
+        media_prominence: cm.media_prominence,
         monitoring_date: cm.monitoring_date ? new Date(cm.monitoring_date).toISOString() : new Date().toISOString(),
       })),
       subsidiary_monitorings: data.subsidiary_monitorings?.map(sm => ({
