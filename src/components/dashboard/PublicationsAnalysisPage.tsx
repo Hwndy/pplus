@@ -98,7 +98,7 @@ export function PublicationsAnalysisPage() {
       setDataLoading(true);
       try {
         const company = user.company || 'Glo Nigeria';
-        let url = `https://pplus-nl5o.onrender.com/api/report/publication-reporter-spokesperson-analysis`;
+        let url = `https://pplus-6xcn.onrender.com/api/report/publication-reporter-spokesperson-analysis`;
         const month = getMonthFromDateRange(filterValues.dateRange);
         if (month) url += `&month=${month}`;
 

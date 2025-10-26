@@ -31,7 +31,7 @@ export function CompetitiveIntelligencePage() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const response = await fetch('https://pplus-nl5o.onrender.com/api/report/competitive-intelligence', {
+        const response = await fetch('https://pplus-6xcn.onrender.com/api/report/competitive-intelligence', {
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         });
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);

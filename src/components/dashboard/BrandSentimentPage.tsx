@@ -73,7 +73,7 @@ const BrandSentimentPage: React.FC = () => {
     const determineCompany = async () => {
       setDataLoading(true);
       try {
-        let url = 'https://pplus-nl5o.onrender.com/api/report/competitive-intelligence';
+        let url = 'https://pplus-6xcn.onrender.com/api/report/competitive-intelligence';
         const month = getMonthFromDateRange(filterValues.dateRange);
         if (month) url += `?month=${month}`;
 
@@ -114,7 +114,7 @@ const BrandSentimentPage: React.FC = () => {
     const fetchSentimentData = async () => {
       setDataLoading(true);
       try {
-        let url = `https://pplus-nl5o.onrender.com/api/report/brand-media-sentiment-index?company=${encodeURIComponent(
+        let url = `https://pplus-6xcn.onrender.com/api/report/brand-media-sentiment-index?company=${encodeURIComponent(
           selectedCompany
         )}`;
         const month = getMonthFromDateRange(filterValues.dateRange);
