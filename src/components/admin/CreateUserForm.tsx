@@ -2,9 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { format } from 'date-fns';
 import {
-  CalendarIcon,
   Pencil,
   Image,
   Loader2,
@@ -22,11 +20,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -34,7 +27,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { User } from '../../services/apiService';
 import { apiService } from '@/services/apiService';
@@ -62,7 +54,7 @@ const subsidiaryMonitoringSchema = z.object({
   subsidiary_company_id: z.string().min(1, 'Subsidiary is required'),
   competitor_subsidiary_ids: z
     .array(z.string())
-    .min(1, 'At least one competitor subsidiary is required'),
+    .min(1, 'At least one competitor is required'),
   media_prominence: z
     .array(z.string())
     .min(1, 'At least one media prominence is required'),
@@ -74,11 +66,8 @@ const formSchema = z
     email: z.string().email('Invalid email address'),
     country_code: z.string(),
     mobile_number: z.string().min(5, 'Mobile number is required'),
-    gender: z.string().optional(),
     role: z.string(),
     supervisorId: z.string().optional(),
-    joinDate: z.date(),
-    expirationDate: z.date(),
     password: z.string().min(6, 'Password must be at least 6 characters'),
     confirmPassword: z.string(),
     company_monitorings: z.array(companyMonitoringSchema).optional(),
@@ -113,15 +102,9 @@ export default function CreateUserForm({
     { id: number; company_name: string }[]
   >([]);
   const [subsidiaries, setSubsidiaries] = useState<
-    {
-      id: number;
-      subsidiary_company_id: number;
-      company_name: string;
-    }[]
+    { id: number; subsidiary_company_id: number; company_name: string }[]
   >([]);
-  const [mediaProminenceOptions, setMediaProminenceOptions] = useState<string[]>(
-    []
-  );
+  const [mediaProminenceOptions, setMediaProminenceOptions] = useState<string[]>([]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -131,16 +114,11 @@ export default function CreateUserForm({
       role: 'Admin',
       mobile_number: '',
       country_code: '+234',
-      gender: '',
-      joinDate: new Date(),
-      expirationDate: new Date(
-        new Date().setFullYear(new Date().getFullYear() + 1)
-      ),
       password: '',
       confirmPassword: '',
       supervisorId: '',
-      company_monitorings: [],   // EMPTY
-      subsidiary_monitorings: [], // EMPTY
+      company_monitorings: [],
+      subsidiary_monitorings: [],
     },
   });
 
@@ -204,7 +182,7 @@ export default function CreateUserForm({
   }, []);
 
   // ────────────────────────────────────────────────────────────────────────
-  // Role-Based UI + Initialize Client Fields
+  // Role-Based UI
   // ────────────────────────────────────────────────────────────────────────
   useEffect(() => {
     const isClient = selectedRole === 'Client';
@@ -218,7 +196,6 @@ export default function CreateUserForm({
     }
 
     if (isClient) {
-      // Initialize with full shape ONCE
       const currentCompany = form.getValues('company_monitorings') ?? [];
       const currentSubsidiary = form.getValues('subsidiary_monitorings') ?? [];
 
@@ -233,17 +210,11 @@ export default function CreateUserForm({
         ], { shouldValidate: true });
       }
 
+      // Subsidiary monitoring is OPTIONAL — only init if needed
       if (currentSubsidiary.length === 0) {
-        form.setValue('subsidiary_monitorings', [
-          {
-            subsidiary_company_id: '',
-            competitor_subsidiary_ids: [],
-            media_prominence: [],
-          },
-        ], { shouldValidate: true });
+        form.setValue('subsidiary_monitorings', [], { shouldValidate: true });
       }
     } else {
-      // Clear when not Client
       form.setValue('company_monitorings', [], { shouldValidate: true });
       form.setValue('subsidiary_monitorings', [], { shouldValidate: true });
     }
@@ -309,15 +280,7 @@ export default function CreateUserForm({
     const updated = current.filter((_, i) => i !== idx);
     form.setValue(
       'subsidiary_monitorings',
-      updated.length > 0
-        ? updated
-        : [
-            {
-              subsidiary_company_id: '',
-              competitor_subsidiary_ids: [],
-              media_prominence: [],
-            },
-          ],
+      updated,
       { shouldValidate: true, shouldDirty: true, shouldTouch: true }
     );
   };
@@ -338,30 +301,34 @@ export default function CreateUserForm({
         role: values.role,
         country_code: values.country_code,
         mobile_number: values.mobile_number,
-        gender: values.gender || undefined,
         supervisor_id: values.supervisorId ? Number(values.supervisorId) : undefined,
-        joinDate: values.joinDate?.toISOString() ?? new Date().toISOString(),
-        expiration_date:
-          values.expirationDate?.toISOString() ??
-          new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(),
         avatar,
       };
 
       if (values.role === 'Client') {
-        payload.company_monitorings = (values.company_monitorings ?? []).map((c) => ({
-          company_id: Number(c.company_id),
-          competitor_company_ids: (c.competitor_company_ids ?? []).map(Number),
-          media_prominence: c.media_prominence ?? [],
-          monitoring_date: c.monitoring_date
-            ? c.monitoring_date.toISOString()
-            : new Date().toISOString(),
-        }));
+        // Company monitoring: required, at least one valid entry
+        payload.company_monitorings = (values.company_monitorings ?? [])
+          .filter(c => c.company_id && c.competitor_company_ids?.length > 0 && c.media_prominence?.length > 0)
+          .map((c) => ({
+            company_id: Number(c.company_id),
+            competitor_company_ids: (c.competitor_company_ids ?? []).map(Number),
+            media_prominence: c.media_prominence ?? [],
+            monitoring_date: c.monitoring_date
+              ? c.monitoring_date.toISOString()
+              : new Date().toISOString(),
+          }));
 
-        payload.subsidiary_monitorings = (values.subsidiary_monitorings ?? []).map((s) => ({
-          subsidiary_company_id: Number(s.subsidiary_company_id),
-          competitor_subsidiary_ids: (s.competitor_subsidiary_ids ?? []).map(Number),
-          media_prominence: s.media_prominence ?? [],
-        }));
+        // Subsidiary monitoring: optional — only send if filled
+        const validSubs = (values.subsidiary_monitorings ?? [])
+          .filter(s => s.subsidiary_company_id && s.competitor_subsidiary_ids?.length > 0 && s.media_prominence?.length > 0);
+
+        if (validSubs.length > 0) {
+          payload.subsidiary_monitorings = validSubs.map((s) => ({
+            subsidiary_company_id: Number(s.subsidiary_company_id),
+            competitor_subsidiary_ids: (s.competitor_subsidiary_ids ?? []).map(Number),
+            media_prominence: s.media_prominence ?? [],
+          }));
+        }
       }
 
       const res = await apiService.createUser(payload);
@@ -418,7 +385,7 @@ export default function CreateUserForm({
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          {/* Basic Fields */}
+          {/* Username & Email */}
           <FormField
             control={form.control}
             name="username"
@@ -447,6 +414,7 @@ export default function CreateUserForm({
             )}
           />
 
+          {/* Phone */}
           <div className="grid grid-cols-3 gap-2">
             <FormField
               control={form.control}
@@ -486,29 +454,7 @@ export default function CreateUserForm({
             />
           </div>
 
-          <FormField
-            control={form.control}
-            name="gender"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Gender</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger className="bg-gray-50 border-gray-200">
-                      <SelectValue placeholder="Select gender" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="Male">Male</SelectItem>
-                    <SelectItem value="Female">Female</SelectItem>
-                    <SelectItem value="Prefer not to say">Prefer not to say</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
+          {/* Role */}
           <FormField
             control={form.control}
             name="role"
@@ -565,7 +511,7 @@ export default function CreateUserForm({
           {/* Client Monitoring */}
           {showClientFields && (
             <>
-              {/* Company Monitoring */}
+              {/* Company Monitoring (Required) */}
               <div className="space-y-4">
                 <Label className="font-semibold text-lg">Company Monitoring</Label>
                 {companyMonitorings.map((_, idx) => (
@@ -661,32 +607,12 @@ export default function CreateUserForm({
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Date *</FormLabel>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant="outline"
-                                  className={cn(
-                                    'w-full pl-3 text-left font-normal bg-gray-50 border-gray-200',
-                                    !field.value && 'text-muted-foreground'
-                                  )}
-                                >
-                                  {field.value
-                                    ? format(field.value, 'dd MMM yyyy')
-                                    : 'Pick a date'}
-                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={field.value}
-                                onSelect={field.onChange}
-                                initialFocus
-                              />
-                            </PopoverContent>
-                          </Popover>
+                          <input
+                            type="date"
+                            className="w-full px-3 py-2 border rounded-md bg-gray-50 border-gray-200"
+                            value={field.value ? field.value.toISOString().split('T')[0] : ''}
+                            onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : null)}
+                          />
                           <FormMessage />
                         </FormItem>
                       )}
@@ -699,167 +625,116 @@ export default function CreateUserForm({
                 </Button>
               </div>
 
-              {/* Subsidiary Monitoring */}
-              <div className="space-y-4 pt-6">
-                <Label className="font-semibold text-lg">Subsidiary Monitoring</Label>
-                {subsidiaryMonitorings.map((_, idx) => (
-                  <div
-                    key={idx}
-                    className="grid grid-cols-1 md:grid-cols-3 gap-4 border p-4 rounded-md relative"
-                  >
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeSubsidiaryMonitoring(idx)}
-                      className="absolute top-2 right-2 text-red-500 hover:text-red-700"
-                      disabled={subsidiaryMonitorings.length === 1}
+              {/* Subsidiary Monitoring (Optional) */}
+              {subsidiaryMonitorings.length > 0 && (
+                <div className="space-y-4 pt-6">
+                  <Label className="font-semibold text-lg">Subsidiary Monitoring (Optional)</Label>
+                  {subsidiaryMonitorings.map((_, idx) => (
+                    <div
+                      key={idx}
+                      className="grid grid-cols-1 md:grid-cols-3 gap-4 border p-4 rounded-md relative"
                     >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeSubsidiaryMonitoring(idx)}
+                        className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
 
-                    <FormField
-                      control={form.control}
-                      name={`subsidiary_monitorings.${idx}.subsidiary_company_id`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Subsidiary *</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger className="bg-gray-50 border-gray-200">
-                                <SelectValue placeholder="Select subsidiary" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {subsidiaries.map((s) => (
-                                <SelectItem key={s.id} value={s.subsidiary_company_id.toString()}>
-                                  {s.company_name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                      <FormField
+                        control={form.control}
+                        name={`subsidiary_monitorings.${idx}.subsidiary_company_id`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Subsidiary</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger className="bg-gray-50 border-gray-200">
+                                  <SelectValue placeholder="Select subsidiary" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {subsidiaries.map((s) => (
+                                  <SelectItem key={s.id} value={s.subsidiary_company_id.toString()}>
+                                    {s.company_name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-                    <FormField
-                      control={form.control}
-                      name={`subsidiary_monitorings.${idx}.competitor_subsidiary_ids`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Competitor Subsidiaries *</FormLabel>
-                          <MultiSelect
-                            options={subsidiaries.map((s) => ({
-                              value: s.subsidiary_company_id.toString(),
-                              label: s.company_name,
-                            }))}
-                            selected={field.value ?? []}
-                            onChange={(values) => {
-                              field.onChange(values ?? []);
-                              form.trigger(`subsidiary_monitorings.${idx}.competitor_subsidiary_ids`);
-                            }}
-                            placeholder="Select competitors"
-                          />
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                      <FormField
+                        control={form.control}
+                        name={`subsidiary_monitorings.${idx}.competitor_subsidiary_ids`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Competitor Subsidiaries</FormLabel>
+                            <MultiSelect
+                              options={subsidiaries.map((s) => ({
+                                value: s.subsidiary_company_id.toString(),
+                                label: s.company_name,
+                              }))}
+                              selected={field.value ?? []}
+                              onChange={(values) => {
+                                field.onChange(values ?? []);
+                                form.trigger(`subsidiary_monitorings.${idx}.competitor_subsidiary_ids`);
+                              }}
+                              placeholder="Select competitors"
+                            />
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-                    <FormField
-                      control={form.control}
-                      name={`subsidiary_monitorings.${idx}.media_prominence`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Media Prominence *</FormLabel>
-                          <MultiSelect
-                            options={mediaProminenceOptions.map((v) => ({
-                              value: v,
-                              label: v,
-                            }))}
-                            selected={field.value ?? []}
-                            onChange={(values) => {
-                              field.onChange(values ?? []);
-                              form.trigger(`subsidiary_monitorings.${idx}.media_prominence`);
-                            }}
-                            placeholder="Select at least one"
-                          />
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                ))}
+                      <FormField
+                        control={form.control}
+                        name={`subsidiary_monitorings.${idx}.media_prominence`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Media Prominence</FormLabel>
+                            <MultiSelect
+                              options={mediaProminenceOptions.map((v) => ({
+                                value: v,
+                                label: v,
+                              }))}
+                              selected={field.value ?? []}
+                              onChange={(values) => {
+                                field.onChange(values ?? []);
+                                form.trigger(`subsidiary_monitorings.${idx}.media_prominence`);
+                              }}
+                              placeholder="Select at least one"
+                            />
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  ))}
 
-                <Button type="button" onClick={addSubsidiaryMonitoring} variant="outline" className="w-full">
-                  <Plus className="mr-2 h-4 w-4" /> Add Subsidiary Monitoring
+                  <Button type="button" onClick={addSubsidiaryMonitoring} variant="outline" className="w-full">
+                    <Plus className="mr-2 h-4 w-4" /> Add Subsidiary Monitoring
+                  </Button>
+                </div>
+              )}
+
+              {subsidiaryMonitorings.length === 0 && (
+                <Button
+                  type="button"
+                  onClick={addSubsidiaryMonitoring}
+                  variant="outline"
+                  className="w-full mt-4"
+                >
+                  <Plus className="mr-2 h-4 w-4" /> Add Subsidiary Monitoring (Optional)
                 </Button>
-              </div>
+              )}
             </>
           )}
-
-          {/* Dates */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField
-              control={form.control}
-              name="joinDate"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Join Date</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            'pl-3 text-left font-normal bg-gray-50 border-gray-200',
-                            !field.value && 'text-muted-foreground'
-                          )}
-                        >
-                          {field.value ? format(field.value, 'dd MMM yyyy') : 'Select date'}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="expirationDate"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Expiration Date</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            'pl-3 text-left font-normal bg-gray-50 border-gray-200',
-                            !field.value && 'text-muted-foreground'
-                          )}
-                        >
-                          {field.value ? format(field.value, 'dd MMM yyyy') : 'Select date'}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
 
           {/* Passwords */}
           <FormField

@@ -99,7 +99,7 @@ export function CoverageRegionPage() {
       setDataLoading(true);
       try {
         const company = user.company || 'Glo Nigeria';
-        let url = `https://pplus-6xcn.onrender.com/api/report/social-stats-online-coverage`;
+        let url = `https://pplus-t71x.onrender.com/api/report/social-stats-online-coverage`;
         const month = getMonthFromDateRange(filterValues.dateRange);
         if (month) url += `&month=${month}`;
 

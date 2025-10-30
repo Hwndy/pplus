@@ -31,7 +31,7 @@ import { toast } from 'sonner';
 const COLORS = ['#4F46E5', '#06B6D4', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6'];
 const SENTIMENT_COLORS = ['#10B981', '#F59E0B', '#EF4444'];
 
-const API_BASE_URL = 'https://pplus-6xcn.onrender.com/api';
+const API_BASE_URL = 'https://pplus-t71x.onrender.com/api';
 
 export function ExecutiveSummaryPage() {
   const { user, token, isAuthenticated, isLoading: authLoading } = useAuth();

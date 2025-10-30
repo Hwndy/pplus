@@ -9,11 +9,11 @@ export interface User {
   username: string;
   country_code: string;
   mobile_number: string;
-  joinDate: string;
+  // joinDate: string;
   role: string;
   avatar?: string;
   supervisor_id?: string;
-  expiration_date?: string;
+  // expiration_date?: string;
   lastLogin?: string;
   createdAt: string;
   updatedAt: string;
@@ -265,7 +265,7 @@ export interface ApiResponse<T = unknown> {
 // ──────────────────────────────────────────────────────────────────────────────
 class ApiService {
   private token: string | null = null;
-  private baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://pplus-6xcn.onrender.com/api';
+  private baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://pplus-t71x.onrender.com/api';
 
   constructor() {
     console.log('ApiService initialized with baseUrl:', this.baseUrl);
@@ -440,10 +440,10 @@ class ApiService {
       email: data.email,
       country_code: data.country_code,
       mobile_number: data.mobile_number,
-      expiration_date: data.expiration_date
-        ? new Date(data.expiration_date).toISOString()
-        : new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(),
-      joinDate: data.joinDate ? new Date(data.joinDate).toISOString() : new Date().toISOString(),
+      // expiration_date: data.expiration_date
+      //   ? new Date(data.expiration_date).toISOString()
+      //   : new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(),
+      // joinDate: data.joinDate ? new Date(data.joinDate).toISOString() : new Date().toISOString(),
       role: data.role,
       password: data.password,
       supervisor_id: data.supervisor_id ? Number(data.supervisor_id) : undefined,

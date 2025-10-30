@@ -59,7 +59,7 @@ export default function SocialMediaMentionsPage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`https://pplus-6xcn.onrender.com/api/social-media-mentions?page=${page}&limit=${limit}`, {
+      const response = await fetch(`https://pplus-t71x.onrender.com/api/social-media-mentions?page=${page}&limit=${limit}`, {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
@@ -87,7 +87,7 @@ export default function SocialMediaMentionsPage() {
   const handleDelete = async (id: number) => {
     if (!confirm('Are you sure you want to delete this mention?')) return;
     try {
-      const response = await fetch(`https://pplus-6xcn.onrender.com/api/social-media-mentions/delete/${id}`, {
+      const response = await fetch(`https://pplus-t71x.onrender.com/api/social-media-mentions/delete/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -109,7 +109,7 @@ export default function SocialMediaMentionsPage() {
 
   const handleUpdateStatus = async (id: number, status: 'Approved' | 'Rejected') => {
     try {
-      const response = await fetch(`https://pplus-6xcn.onrender.com/api/social-media-mentions/${id}/status`, {
+      const response = await fetch(`https://pplus-t71x.onrender.com/api/social-media-mentions/${id}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

@@ -37,7 +37,7 @@ import { Label } from '../ui/label';
 // ---------------------------------------------------------------------
 // API & Constants
 // ---------------------------------------------------------------------
-const API_BASE = 'https://pplus-6xcn.onrender.com/api';
+const API_BASE = 'https://pplus-t71x.onrender.com/api';
 const PAGE_SIZE = 10;
 
 // ---------------------------------------------------------------------

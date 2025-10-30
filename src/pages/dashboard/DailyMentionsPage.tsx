@@ -283,7 +283,7 @@ const DailyMentionsPage: React.FC = () => {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [publications, setPublications] = useState<Publication[]>([]);
 
-  const BASE_URL = 'https://pplus-6xcn.onrender.com/api';
+  const BASE_URL = 'https://pplus-t71x.onrender.com/api';
 
   // Axios interceptor for Bearer token
   axios.interceptors.request.use(

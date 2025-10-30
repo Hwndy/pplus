@@ -138,8 +138,8 @@ export function OutcomeInsightForm({
     const method = isEdit ? 'PUT' : 'POST';
 
     try {
-      console.log('Sending request to:', `https://pplus-6xcn.onrender.com${url}`, 'with method:', method, 'and payload:', payload); // Debug log
-      const response = await fetch(`https://pplus-6xcn.onrender.com${url}`, {
+      console.log('Sending request to:', `https://pplus-t71x.onrender.com${url}`, 'with method:', method, 'and payload:', payload); // Debug log
+      const response = await fetch(`https://pplus-t71x.onrender.com${url}`, {
         method,
         headers: {
           'Content-Type': 'application/json',

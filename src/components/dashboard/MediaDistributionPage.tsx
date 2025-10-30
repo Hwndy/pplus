@@ -79,7 +79,7 @@ export function MediaDistributionPage() {
     const fetchThematicData = async () => {
       setDataLoading(true);
       try {
-        let url = 'https://pplus-6xcn.onrender.com/api/report/top-thematic-distribution-breakdown';
+        let url = 'https://pplus-t71x.onrender.com/api/report/top-thematic-distribution-breakdown';
         const month = getMonthFromDateRange(filterValues.dateRange);
         if (month) url += `?month=${month}&company=${user.company || 'Glo Nigeria'}`;
         else url += '?company=Glo Nigeria';

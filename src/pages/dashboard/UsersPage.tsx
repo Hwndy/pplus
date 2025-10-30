@@ -123,7 +123,7 @@ const UsersPage = () => {
             <Download className="mr-2 h-4 w-4" />
             Export
           </Button>
-          <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
+          {/* <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline">
                 <Upload className="mr-2 h-4 w-4" />
@@ -134,7 +134,7 @@ const UsersPage = () => {
               <DialogHeader><DialogTitle>Upload User Data</DialogTitle></DialogHeader>
               <FileUpload uploadType="data" accept=".csv,.xlsx,.xls" onUploadComplete={handleFileUpload} />
             </DialogContent>
-          </Dialog>
+          </Dialog> */}
         </div>
       </div>
 
