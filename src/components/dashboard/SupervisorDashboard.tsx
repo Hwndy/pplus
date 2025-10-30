@@ -14,6 +14,8 @@ import {
   Newspaper,
   Clock,
   MessageCircle,
+  Edit,
+  Trash2,
   RefreshCw,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -34,17 +36,104 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { Label } from '../ui/label';
 
-// ---------------------------------------------------------------------
-// API & Constants
-// ---------------------------------------------------------------------
+function PaginationControls({
+  currentPage,
+  totalPages,
+  onPageChange,
+}: {
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) {
+  const pages = [];
+  const maxVisible = 5;
+  let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+  let end = Math.min(totalPages, start + maxVisible - 1);
+  if (end - start + 1 < maxVisible) {
+    start = Math.max(1, end - maxVisible + 1);
+  }
+
+  for (let i = start; i <= end; i++) {
+    pages.push(i);
+  }
+
+  return (
+    <div className="flex items-center justify-between mt-4">
+      <div className="text-sm text-muted-foreground">
+        Page {currentPage} of {totalPages}
+      </div>
+      <div className="flex gap-1">
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={currentPage === 1}
+          onClick={() => onPageChange(1)}
+        >
+          First
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={currentPage === 1}
+          onClick={() => onPageChange(currentPage - 1)}
+        >
+          Prev
+        </Button>
+
+        {start > 1 && (
+          <>
+            <Button size="sm" variant="ghost" disabled>
+              ...
+            </Button>
+          </>
+        )}
+
+        {pages.map((page) => (
+          <Button
+            key={page}
+            size="sm"
+            variant={currentPage === page ? 'default' : 'outline'}
+            onClick={() => onPageChange(page)}
+          >
+            {page}
+          </Button>
+        ))}
+
+        {end < totalPages && (
+          <>
+            <Button size="sm" variant="ghost" disabled>
+              ...
+            </Button>
+          </>
+        )}
+
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={currentPage === totalPages}
+          onClick={() => onPageChange(currentPage + 1)}
+        >
+          Next
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={currentPage === totalPages}
+          onClick={() => onPageChange(totalPages)}
+        >
+          Last
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+
+// API Base
 const API_BASE = 'https://pplus-t71x.onrender.com/api';
 const PAGE_SIZE = 10;
 
-// ---------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------
-type Role = 'admin' | 'supervisor' | 'analyst' | undefined;
-
+// Generic Entry Interface (unchanged)
 interface GenericEntry {
   id: string;
   title: string;
@@ -57,12 +146,11 @@ interface GenericEntry {
   comments?: string;
   reviewedBy?: string;
   reviewedAt?: string;
-  // … (all the extra fields you already had)
-  industry?: any[];
-  competitors?: any[];
-  subsidiaries?: any[];
-  passive?: any[];
-  advert?: any[];
+  industry?: { headline: string; content: string; reporter: string | null; source: string; sentiment: string; urls: string[]; page?: string; publication_date?: string }[];
+  competitors?: { headline: string; content: string; reporter: string | null; source: string; sentiment: string; urls: string[]; page?: string; publication_date?: string }[];
+  subsidiaries?: { headline: string; content: string; reporter: string | null; source: string; sentiment: string; urls: string[]; page?: string; publication_date?: string }[];
+  passive?: { headline: string; content: string; reporter: string | null; source: string; sentiment: string; urls: string[]; page?: string; publication_date?: string }[];
+  advert?: { headline: string; content: string; reporter: string | null; source: string; sentiment: string; urls: string[]; page?: string; publication_date?: string }[];
   metrics?: any[];
   strengths?: any[];
   weaknesses?: any[];
@@ -90,6 +178,7 @@ interface GenericEntry {
   print_web_clips?: string | null;
 }
 
+// Stats Interface
 interface Stats {
   pending: number;
   approved: number;
@@ -97,12 +186,10 @@ interface Stats {
   total: number;
   approvedToday: number;
   rejectedToday: number;
-  byType: Record<
-    string,
-    { pending: number; approved: number; rejected: number; total: number; displayName: string }
-  >;
+  byType: Record<string, { pending: number; approved: number; rejected: number; total: number; displayName: string }>;
 }
 
+// Pagination Interface
 interface Pagination {
   currentPage: number;
   totalPages: number;
@@ -110,21 +197,12 @@ interface Pagination {
   pageSize: number;
 }
 
-// ---------------------------------------------------------------------
-// End-points
-// ---------------------------------------------------------------------
-const SUPERVISOR_DASHBOARD_ENDPOINTS = {
-  editorials: '/editorials/supervisor-dashboard',
-  dailyMentions: '/daily-mentions/supervisor-dashboard',
-  swotAnalysis: '/swot-analysis/supervisor-dashboard',
-  outcomeInsights: '/outcome-insights/supervisor-dashboard',
-  socialMediaMentions: '/social-media-mentions/supervisor-dashboard',
-} as const;
-
+// Content Types Config
 const contentTypes = {
   editorials: {
     endpoint: '/editorials',
     updateEndpoint: '/editorials/update',
+    //deleteEndpoint: '/editorials///delete',
     statusEndpoint: '/editorials/:id/status',
     displayName: 'Editorial Content',
     icon: <Newspaper className="h-4 w-4" />,
@@ -132,6 +210,7 @@ const contentTypes = {
   dailyMentions: {
     endpoint: '/daily-mentions',
     updateEndpoint: '/daily-mentions/update',
+    //deleteEndpoint: '/daily-mentions///delete',
     statusEndpoint: '/daily-mentions/:id/status',
     displayName: 'Daily Mentions Content',
     icon: <FileText className="h-4 w-4" />,
@@ -139,6 +218,7 @@ const contentTypes = {
   swotAnalysis: {
     endpoint: '/swot-analysis',
     updateEndpoint: '/swot-analysis/update',
+    //deleteEndpoint: '/swot-analysis///delete',
     statusEndpoint: '/swot-analysis/:id/status',
     displayName: 'Swot Analysis Content',
     icon: <Target className="h-4 w-4" />,
@@ -146,6 +226,7 @@ const contentTypes = {
   outcomeInsights: {
     endpoint: '/outcome-insights',
     updateEndpoint: '/outcome-insights/update',
+    //deleteEndpoint: '/outcome-insights///delete',
     statusEndpoint: '/outcome-insights/:id/status',
     displayName: 'Outcome Insights Content',
     icon: <LineChart className="h-4 w-4" />,
@@ -153,6 +234,7 @@ const contentTypes = {
   socialMediaMentions: {
     endpoint: '/social-media-mentions',
     updateEndpoint: '/social-media-mentions/update',
+    //deleteEndpoint: '/social-media-mentions///delete',
     statusEndpoint: '/social-media-mentions/:id/status',
     displayName: 'Social Media Mentions Content',
     icon: <MessageCircle className="h-4 w-4" />,
@@ -161,50 +243,46 @@ const contentTypes = {
 
 type ContentTypeKey = keyof typeof contentTypes;
 
-// ---------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------
-function getEndpoint(type: ContentTypeKey, role: Role): string {
-  // If role is missing treat as supervisor (most restrictive)
-  if (role === 'admin') return contentTypes[type].endpoint;
-  return SUPERVISOR_DASHBOARD_ENDPOINTS[type];
-}
+// Supervisor Endpoints
+const SUPERVISOR_ENDPOINTS = {
+  editorials: '/editorials/supervisor-dashboard',
+  dailyMentions: '/daily-mentions/supervisor-dashboard',
+  swotAnalysis: '/swot-analysis/supervisor-dashboard',
+  outcomeInsights: '/outcome-insights/supervisor-dashboard',
+  socialMediaMentions: '/social-media-mentions/supervisor-dashboard',
+} as const;
 
-// ---------------------------------------------------------------------
-// UI Components
-// ---------------------------------------------------------------------
+// Status Badge Component
 function StatusBadge({ status }: { status: string }) {
-  const styles = (() => {
+  const getStatusStyles = () => {
     switch (status?.toLowerCase()) {
       case 'approved':
         return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
       case 'rejected':
         return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
+      case 'pending':
+      case 'draft':
       default:
         return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
     }
-  })();
+  };
 
   return (
-    <Badge variant="outline" className={`${styles} capitalize`}>
+    <Badge variant="outline" className={`${getStatusStyles()} capitalize`}>
       {status || 'Unknown'}
     </Badge>
   );
 }
 
-// ---------------------------------------------------------------------
-// Main Component
-// ---------------------------------------------------------------------
+// Supervisor Dashboard Component
 export function SupervisorDashboard() {
   const { token, isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
-  const headers = token
-    ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-    : {};
+  const headers = token ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } : {};
 
-  // -----------------------------------------------------------------
-  // State
-  // -----------------------------------------------------------------
+  const isSupervisor = user?.role.name === 'Supervisor';
+  const isAdmin = user?.role.name === 'Admin';
+
   const [stats, setStats] = useState<Stats>({
     pending: 0,
     approved: 0,
@@ -214,26 +292,14 @@ export function SupervisorDashboard() {
     rejectedToday: 0,
     byType: {},
   });
-
-  // Initialise every tab with an empty array so DataTable always receives an array
-  const emptyData: Record<ContentTypeKey, GenericEntry[]> = {
-    editorials: [],
-    dailyMentions: [],
-    swotAnalysis: [],
-    outcomeInsights: [],
-    socialMediaMentions: [],
-  };
-  const [data, setData] = useState<Record<ContentTypeKey, GenericEntry[]>>(emptyData);
-
-  const emptyPagination: Record<ContentTypeKey, Pagination> = {
+  const [data, setData] = useState<Record<ContentTypeKey, GenericEntry[]>>({});
+  const [pagination, setPagination] = useState<Record<ContentTypeKey, Pagination>>({
     editorials: { currentPage: 1, totalPages: 1, total: 0, pageSize: PAGE_SIZE },
     dailyMentions: { currentPage: 1, totalPages: 1, total: 0, pageSize: PAGE_SIZE },
     swotAnalysis: { currentPage: 1, totalPages: 1, total: 0, pageSize: PAGE_SIZE },
     outcomeInsights: { currentPage: 1, totalPages: 1, total: 0, pageSize: PAGE_SIZE },
     socialMediaMentions: { currentPage: 1, totalPages: 1, total: 0, pageSize: PAGE_SIZE },
-  };
-  const [pagination, setPagination] = useState<Record<ContentTypeKey, Pagination>>(emptyPagination);
-
+  });
   const [activeTab, setActiveTab] = useState<ContentTypeKey>('editorials');
   const [loading, setLoading] = useState(true);
   const [tableLoading, setTableLoading] = useState(false);
@@ -242,9 +308,7 @@ export function SupervisorDashboard() {
   const [rejectReason, setRejectReason] = useState('');
   const [currentEntry, setCurrentEntry] = useState<GenericEntry | null>(null);
 
-  // -----------------------------------------------------------------
-  // Auth Guard
-  // -----------------------------------------------------------------
+  // Handle Unauthorized Access
   useEffect(() => {
     if (!isAuthenticated || !token || !user?.id) {
       toast.error('Please log in to access the dashboard');
@@ -253,369 +317,410 @@ export function SupervisorDashboard() {
     }
   }, [isAuthenticated, token, user, navigate]);
 
-  // -----------------------------------------------------------------
+  // Transform API data to GenericEntry (unchanged)
+  const transformToGenericEntry = (type: ContentTypeKey, rawEntry: any): GenericEntry => {
+    if (type === 'editorials') {
+      return {
+        id: rawEntry.id.toString(),
+        title: rawEntry.title || 'Untitled',
+        content: rawEntry.analyst_note || '',
+        status: rawEntry.status || 'pending',
+        createdAt: rawEntry.date || rawEntry.createdAt || new Date().toISOString(),
+        updatedAt: rawEntry.updatedAt,
+        authorName: rawEntry.created_by?.username || rawEntry.creator_data?.username || 'Unknown',
+        companyName: rawEntry.company?.company_name || rawEntry.company?.name || 'Unknown',
+        comments: rawEntry.supervisor_note || rawEntry.admin_note || '',
+        reviewedBy: rawEntry.approved_by?.username || rawEntry.approver_data?.username || 'Unknown',
+        reviewedAt: rawEntry.updatedAt,
+        source: rawEntry.source,
+        audience_reach: rawEntry.audience_reach,
+        brand: rawEntry.brand,
+        placement: rawEntry.placement,
+        reporter: rawEntry.reporter,
+        country: rawEntry.country,
+        spokesperson: rawEntry.spokesperson,
+        activity: rawEntry.activity,
+        sentiment: rawEntry.sentiment,
+        advert_spend: rawEntry.advert_spend,
+        circulation: rawEntry.circulation,
+        page_size: rawEntry.page_size,
+        language: rawEntry.language,
+        ceo_media_presence: rawEntry.ceo_media_presence,
+        ceo_thought_leadership: rawEntry.ceo_thought_leadership,
+        print_web_clips: rawEntry.print_web_clips,
+      };
+    } else if (type === 'dailyMentions') {
+      const industry = rawEntry.industry?.[0] || {};
+      return {
+        id: rawEntry.id.toString(),
+        title: industry.headline || rawEntry.publication || 'Untitled',
+        content: industry.content || '',
+        status: rawEntry.status || 'pending',
+        createdAt: rawEntry.date || rawEntry.createdAt || new Date().toISOString(),
+        updatedAt: rawEntry.updatedAt,
+        authorName: rawEntry.analyst?.username || rawEntry.creator_data?.username || 'Unknown',
+        companyName: rawEntry.company?.company_name || rawEntry.company_data?.company_name || 'Unknown',
+        comments: rawEntry.supervisor_note || '',
+        reviewedBy: rawEntry.approver_data?.username || rawEntry.approved_by?.username || 'Unknown',
+        reviewedAt: rawEntry.updatedAt,
+        industry: rawEntry.industry || [],
+        competitors: rawEntry.competitors || [],
+        subsidiaries: rawEntry.subsidiaries || [],
+        passive: rawEntry.passive || [],
+        advert: rawEntry.advert || [],
+      };
+    } else if (type === 'swotAnalysis') {
+      return {
+        id: rawEntry.id.toString(),
+        title: rawEntry.title || rawEntry.strengths?.[0]?.title || rawEntry.analyst_note?.slice(0, 50) || 'Untitled',
+        content: rawEntry.analyst_note || '',
+        status: rawEntry.status || 'pending',
+        createdAt: rawEntry.date || rawEntry.createdAt || new Date().toISOString(),
+        updatedAt: rawEntry.updatedAt,
+        authorName: rawEntry.analyst?.username || rawEntry.creator_data?.username || 'Unknown',
+        companyName: rawEntry.company?.company_name || rawEntry.company_data?.company_name || rawEntry.company?.name || 'Unknown',
+        comments: rawEntry.supervisor_note || '',
+        reviewedBy: rawEntry.supervisor?.username || rawEntry.approver_data?.username || 'Unknown',
+        reviewedAt: rawEntry.updatedAt,
+        strengths: rawEntry.strengths || [],
+        weaknesses: rawEntry.weaknesses || [],
+        opportunities: rawEntry.opportunities || [],
+        threats: rawEntry.threats || [],
+      };
+    } else if (type === 'outcomeInsights') {
+      return {
+        id: rawEntry.id.toString(),
+        title: rawEntry.title || rawEntry.analyst_note?.slice(0, 50) || 'Untitled',
+        content: rawEntry.analyst_note || rawEntry.insights || '',
+        status: rawEntry.status || 'pending',
+        createdAt: rawEntry.date || rawEntry.createdAt || new Date().toISOString(),
+        updatedAt: rawEntry.updatedAt,
+        authorName: rawEntry.analyst?.username || rawEntry.creator_data?.username || 'Unknown',
+        companyName: rawEntry.company?.company_name || rawEntry.company_data?.company_name || rawEntry.company?.name || 'Unknown',
+        comments: rawEntry.supervisor_note || '',
+        reviewedBy: rawEntry.approver_data?.username || rawEntry.approved_by?.username || 'Unknown',
+        reviewedAt: rawEntry.updatedAt,
+        social_media_engagement: rawEntry.social_media_engagement ? [rawEntry.social_media_engagement] : [],
+        brand_awareness: rawEntry.brand_awareness ? [rawEntry.brand_awareness] : [],
+        media_coverage: rawEntry.media_coverage ? [rawEntry.media_coverage] : [],
+        competitor_analysis: rawEntry.competitor_analysis || rawEntry.competitor_comparison ? [rawEntry.competitor_analysis || rawEntry.competitor_comparison] : [],
+      };
+    } else if (type === 'socialMediaMentions') {
+      return {
+        id: rawEntry.id.toString(),
+        title: rawEntry.title || rawEntry.analyst_note?.slice(0, 50) || rawEntry.social_media_type || 'Untitled',
+        content: rawEntry.analyst_note || '',
+        status: rawEntry.status || 'pending',
+        createdAt: rawEntry.date || rawEntry.createdAt || new Date().toISOString(),
+        updatedAt: rawEntry.updatedAt,
+        authorName: rawEntry.creator_data?.username || rawEntry.analyst?.username || 'Unknown',
+        companyName: rawEntry.company_data?.company_name || rawEntry.company?.company_name || rawEntry.company?.name || 'Unknown',
+        comments: rawEntry.supervisor_note || '',
+        reviewedBy: rawEntry.approver_data?.username || rawEntry.approved_by?.username || 'Unknown',
+        reviewedAt: rawEntry.updatedAt,
+        metrics: rawEntry.metrics || [],
+      };
+    }
+    return {
+      id: rawEntry.id?.toString() || '',
+      title: rawEntry.title || rawEntry.headline || 'Untitled',
+      content: rawEntry.content || rawEntry.analyst_note || '',
+      status: rawEntry.status || 'pending',
+      createdAt: rawEntry.createdAt || rawEntry.date || new Date().toISOString(),
+      updatedAt: rawEntry.updatedAt,
+      authorName: rawEntry.created_by?.username || rawEntry.creator_data?.username || rawEntry.analyst?.username || 'Unknown',
+      companyName: rawEntry.company?.company_name || rawEntry.company_data?.company_name || rawEntry.company?.name || 'Unknown',
+      comments: rawEntry.supervisor_note || '',
+      reviewedBy: rawEntry.approved_by?.username || rawEntry.approver_data?.username || rawEntry.supervisor?.username || 'Unknown',
+      reviewedAt: rawEntry.updatedAt,
+    };
+  };
+
   // Fetch Stats
-  // -----------------------------------------------------------------
   const fetchStats = async () => {
     if (!token || !user?.id) return;
+
     try {
-      const [overallRes, todayRes] = await Promise.all([
-        fetch(`${API_BASE}/status/status-counts`, { headers }),
-        fetch(`${API_BASE}/status/status-counts/today`, { headers }),
-      ]);
+      if (isAdmin) {
+        const [overallRes, todayRes] = await Promise.all([
+          fetch(`${API_BASE}/status/status-counts`, { headers }),
+          fetch(`${API_BASE}/status/status-counts/today`, { headers }),
+        ]);
 
-      if (overallRes.status === 401 || todayRes.status === 401) {
-        throw new Error('Unauthorized');
+        if (overallRes.status === 401 || todayRes.status === 401) throw new Error('Unauthorized');
+        if (!overallRes.ok || !todayRes.ok) throw new Error('Failed to fetch stats');
+
+        const overallData = await overallRes.json();
+        const todayData = await todayRes.json();
+
+        if (overallData.success && todayData.success) {
+          const summary = overallData.data.summary.totalCounts;
+          const byTable = overallData.data.byTable.reduce((acc: Record<string, any>, item: any) => {
+            const tableKeyMap: Record<string, ContentTypeKey> = {
+              Editorials: 'editorials',
+              DailyMentions: 'dailyMentions',
+              SwotAnalyses: 'swotAnalysis',
+              OutcomeInsights: 'outcomeInsights',
+              SocialMediaMentions: 'socialMediaMentions',
+            };
+            const frontendKey = tableKeyMap[item.table] || item.table;
+            acc[frontendKey] = {
+              pending: item.counts.pending,
+              approved: item.counts.approved,
+              rejected: item.counts.rejected,
+              total: item.counts.total,
+              displayName: item.displayName,
+            };
+            return acc;
+          }, {});
+
+          setStats({
+            pending: summary.pending,
+            approved: summary.approved,
+            rejected: summary.rejected,
+            total: summary.total,
+            approvedToday: todayData.data.summary.totalActivity.approved,
+            rejectedToday: todayData.data.summary.totalActivity.rejected,
+            byType: byTable,
+          });
+        }
+      } else if (isSupervisor) {
+        // Fetch from active tab to get stats
+        const url = `${API_BASE}${SUPERVISOR_ENDPOINTS[activeTab]}?page=1&limit=${PAGE_SIZE}`;
+        const res = await fetch(url, { headers });
+        if (!res.ok) throw new Error('Failed to fetch supervisor stats');
+        const json = await res.json();
+
+        const s = json.data?.stats || {};
+        const pending = s[`pending_${activeTab}`] ?? 0;
+        const approved = s[`approved_${activeTab}`] ?? 0;
+        const rejected = s[`rejected_${activeTab}`] ?? 0;
+        const total = s[`total_${activeTab}`] ?? 0;
+
+        setStats(prev => ({
+          ...prev,
+          pending,
+          approved,
+          rejected,
+          total,
+          approvedToday: 0,
+          rejectedToday: 0,
+          byType: {
+            ...prev.byType,
+            [activeTab]: {
+              pending,
+              approved,
+              rejected,
+              total,
+              displayName: contentTypes[activeTab].displayName,
+            },
+          },
+        }));
       }
-      if (!overallRes.ok || !todayRes.ok) throw new Error('Failed to fetch stats');
-
-      const overallData = await overallRes.json();
-      const todayData = await todayRes.json();
-
-      if (!overallData.success || !todayData.success) throw new Error('Invalid response');
-
-      const summary = overallData.data.summary.totalCounts;
-      const byTable = overallData.data.byTable.reduce(
-        (acc: Record<string, any>, item: any) => {
-          const map: Record<string, ContentTypeKey> = {
-            Editorials: 'editorials',
-            DailyMentions: 'dailyMentions',
-            SwotAnalyses: 'swotAnalysis',
-            OutcomeInsights: 'outcomeInsights',
-            SocialMediaMentions: 'socialMediaMentions',
-          };
-          const key = map[item.table] ?? item.table;
-          acc[key] = {
-            pending: item.counts.pending,
-            approved: item.counts.approved,
-            rejected: item.counts.rejected,
-            total: item.counts.total,
-            displayName: item.displayName,
-          };
-          return acc;
-        },
-        {}
-      );
-
-      setStats({
-        pending: summary.pending,
-        approved: summary.approved,
-        rejected: summary.rejected,
-        total: summary.total,
-        approvedToday: todayData.data.summary.totalActivity.approved,
-        rejectedToday: todayData.data.summary.totalActivity.rejected,
-        byType: byTable,
-      });
-    } catch (err) {
-      console.error('Stats error:', err);
+    } catch (error) {
+      console.error('Error fetching stats:', error);
       toast.error('Failed to load stats');
-      if ((err as Error).message.includes('Unauthorized')) navigate('/login', { replace: true });
+      if ((error as Error).message.includes('Unauthorized')) {
+        navigate('/login', { replace: true });
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  // -----------------------------------------------------------------
-  // Transform raw entry → GenericEntry
-  // -----------------------------------------------------------------
-  const transformToGenericEntry = (type: ContentTypeKey, raw: any): GenericEntry => {
-    // (kept the same as your original – only tiny safety tweaks)
-    const fallback = {
-      id: raw.id?.toString() ?? '',
-      title: raw.title ?? raw.headline ?? 'Untitled',
-      content: raw.content ?? raw.analyst_note ?? '',
-      status: raw.status ?? 'pending',
-      createdAt: raw.createdAt ?? raw.date ?? new Date().toISOString(),
-      authorName:
-        raw.created_by?.username ??
-        raw.creator_data?.username ??
-        raw.analyst?.username ??
-        'Unknown',
-      companyName:
-        raw.company?.company_name ??
-        raw.company_data?.company_name ??
-        raw.company?.name ??
-        'Unknown',
-      comments: raw.supervisor_note ?? '',
-      reviewedBy:
-        raw.approved_by?.username ??
-        raw.approver_data?.username ??
-        raw.supervisor?.username ??
-        'Unknown',
-    };
-
-    if (type === 'editorials') {
-      return {
-        ...fallback,
-        content: raw.analyst_note ?? '',
-        source: raw.source,
-        audience_reach: raw.audience_reach,
-        brand: raw.brand,
-        placement: raw.placement,
-        reporter: raw.reporter,
-        country: raw.country,
-        spokesperson: raw.spokesperson,
-        activity: raw.activity,
-        sentiment: raw.sentiment,
-        advert_spend: raw.advert_spend,
-        circulation: raw.circulation,
-        page_size: raw.page_size,
-        language: raw.language,
-        ceo_media_presence: raw.ceo_media_presence,
-        ceo_thought_leadership: raw.ceo_thought_leadership,
-        print_web_clips: raw.print_web_clips,
-      };
-    }
-
-    // … (the rest of your per-type logic – unchanged)
-    // For brevity the full per-type blocks are omitted here – copy-paste them from your original file.
-    return fallback;
-  };
-
-  // -----------------------------------------------------------------
-  // Fetch Entries for a tab
-  // -----------------------------------------------------------------
+  // Fetch Entries for Type
   const fetchEntries = async (type: ContentTypeKey, page: number = 1) => {
     if (!token || !user?.id) return;
-
-    // Prevent duplicate calls for the same page
-    if (data[type].length > 0 && pagination[type].currentPage === page) return;
+    if (data[type]?.length > 0 && pagination[type].currentPage === page) return;
 
     setTableLoading(true);
     try {
-      const role = (user?.role as Role) ?? 'supervisor';
-      const endpoint = getEndpoint(type, role);
-      const url = `${API_BASE}${endpoint}?page=${page}&limit=${PAGE_SIZE}`;
+      const url = isSupervisor
+        ? `${API_BASE}${SUPERVISOR_ENDPOINTS[type]}?page=${page}&limit=${PAGE_SIZE}`
+        : `${API_BASE}${contentTypes[type].endpoint}?page=${page}&limit=${PAGE_SIZE}`;
 
       const res = await fetch(url, { headers });
       if (res.status === 401) throw new Error('Unauthorized');
-      if (!res.ok) {
-        let msg = res.statusText;
-        try {
-          const err = await res.json();
-          msg = err.message ?? err.error ?? msg;
-        } catch {}
-        throw new Error(msg);
-      }
+      if (!res.ok) throw new Error(`Failed to fetch ${type}`);
 
       const json = await res.json();
-      if (!json.success) throw new Error(json.message ?? 'Failed');
-
       let entries: any[] = [];
-      let pag: Pagination = {
-        currentPage: page,
-        totalPages: 1,
-        total: 0,
-        pageSize: PAGE_SIZE,
-      };
+      let paginationData: Pagination = { currentPage: page, totalPages: 1, total: 0, pageSize: PAGE_SIZE };
 
-      if (type === 'editorials') {
-        entries = Array.isArray(json.data?.editorial) ? json.data.editorial : [];
-        pag = {
-          currentPage: json.data?.meta?.currentPage ?? page,
-          totalPages: json.data?.meta?.totalPage ?? 1,
-          total: json.data?.meta?.total ?? 0,
-          pageSize: json.data?.meta?.pageSize ?? PAGE_SIZE,
-        };
-      } else {
-        entries = Array.isArray(json.data?.data)
-          ? json.data.data
-          : Array.isArray(json.data)
-          ? json.data
-          : [];
-        pag = {
-          currentPage: json.data?.pagination?.page ?? json.pagination?.page ?? page,
-          totalPages: json.data?.pagination?.totalPages ?? json.pagination?.totalPages ?? 1,
-          total: json.data?.pagination?.total ?? json.pagination?.total ?? 0,
-          pageSize: json.data?.pagination?.limit ?? json.pagination?.limit ?? PAGE_SIZE,
-        };
+      if (json.success) {
+        if (isSupervisor) {
+          entries = json.data?.recent_editorials ?? [];
+          const s = json.data?.stats || {};
+          const total = s[`total_${type}`] ?? 0;
+          paginationData = {
+            currentPage: page,
+            totalPages: Math.ceil(total / PAGE_SIZE),
+            total,
+            pageSize: PAGE_SIZE,
+          };
+
+          // Update stats from this response
+          setStats(prev => ({
+            ...prev,
+            pending: s[`pending_${type}`] ?? prev.pending,
+            approved: s[`approved_${type}`] ?? prev.approved,
+            rejected: s[`rejected_${type}`] ?? prev.rejected,
+            total: s[`total_${type}`] ?? prev.total,
+            byType: {
+              ...prev.byType,
+              [type]: {
+                pending: s[`pending_${type}`] ?? 0,
+                approved: s[`approved_${type}`] ?? 0,
+                rejected: s[`rejected_${type}`] ?? 0,
+                total: s[`total_${type}`] ?? 0,
+                displayName: contentTypes[type].displayName,
+              },
+            },
+          }));
+        } else {
+          if (type === 'editorials') {
+            entries = Array.isArray(json.data?.editorial) ? json.data.editorial : [];
+            paginationData = {
+              currentPage: json.data?.meta?.currentPage || page,
+              totalPages: json.data?.meta?.totalPage || 1,
+              total: json.data?.meta?.total || 0,
+              pageSize: json.data?.meta?.pageSize || PAGE_SIZE,
+            };
+          } else {
+            entries = Array.isArray(json.data?.data) ? json.data.data : (Array.isArray(json.data) ? json.data : []);
+            paginationData = {
+              currentPage: json.data?.pagination?.page || json.pagination?.page || page,
+              totalPages: json.data?.pagination?.totalPages || json.pagination?.totalPages || 1,
+              total: json.data?.pagination?.total || json.pagination?.total || 0,
+              pageSize: json.data?.pagination?.limit || json.pagination?.limit || PAGE_SIZE,
+            };
+          }
+        }
       }
 
-      const transformed = entries.map((e) => transformToGenericEntry(type, e));
-      setData((prev) => ({ ...prev, [type]: transformed }));
-      setPagination((prev) => ({ ...prev, [type]: pag }));
-    } catch (err) {
-      console.error(`Fetch ${type}:`, err);
+      const transformedEntries = entries.map(entry => transformToGenericEntry(type, entry));
+      setData(prev => ({ ...prev, [type]: transformedEntries }));
+      setPagination(prev => ({ ...prev, [type]: paginationData }));
+    } catch (error) {
+      console.error(`Error fetching ${type}:`, error);
       toast.error(`Failed to load ${contentTypes[type].displayName}`);
-      if ((err as Error).message.includes('Unauthorized')) navigate('/login', { replace: true });
     } finally {
       setTableLoading(false);
     }
   };
 
-  // -----------------------------------------------------------------
-  // Refresh
-  // -----------------------------------------------------------------
+  // Refresh Data
   const handleRefresh = () => {
-    setData(emptyData);
-    setPagination(emptyPagination);
+    setData({});
+    setPagination({
+      editorials: { currentPage: 1, totalPages: 1, total: 0, pageSize: PAGE_SIZE },
+      dailyMentions: { currentPage: 1, totalPages: 1, total: 0, pageSize: PAGE_SIZE },
+      swotAnalysis: { currentPage: 1, totalPages: 1, total: 0, pageSize: PAGE_SIZE },
+      outcomeInsights: { currentPage: 1, totalPages: 1, total: 0, pageSize: PAGE_SIZE },
+      socialMediaMentions: { currentPage: 1, totalPages: 1, total: 0, pageSize: PAGE_SIZE },
+    });
     fetchStats();
     fetchEntries(activeTab, 1);
     toast.success('Data refreshed');
   };
 
-  // -----------------------------------------------------------------
-  // Status Update
-  // -----------------------------------------------------------------
-  const updateStatus = async (
-    entry: GenericEntry,
-    newStatus: 'approved' | 'rejected',
-    comments?: string
-  ) => {
-    if (!token || !user?.id) {
-      toast.error('Auth required');
-      navigate('/login', { replace: true });
-      return;
-    }
+  // Update Entry Status
+  const updateStatus = async (entry: GenericEntry, newStatus: 'approved' | 'rejected', comments?: string) => {
+    if (!token || !user?.id || !currentEntry) return;
+
     const type = activeTab;
-    const endpoint = `${API_BASE}${contentTypes[type].statusEndpoint.replace(
-      ':id',
-      entry.id
-    )}`;
-    const body: any = {
+    const endpoint = `${API_BASE}${contentTypes[type].statusEndpoint.replace(':id', entry.id)}`;
+    const updateBody = {
       status: newStatus,
       ...(comments ? { supervisor_note: comments } : {}),
       ...(type === 'dailyMentions' ? { approver_id: user.id } : { approved_by: user.id }),
     };
 
     try {
-      const res = await fetch(endpoint, {
-        method: 'PATCH',
-        headers,
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(txt || res.statusText);
-      }
-
+      const res = await fetch(endpoint, { method: 'PATCH', headers, body: JSON.stringify(updateBody) });
+      if (!res.ok) throw new Error();
       toast.success(`${contentTypes[type].displayName} ${newStatus}`);
-      setData((prev) => ({
+      setData(prev => ({
         ...prev,
-        [type]: prev[type].map((e) =>
+        [type]: prev[type].map(e =>
           e.id === entry.id
-            ? {
-                ...e,
-                status: newStatus,
-                comments: comments ?? e.comments,
-                reviewedBy: user.username ?? user.id,
-                reviewedAt: new Date().toISOString(),
-              }
+            ? { ...e, status: newStatus, comments: comments || e.comments, reviewedBy: user.name || user.username, reviewedAt: new Date().toISOString() }
             : e
         ),
       }));
       fetchStats();
-    } catch (err) {
-      console.error('Status update error:', err);
+    } catch (error) {
       toast.error('Failed to update status');
     }
   };
 
   const handleQuickApprove = (entry: GenericEntry) => updateStatus(entry, 'approved');
-  const openRejectDialog = (entry: GenericEntry) => {
-    setCurrentEntry(entry);
-    setRejectReason('');
-    setShowRejectDialog(true);
-  };
-  const submitRejection = () => {
-    if (!rejectReason.trim() || !currentEntry) {
-      toast.error('Reason required');
-      return;
-    }
-    updateStatus(currentEntry, 'rejected', rejectReason);
-    setShowRejectDialog(false);
-  };
-  const openDetailsDialog = (entry: GenericEntry) => {
-    setCurrentEntry(entry);
-    setShowDetailsDialog(true);
-  };
+  const openRejectDialog = (entry: GenericEntry) => { setCurrentEntry(entry); setRejectReason(''); setShowRejectDialog(true); };
+  const submitRejection = () => { if (rejectReason.trim() && currentEntry) updateStatus(currentEntry, 'rejected', rejectReason); setShowRejectDialog(false); };
+  const openDetailsDialog = (entry: GenericEntry) => { setCurrentEntry(entry); setShowDetailsDialog(true); };
 
-  // -----------------------------------------------------------------
-  // Columns (delete button removed)
-  // -----------------------------------------------------------------
+  // const handle//delete = async (entry: GenericEntry) => {
+  //   if (!confirm('Are you sure you want to //delete this entry?')) return;
+  //   const type = activeTab;
+  //   const endpoint = `${API_BASE}${contentTypes[type].//deleteEndpoint}/${entry.id}`;
+  //   try {
+  //     const res = await fetch(endpoint, { method: 'PUT', headers });
+  //     if (!res.ok) throw new Error();
+  //     toast.success('Entry //deleted');
+  //     setData(prev => ({ ...prev, [type]: prev[type].filter(e => e.id !== entry.id) }));
+  //     fetchStats();
+  //   } catch (error) {
+  //     toast.error('Failed to //delete');
+  //   }
+  // };
+
   const getColumns = (type: ContentTypeKey): ColumnDef<GenericEntry>[] => [
     {
       accessorKey: 'title',
       header: 'Title',
-      cell: ({ row }) => (
-        <div className="max-w-xs truncate" title={row.getValue('title')}>
-          {row.getValue('title')}
-        </div>
-      ),
+      cell: ({ row }) => <div className="max-w-xs truncate" title={row.getValue('title')}>{row.getValue('title')}</div>,
     },
-    {
-      accessorKey: 'authorName',
-      header: 'Author',
-      cell: ({ row }) => row.original.authorName ?? 'Unknown',
-    },
-    {
-      accessorKey: 'companyName',
-      header: 'Company',
-      cell: ({ row }) => row.original.companyName ?? 'Unknown',
-    },
-    {
-      accessorKey: 'createdAt',
-      header: 'Date',
-      cell: ({ row }) => new Date(row.getValue('createdAt')).toLocaleDateString(),
-    },
-    {
-      accessorKey: 'status',
-      header: 'Status',
-      cell: ({ row }) => <StatusBadge status={row.getValue('status')} />,
-    },
+    { accessorKey: 'authorName', header: 'Author', cell: ({ row }) => row.original.authorName || 'Unknown' },
+    { accessorKey: 'companyName', header: 'Company', cell: ({ row }) => row.original.companyName || 'Unknown' },
+    { accessorKey: 'createdAt', header: 'Date', cell: ({ row }) => new Date(row.getValue('createdAt')).toLocaleDateString() },
+    { accessorKey: 'status', header: 'Status', cell: ({ row }) => <StatusBadge status={row.getValue('status')} /> },
     {
       id: 'actions',
       header: 'Actions',
       cell: ({ row }) => {
-        const e = row.original;
+        const entry = row.original;
         return (
           <div className="flex space-x-2">
-            <Button size="sm" variant="outline" onClick={() => openDetailsDialog(e)}>
+            <Button size="sm" variant="outline" onClick={() => openDetailsDialog(entry)}>
               <Eye className="mr-2 h-4 w-4" /> View
             </Button>
-            {e.status === 'pending' && (
+            {entry.status === 'pending' && (
               <>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-green-600 border-green-600"
-                  onClick={() => handleQuickApprove(e)}
-                >
+                <Button size="sm" variant="outline" className="text-green-600 border-green-600" onClick={() => handleQuickApprove(entry)}>
                   <CheckSquare className="mr-2 h-4 w-4" /> Approve
                 </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="text-red-600 border-red-600"
-                  onClick={() => openRejectDialog(e)}
-                >
+                <Button size="sm" variant="outline" className="text-red-600 border-red-600" onClick={() => openRejectDialog(entry)}>
                   <AlertTriangle className="mr-2 h-4 w-4" /> Reject
                 </Button>
               </>
             )}
+            {/* <Button size="sm" variant="outline" className="text-red-600 border-red-600" onClick={() => handle//delete(entry)}>
+              <Trash2 className="mr-2 h-4 w-4" /> //delete
+            </Button> */}
           </div>
         );
       },
     },
   ];
 
-  // -----------------------------------------------------------------
-  // Effects
-  // -----------------------------------------------------------------
   useEffect(() => {
     if (isAuthenticated && token && user?.id) fetchStats();
-  }, [isAuthenticated, token, user]);
+  }, [isAuthenticated, token, user, isAdmin, isSupervisor]);
 
-  // Re-fetch when tab or page changes
   useEffect(() => {
-    if (isAuthenticated && token && user?.id) {
-      fetchEntries(activeTab, pagination[activeTab].currentPage);
-    }
-  }, [activeTab, pagination[activeTab].currentPage, isAuthenticated, token, user]);
+    if (isAuthenticated && token && user?.id) fetchEntries(activeTab, pagination[activeTab].currentPage);
+  }, [activeTab, isAuthenticated, token, user]);
 
-  // -----------------------------------------------------------------
-  // Render
-  // -----------------------------------------------------------------
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -629,16 +734,17 @@ export function SupervisorDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Supervisor Dashboard</h1>
-        <Button variant="outline" onClick={handleRefresh}>
-          <RefreshCw className="mr-2 h-4 w-4" />
-          Refresh
-        </Button>
+        <h1 className="text-2xl font-bold">{isSupervisor ? 'Supervisor' : 'Admin'} Dashboard</h1>
+        <div className="flex space-x-2">
+          <Button variant="outline" onClick={handleRefresh}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
-      {/* Stats */}
+      {/* Overview Statistics */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <DataCard title="Total Pending" variant="glass" icon={<Clock size={24} />}>
           <Stat label="All Entries Pending Review" value={stats.pending} subtitle="Awaiting approval" />
@@ -650,67 +756,72 @@ export function SupervisorDashboard() {
           <Stat label="Entries Rejected Today" value={stats.rejectedToday} subtitle="For revision" />
         </DataCard>
         <DataCard title="Total Reviewed" variant="glass" icon={<BarChart size={24} />}>
-          <Stat
-            label="Total Entries Reviewed"
-            value={stats.approved + stats.rejected}
-            subtitle="All time"
-          />
+          <Stat label="Total Entries Reviewed" value={stats.approved + stats.rejected} subtitle="All time" />
         </DataCard>
       </div>
 
-      {/* Per-type pending counts */}
+      {/* Content Type Breakdown */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
-        {Object.entries(stats.byType).map(([key, s]) => (
-          <DataCard
-            key={key}
-            title={s.displayName}
-            variant="glass"
-            icon={contentTypes[key as ContentTypeKey]?.icon ?? <FileText size={20} />}
-          >
-            <Stat label="Pending Review" value={s.pending} subtitle={s.displayName} />
+        {Object.entries(stats.byType).map(([key, typeStats]) => (
+          <DataCard key={key} title={typeStats.displayName} variant="glass" icon={contentTypes[key as ContentTypeKey]?.icon || <FileText size={20} />}>
+            <Stat label="Pending Review" value={typeStats.pending} subtitle={typeStats.displayName} />
           </DataCard>
         ))}
       </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as ContentTypeKey)}>
-        <TabsList className="grid w-full grid-cols-5">
-          {Object.entries(contentTypes).map(([k, c]) => (
-            <TabsTrigger key={k} value={k as ContentTypeKey}>
-              {c.displayName.split(' ')[0]} ({stats.byType[k]?.pending ?? 0})
-            </TabsTrigger>
-          ))}
-        </TabsList>
+      {/* Tabs for Content Types */}
+<Tabs value={activeTab} onValueChange={(value: ContentTypeKey) => setActiveTab(value)}>
+  <TabsList className="grid w-full grid-cols-5">
+    {Object.entries(contentTypes).map(([key, config]) => (
+      <TabsTrigger key={key} value={key as ContentTypeKey}>
+        {config.displayName.split(' ')[0]} ({stats.byType[key]?.pending || 0})
+      </TabsTrigger>
+    ))}
+  </TabsList>
 
-        {Object.entries(contentTypes).map(([k, c]) => (
-          <TabsContent key={k} value={k as ContentTypeKey}>
-            <Card>
-              <CardHeader>
-                <CardTitle>{c.displayName}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <DataTable
-                  columns={getColumns(k as ContentTypeKey)}
-                  data={data[k as ContentTypeKey] ?? []}
-                  searchPlaceholder={`Search ${c.displayName.toLowerCase()}...`}
-                  loading={tableLoading}
-                  pagination={{
-                    currentPage: pagination[k as ContentTypeKey].currentPage,
-                    totalPages: pagination[k as ContentTypeKey].totalPages,
-                    onPageChange: (p) => {
-                      setPagination((prev) => ({
-                        ...prev,
-                        [k]: { ...prev[k], currentPage: p },
-                      }));
-                    },
-                  }}
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
-        ))}
-      </Tabs>
+  {Object.entries(contentTypes).map(([key, config]) => {
+    const typeKey = key as ContentTypeKey;
+    const pag = pagination[typeKey];
 
+    return (
+      <TabsContent key={key} value={typeKey}>
+        <Card>
+          <CardHeader>
+            <CardTitle>{config.displayName}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <DataTable
+              columns={getColumns(typeKey)}
+              data={data[typeKey] || []}
+              searchPlaceholder={`Search ${config.displayName.toLowerCase()}...`}
+              loading={tableLoading}
+              pagination={{
+                currentPage: pag.currentPage,
+                totalPages: pag.totalPages,
+                onPageChange: (page: number) => fetchEntries(typeKey, page),
+              }}
+            />
+
+            {pag.totalPages > 1 && (
+              <PaginationControls
+                currentPage={pag.currentPage}
+                totalPages={pag.totalPages}
+                onPageChange={(page: number) => fetchEntries(typeKey, page)}
+              />
+            )}
+
+            {pag.total > 0 && (
+              <div className="mt-2 text-sm text-muted-foreground">
+                Showing {(pag.currentPage - 1) * pag.pageSize + 1} to{' '}
+                {Math.min(pag.currentPage * pag.pageSize, pag.total)} of {pag.total} entries
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </TabsContent>
+    );
+  })}
+</Tabs>
       {/* Reject Dialog */}
       <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
         <DialogContent>
@@ -722,14 +833,8 @@ export function SupervisorDashboard() {
             {currentEntry && (
               <>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Title</Label>
-                    <p>{currentEntry.title}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Status</Label>
-                    <StatusBadge status={currentEntry.status} />
-                  </div>
+                  <div className="space-y-2"><Label>Title</Label><p>{currentEntry.title}</p></div>
+                  <div className="space-y-2"><Label>Status</Label><StatusBadge status={currentEntry.status} /></div>
                 </div>
                 <Textarea
                   value={rejectReason}
@@ -741,18 +846,13 @@ export function SupervisorDashboard() {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowRejectDialog(false)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={submitRejection}>
-              Reject
-            </Button>
+            <Button variant="outline" onClick={() => setShowRejectDialog(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={submitRejection}>Reject</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      
-      {/* Details Dialog */}
+      {/* Details Dialog (unchanged) */}
       <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -1117,6 +1217,7 @@ export function SupervisorDashboard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
     </div>
   );
 }
