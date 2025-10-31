@@ -1,323 +1,457 @@
-import React, { useState, useEffect } from 'react';
-import { Button } from "@/components/ui/button";
-import { Combobox } from "@/components/ui/combobox";
-import { Textarea } from "@/components/ui/textarea";
-import { format } from 'date-fns';
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
-import { CalendarIcon, Plus, X } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { toast } from 'sonner';
+'use client';
 
-interface OutcomeInsightFormProps {
-  onClose: (refresh: boolean) => void;
-  initialData?: {
-    company_id?: number;
-    date?: string;
-    analystNote?: string;
-    supervisorNote?: string;
-    social_media_engagement?: { analysis: string }[];
-    brand_awareness?: { analysis: string }[];
-    media_coverage?: { analysis: string }[];
-    competitor_analysis?: { analysis: string }[];
-    id?: number;
-  };
-  isEdit?: boolean;
+import React, { useState, useEffect, useMemo } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent } from '@/components/ui/card';
+import { Plus, X, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { useAuth } from '@/components/auth/AuthContext';
+
+interface Company {
+  id: number;
+  company_name: string;
 }
 
-interface OutcomeEntry {
+interface Category {
+  name: string;
+}
+
+interface InsightEntry {
   id: number;
   category: string;
   analysis: string;
 }
 
+interface OutcomeInsightFormProps {
+  onClose: (refresh: boolean) => void;
+  initialData?: {
+    id?: number;
+    company_id?: number;
+    date?: string;
+    analyst_note?: string | null;
+    supervisor_note?: string | null;
+    insights?: { category: string; analysis: string }[];
+  };
+  isEdit?: boolean;
+}
+
+/* --------------------------------------------------------------- */
+/*                     MAIN COMPONENT                              */
+/* --------------------------------------------------------------- */
 export function OutcomeInsightForm({
   onClose,
   initialData,
   isEdit = false,
 }: OutcomeInsightFormProps) {
-  // Compute initial outcomeEntries outside useState to avoid circular reference
-  const getInitialOutcomeEntries = () => {
-    if (initialData) {
-      const baseId = 1;
-      const entries = [
-        ...(initialData.social_media_engagement?.map((s, i) => ({ id: baseId + i, category: 'social_media_engagement', analysis: s.analysis })) || []),
-        ...(initialData.brand_awareness?.map((b, i) => ({ id: baseId + i + (initialData.social_media_engagement?.length || 0), category: 'brand_awareness', analysis: b.analysis })) || []),
-        ...(initialData.media_coverage?.map((m, i) => ({ id: baseId + i + (initialData.social_media_engagement?.length || 0) + (initialData.brand_awareness?.length || 0), category: 'media_coverage', analysis: m.analysis })) || []),
-        ...(initialData.competitor_analysis?.map((c, i) => ({ id: baseId + i + (initialData.social_media_engagement?.length || 0) + (initialData.brand_awareness?.length || 0) + (initialData.media_coverage?.length || 0), category: 'competitor_analysis', analysis: c.analysis })) || []),
-      ];
-      if (entries.length === 0) {
-        entries.push({ id: baseId, category: 'social_media_engagement', analysis: '' });
-      }
-      return entries;
-    }
-    return [{ id: 1, category: 'social_media_engagement', analysis: '' }];
-  };
+  const { token } = useAuth();
+  const BASE_URL = 'https://pplus-t71x.onrender.com/api';
+
+  /* --------------------- STATE --------------------- */
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loadingCompanies, setLoadingCompanies] = useState(true);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
 
   const [formData, setFormData] = useState({
-    company_id: initialData?.company_id || 0,
-    date: initialData?.date || new Date().toISOString().split('T')[0],
-    analystNote: initialData?.analystNote || '',
-    supervisorNote: initialData?.supervisorNote || '',
+    company_id: initialData?.company_id ?? 0,
+    date:
+      initialData?.date?.split('T')[0] ??
+      new Date().toISOString().split('T')[0],
+    analyst_note: initialData?.analyst_note ?? '',
+    supervisor_note: initialData?.supervisor_note ?? '',
   });
 
-  const [outcomeEntries, setOutcomeEntries] = useState<OutcomeEntry[]>(getInitialOutcomeEntries());
-
-  const [companySearchTerm, setCompanySearchTerm] = useState('');
-  const [showCompanyDropdown, setShowCompanyDropdown] = useState(false);
-
-  const companies = [
-    { id: 1, name: 'Access Bank' },
-    { id: 2, name: 'GTBank' },
-    { id: 3, name: 'First Bank' },
-    { id: 4, name: 'UBA' },
-    { id: 5, name: 'Zenith Bank' },
-    { id: 6, name: 'Fidelity Bank' },
-    { id: 7, name: 'Sterling Bank' },
-    { id: 8, name: 'Union Bank' },
-    { id: 9, name: 'Wema Bank' },
-    { id: 10, name: 'FCMB' },
-    { id: 11, name: 'Stanbic IBTC' },
-    { id: 12, name: 'Ecobank' },
-  ];
-
-  const filteredCompanies = React.useMemo(() => {
-    if (!companySearchTerm) return companies;
-    return companies.filter(company =>
-      company.name.toLowerCase().includes(companySearchTerm.toLowerCase())
-    );
-  }, [companySearchTerm]);
-
-  const handleFieldChange = (field: string, value: string | number) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleOutcomeEntryChange = (id: number, field: string, value: string) => {
-    setOutcomeEntries(prev => prev.map(entry =>
-      entry.id === id ? { ...entry, [field]: value } : entry
-    ));
-  };
-
-  const addNewOutcomeEntry = () => {
-    const newEntry = {
-      id: outcomeEntries.length + 1,
-      category: 'social_media_engagement',
-      analysis: '',
-    };
-    setOutcomeEntries(prev => [...prev, newEntry]);
-  };
-
-  const removeOutcomeEntry = (id: number) => {
-    if (outcomeEntries.length > 1) {
-      setOutcomeEntries(prev => prev.filter(entry => entry.id !== id));
+  const getInitialEntries = (): InsightEntry[] => {
+    if (!initialData?.insights?.length) {
+      return [{ id: Date.now(), category: '', analysis: '' }];
     }
+    return initialData.insights.map((i, idx) => ({
+      id: Date.now() + idx,
+      category: i.category || '',
+      analysis: i.analysis || '',
+    }));
   };
+  const [entries, setEntries] = useState<InsightEntry[]>(getInitialEntries());
 
-  const handleSave = async () => {
-    if (!formData.company_id) {
-      toast.error('Please select a company');
-      return;
-    }
-
-    const payload = {
-      company_id: formData.company_id,
-      date: formData.date,
-      analyst_note: formData.analystNote || null,
-      supervisor_note: formData.supervisorNote || null,
-      social_media_engagement: outcomeEntries.filter(e => e.category === 'social_media_engagement').map(e => ({ analysis: e.analysis })),
-      brand_awareness: outcomeEntries.filter(e => e.category === 'brand_awareness').map(e => ({ analysis: e.analysis })),
-      media_coverage: outcomeEntries.filter(e => e.category === 'media_coverage').map(e => ({ analysis: e.analysis })),
-      competitor_analysis: outcomeEntries.filter(e => e.category === 'competitor_analysis').map(e => ({ analysis: e.analysis })),
-    };
-
-    const url = isEdit && initialData?.id ? `/api/outcome-insights/update/${initialData.id}` : '/api/outcome-insights/create';
-    const method = isEdit ? 'PUT' : 'POST';
-
+  /* --------------------- FETCH COMPANIES --------------------- */
+  const fetchCompanies = async () => {
+    setLoadingCompanies(true);
     try {
-      console.log('Sending request to:', `https://pplus-t71x.onrender.com${url}`, 'with method:', method, 'and payload:', payload); // Debug log
-      const response = await fetch(`https://pplus-t71x.onrender.com${url}`, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
-        },
-        body: JSON.stringify(payload),
+      const res = await fetch(`${BASE_URL}/companies/`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
-      const result = await response.json();
-      if (result.success) {
-        toast.success(isEdit ? 'Outcome insight updated successfully' : 'Outcome insight created successfully');
-        onClose(true);
+      const json = await res.json();
+
+      if (json.success && Array.isArray(json.data?.data)) {
+        const rawCompanies = json.data.data;
+
+        // Optional: Deduplicate by id (uncomment if needed)
+        // const uniqueCompanies = Array.from(
+        //   new Map(rawCompanies.map((c: Company) => [c.id, c])).values()
+        // );
+        // setCompanies(uniqueCompanies);
+
+        setCompanies(rawCompanies);
       } else {
-        toast.error(result.message || `Failed to ${isEdit ? 'update' : 'create'} outcome insight`);
+        toast.error(json.message ?? 'Failed to load companies');
+        setCompanies([]);
       }
-    } catch (error) {
-      toast.error(`Error ${isEdit ? 'updating' : 'creating'} outcome insight`);
-      console.error('Fetch error:', error);
+    } catch (err) {
+      console.error('Fetch companies error:', err);
+      toast.error('Network error loading companies');
+      setCompanies([]);
+    } finally {
+      setLoadingCompanies(false);
+    }
+  };
+
+  /* --------------------- FETCH CATEGORIES (Analysis only) --------------------- */
+  const fetchCategories = async () => {
+    setLoadingCategories(true);
+    try {
+      const res = await fetch(
+        `${BASE_URL}/data-parameters/categories?page=1&limit=2000`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      const json = await res.json();
+
+      if (json.success && Array.isArray(json.data?.data)) {
+        const analysisCat = json.data.data.find(
+          (c: any) => c.name === 'Analysis'
+        );
+        if (analysisCat?.values?.length) {
+          const cats = analysisCat.values
+            .map((v: any) => ({ name: v.value }))
+            .filter((c: Category) => c.name?.trim());
+          setCategories(cats);
+        } else {
+          toast.error('No “Analysis” category found');
+          setCategories([]);
+        }
+      } else {
+        toast.error(json.message ?? 'Failed to load categories');
+        setCategories([]);
+      }
+    } catch (err) {
+      console.error('Fetch categories error:', err);
+      toast.error('Network error loading categories');
+      setCategories([]);
+    } finally {
+      setLoadingCategories(false);
     }
   };
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (!target.closest('.company-search-container')) {
-        setShowCompanyDropdown(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    if (token) {
+      fetchCompanies();
+      fetchCategories();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
+  /* --------------------- COMPANY SEARCH & DISPLAY --------------------- */
+  const filteredCompanies = useMemo(() => {
+    if (!searchTerm) return companies;
+    const lower = searchTerm.toLowerCase();
+    return companies.filter((c) =>
+      c.company_name.toLowerCase().includes(lower)
+    );
+  }, [searchTerm, companies]);
+
+  const selectedCompanyName = useMemo(() => {
+    if (!formData.company_id || loadingCompanies) return '';
+    const found = companies.find((c) => c.id === formData.company_id);
+    return found?.company_name ?? 'Unknown Company';
+  }, [formData.company_id, companies, loadingCompanies]);
+
+  /* --------------------- HANDLERS --------------------- */
+  const handleField = (
+    field: keyof typeof formData,
+    value: string | number
+  ) => {
+    setFormData((p) => ({ ...p, [field]: value }));
+  };
+
+  const handleEntry = (
+    id: number,
+    field: 'category' | 'analysis',
+    value: string
+  ) => {
+    setEntries((p) =>
+      p.map((e) => (e.id === id ? { ...e, [field]: value } : e))
+    );
+  };
+
+  const addEntry = () => {
+    setEntries((p) => [
+      ...p,
+      { id: Date.now(), category: '', analysis: '' },
+    ]);
+  };
+
+  const removeEntry = (id: number) => {
+    if (entries.length > 1) {
+      setEntries((p) => p.filter((e) => e.id !== id));
+    }
+  };
+
+  const buildPayload = () => {
+    const insights = entries
+      .filter((e) => e.category && e.analysis.trim())
+      .map((e) => ({ category: e.category, insight: e.analysis.trim() }));
+
+    if (insights.length === 0) {
+      toast.error(
+        'At least one insight with category & analysis is required'
+      );
+      return null;
+    }
+
+    return {
+      company_id: formData.company_id,
+      date: formData.date,
+      analyst_note: formData.analyst_note || null,
+      supervisor_note: formData.supervisor_note || null,
+      insights,
+    };
+  };
+
+  const handleSave = async () => {
+    if (!formData.company_id) {
+      return toast.error('Please select a company');
+    }
+
+    const payload = buildPayload();
+    if (!payload) return;
+
+    const url = isEdit && initialData?.id
+      ? `${BASE_URL}/outcome-insights/update/${initialData.id}`
+      : `${BASE_URL}/outcome-insights/create`;
+
+    const method = isEdit ? 'PUT' : 'POST';
+
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json();
+
+      if (json.success) {
+        toast.success(
+          isEdit ? 'Updated successfully' : 'Created successfully'
+        );
+        onClose(true);
+      } else {
+        toast.error(json.message ?? 'Operation failed');
+      }
+    } catch (err) {
+      console.error('Save error:', err);
+      toast.error(`Error ${isEdit ? 'updating' : 'creating'} insight`);
+    }
+  };
+
+  /* --------------------------------------------------------------- */
+  /*                           RENDER                                 */
+  /* --------------------------------------------------------------- */
   return (
-    <div className="flex flex-col h-full max-h-[calc(100vh-120px)] overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden">
       <Card className="flex-1 flex flex-col overflow-hidden">
-        <CardContent className="flex-1 overflow-y-auto p-6">
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="company-search-container">
-                <div className="relative">
-                  <Input
-                    value={companies.find(c => c.id === formData.company_id)?.name || companySearchTerm}
-                    onChange={(e) => {
-                      setCompanySearchTerm(e.target.value);
-                      setShowCompanyDropdown(true);
-                    }}
-                    onFocus={() => setShowCompanyDropdown(true)}
-                    placeholder="Search for a company"
-                  />
-                  {showCompanyDropdown && (
-                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                      {filteredCompanies.length > 0 ? (
-                        filteredCompanies.map((company) => (
-                          <div
-                            key={company.id}
-                            className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                            onClick={() => {
-                              handleFieldChange('company_id', company.id);
-                              setShowCompanyDropdown(false);
-                              setCompanySearchTerm('');
-                            }}
-                          >
-                            {company.name}
-                          </div>
-                        ))
-                      ) : (
-                        <div className="px-3 py-2 text-gray-500">No companies found</div>
-                      )}
+        <CardContent className="flex-1 overflow-y-auto p-6 space-y-6">
+          {/* ---------- Company + Date ---------- */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Company Search */}
+            <div className="relative">
+              <Label>Company</Label>
+              <Input
+                placeholder="Search company..."
+                value={
+                  showDropdown
+                    ? searchTerm
+                    : loadingCompanies
+                    ? 'Loading companies...'
+                    : selectedCompanyName || 'Select a company'
+                }
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setShowDropdown(true);
+                }}
+                onFocus={() => setShowDropdown(true)}
+                onClick={() => setShowDropdown(true)}
+                disabled={loadingCompanies}
+                className="cursor-pointer"
+              />
+
+              {/* DROPDOWN */}
+              {showDropdown && (
+                <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto">
+                  {loadingCompanies ? (
+                    <div className="p-3 text-center text-muted-foreground">
+                      <Loader2 className="inline h-4 w-4 animate-spin mr-2" />
+                      Loading companies...
                     </div>
+                  ) : filteredCompanies.length === 0 ? (
+                    <div className="p-3 text-center text-muted-foreground">
+                      {searchTerm ? 'No matches found' : 'No companies available'}
+                    </div>
+                  ) : (
+                    filteredCompanies.map((c) => (
+                      <div
+                        key={c.id}
+                        className="px-4 py-2 hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors"
+                        onClick={() => {
+                          handleField('company_id', c.id);
+                          setSearchTerm('');
+                          setShowDropdown(false);
+                        }}
+                      >
+                        {c.company_name}
+                      </div>
+                    ))
                   )}
                 </div>
-              </div>
-              <div>
-                <Input
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => handleFieldChange('date', e.target.value)}
-                  placeholder="mm/dd/yyyy"
-                />
-              </div>
+              )}
             </div>
 
-            <div className="space-y-4">
-              {outcomeEntries.map((entry, index) => (
-                <div key={entry.id} className="grid grid-cols-12 gap-4 items-start">
-                  <div className="col-span-1">
-                    {index === 0 ? (
-                      <Button
-                        type="button"
-                        variant="default"
-                        size="sm"
-                        onClick={addNewOutcomeEntry}
-                        className="h-8 w-8 p-0 rounded bg-blue-600 hover:bg-blue-700"
-                      >
-                        <Plus className="h-4 w-4 text-white" />
-                      </Button>
-                    ) : (
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => removeOutcomeEntry(entry.id)}
-                        className="h-8 w-8 p-0 rounded"
-                      >
-                        <X className="h-4 w-4 text-white" />
-                      </Button>
-                    )}
-                  </div>
-                  <div className="col-span-2">
-                    <Select
-                      value={entry.category}
-                      onValueChange={(value) => handleOutcomeEntryChange(entry.id, 'category', value)}
+            {/* Date */}
+            <div>
+              <Label>Date</Label>
+              <Input
+                type="date"
+                value={formData.date}
+                onChange={(e) => handleField('date', e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* ---------- Insight Rows ---------- */}
+          <div className="space-y-4">
+            {entries.map((entry, idx) => (
+              <div
+                key={entry.id}
+                className="grid grid-cols-12 gap-4 items-start"
+              >
+                {/* + / – button */}
+                <div className="col-span-1">
+                  {idx === 0 ? (
+                    <Button
+                      type="button"
+                      variant="default"
+                      size="sm"
+                      onClick={addEntry}
+                      className="h-8 w-8 p-0"
                     >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Outcome Category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="social_media_engagement">Social Media Engagement</SelectItem>
-                        <SelectItem value="brand_awareness">Brand Awareness</SelectItem>
-                        <SelectItem value="media_coverage">Media Coverage</SelectItem>
-                        <SelectItem value="competitor_analysis">Competitor Analysis</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="col-span-9">
-                    <Textarea
-                      value={entry.analysis}
-                      onChange={(e) => handleOutcomeEntryChange(entry.id, 'analysis', e.target.value)}
-                      placeholder="Analysis"
-                      className="min-h-[100px] resize-none"
-                    />
-                  </div>
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => removeEntry(entry.id)}
+                      className="h-8 w-8 p-0"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
-              ))}
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="analystNote" className="text-sm text-gray-600">Analyst Note</Label>
-                <Textarea
-                  id="analystNote"
-                  name="analystNote"
-                  value={formData.analystNote}
-                  onChange={(e) => handleFieldChange('analystNote', e.target.value)}
-                  className="min-h-[100px] resize-none"
-                />
+                {/* Category Select */}
+                <div className="col-span-3">
+                  <Select
+                    value={entry.category}
+                    onValueChange={(v) =>
+                      handleEntry(entry.id, 'category', v)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {loadingCategories ? (
+                        <SelectItem value="loading" disabled>
+                          <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
+                          Loading...
+                        </SelectItem>
+                      ) : categories.length === 0 ? (
+                        <SelectItem value="empty" disabled>
+                          No categories
+                        </SelectItem>
+                      ) : (
+                        categories.map((cat) => (
+                          <SelectItem key={cat.name} value={cat.name}>
+                            {cat.name}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Analysis Textarea */}
+                <div className="col-span-8">
+                  <Textarea
+                    placeholder="Analysis"
+                    value={entry.analysis}
+                    onChange={(e) =>
+                      handleEntry(entry.id, 'analysis', e.target.value)
+                    }
+                    className="min-h-[100px] resize-none"
+                  />
+                </div>
               </div>
-              <div>
-                <Label htmlFor="supervisorNote" className="text-sm text-gray-600">Supervisor Note</Label>
-                <Textarea
-                  id="supervisorNote"
-                  name="supervisorNote"
-                  value={formData.supervisorNote}
-                  onChange={(e) => handleFieldChange('supervisorNote', e.target.value)}
-                  className="min-h-[100px] resize-none"
-                />
-              </div>
+            ))}
+          </div>
+
+          {/* ---------- Notes ---------- */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label>Analyst Note</Label>
+              <Textarea
+                value={formData.analyst_note}
+                onChange={(e) =>
+                  handleField('analyst_note', e.target.value)
+                }
+                className="min-h-[100px] resize-none"
+              />
+            </div>
+            <div>
+              <Label>Supervisor Note</Label>
+              <Textarea
+                value={formData.supervisor_note}
+                onChange={(e) =>
+                  handleField('supervisor_note', e.target.value)
+                }
+                className="min-h-[100px] resize-none"
+              />
             </div>
           </div>
         </CardContent>
 
-        <div className="border-t bg-card p-6">
-          <div className="flex gap-3">
-            <Button
-              type="button"
-              onClick={handleSave}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground px-6"
-            >
-              Save & Send
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={() => onClose(false)}
-              className="px-6"
-            >
-              Cancel
-            </Button>
-          </div>
+        {/* ---------- Footer ---------- */}
+        <div className="border-t bg-card p-6 flex justify-end gap-3">
+          <Button onClick={handleSave}>Save &amp; Send</Button>
+          <Button variant="outline" onClick={() => onClose(false)}>
+            Cancel
+          </Button>
         </div>
       </Card>
     </div>

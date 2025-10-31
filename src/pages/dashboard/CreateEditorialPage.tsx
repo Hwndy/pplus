@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import axios from 'axios';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
@@ -13,11 +13,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Plus, Copy, Save, Send, Loader2, ArrowLeft, MinusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/components/auth/AuthContext';
 
-// Set up axios interceptor to add token to all requests
+// Axios interceptor
 axios.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
@@ -26,7 +27,7 @@ axios.interceptors.request.use((config) => {
   return config;
 }, (error) => Promise.reject(error));
 
-// Interface for API data structures
+// Interfaces
 interface Company {
   id: number;
   company_name: string;
@@ -37,7 +38,6 @@ interface SentimentKeyword {
   keyword_indicator: string;
 }
 
-// Updated Editorial interface
 export interface Editorial {
   id?: number;
   date: string;
@@ -75,6 +75,97 @@ export interface Editorial {
   updatedAt?: string;
 }
 
+// ──────────────────────────────────────────────────────────────────────
+//  SearchableSelect Component
+// ──────────────────────────────────────────────────────────────────────
+interface SearchableSelectProps {
+  value?: string;
+  onValueChange: (value: string) => void;
+  placeholder?: string;
+  options: { value: string; label: string }[];
+  loading?: boolean;
+  disabled?: boolean;
+  className?: string;
+}
+
+const SearchableSelect: React.FC<SearchableSelectProps> = ({
+  value,
+  onValueChange,
+  placeholder = 'Select an option',
+  options,
+  loading = false,
+  disabled = false,
+  className,
+}) => {
+  const [search, setSearch] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleOpenChange = (open: boolean) => {
+    if (open) {
+      setTimeout(() => inputRef.current?.focus(), 0);
+      setSearch('');
+    }
+  };
+
+  const filtered = useMemo(() => {
+    if (!search) return options;
+    const lower = search.toLowerCase();
+    return options.filter((opt) =>
+      opt.label.toLowerCase().includes(lower)
+    );
+  }, [options, search]);
+
+  return (
+    <Select
+      value={value}
+      onValueChange={onValueChange}
+      disabled={disabled}
+      onOpenChange={handleOpenChange}
+    >
+      <SelectTrigger className={className}>
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+
+      <SelectContent>
+        <div className="flex items-center border-b px-3" onClick={(e) => e.stopPropagation()}>
+          <Input
+            ref={inputRef}
+            placeholder="Search..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-9 border-0 focus-visible:ring-0"
+            onKeyDown={(e) => e.stopPropagation()}
+          />
+        </div>
+
+        {loading && (
+          <div className="flex items-center justify-center py-6">
+            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            Loading...
+          </div>
+        )}
+
+        <ScrollArea className="max-h-[300px]">
+          {filtered.length === 0 && !loading ? (
+            <div className="py-6 text-center text-sm text-muted-foreground">
+              No results found
+            </div>
+          ) : (
+            filtered.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))
+          )}
+        </ScrollArea>
+      </SelectContent>
+    </Select>
+  );
+};
+
+// ──────────────────────────────────────────────────────────────────────
+//  EditorialForm Component
+// ──────────────────────────────────────────────────────────────────────
 interface EditorialFormProps {
   editorials: Editorial[];
   activeIndex: number;
@@ -126,7 +217,6 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
   apiMediaTypes = [],
   apiSentimentKeywords = [],
 }) => {
-  // Ensure editorials is an array
   const safeEditorials = Array.isArray(editorials) ? editorials : [];
   const currentEditorial = safeEditorials[activeIndex] || {};
 
@@ -200,60 +290,37 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                   />
                   {errors.date && <p className="text-red-500 text-sm">{errors.date}</p>}
                 </div>
+
                 <div className="flex-1">
                   <Label htmlFor="company">
                     Company <span className="text-red-500">*</span>
                   </Label>
-                  <Select
+                  <SearchableSelect
                     value={currentEditorial.company_id?.toString() || ''}
-                    onValueChange={(value) => onFieldChange(activeIndex, 'company_id', parseInt(value))}
+                    onValueChange={(v) => onFieldChange(activeIndex, 'company_id', parseInt(v))}
+                    placeholder="Select a company"
+                    options={apiCompanies.map((c) => ({
+                      value: c.id.toString(),
+                      label: c.company_name,
+                    }))}
                     disabled={isFieldReadOnly('company_id')}
-                  >
-                    <SelectTrigger className={errors.company_id ? 'border-red-500' : ''}>
-                      <SelectValue placeholder="Select a company" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {apiCompanies.length > 0 ? (
-                        apiCompanies.map((company) => (
-                          <SelectItem key={company.id} value={company.id.toString()}>
-                            {company.company_name}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="loading" disabled>
-                          Loading...
-                        </SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
+                    className={errors.company_id ? 'border-red-500' : ''}
+                  />
                   {errors.company_id && <p className="text-red-500 text-sm">{errors.company_id}</p>}
                 </div>
+
                 <div className="flex-1">
                   <Label htmlFor="media_type">Media Type</Label>
-                  <Select
+                  <SearchableSelect
                     value={currentEditorial.media_type || ''}
-                    onValueChange={(value) => onFieldChange(activeIndex, 'media_type', value)}
+                    onValueChange={(v) => onFieldChange(activeIndex, 'media_type', v)}
+                    placeholder="Select media type"
+                    options={apiMediaTypes.map((t) => ({ value: t, label: t }))}
                     disabled={isFieldReadOnly('media_type')}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select media type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {apiMediaTypes.length > 0 ? (
-                        apiMediaTypes.map((mediaType) => (
-                          <SelectItem key={mediaType} value={mediaType}>
-                            {mediaType}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="loading" disabled>
-                          Loading...
-                        </SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
+                  />
                 </div>
               </div>
+
               <div className="overflow-x-auto">
                 <div className="min-w-max space-y-4">
                   {safeEditorials.length > 0 ? (
@@ -282,59 +349,36 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                             </Button>
                           )}
                         </div>
+
+                        {/* Source */}
                         <div className="min-w-[160px]">
                           {index === 0 && (
                             <Label htmlFor="source">
                               Source <span className="text-red-500">*</span>
                             </Label>
                           )}
-                          <Select
+                          <SearchableSelect
                             value={editorial.source || ''}
-                            onValueChange={(value) => onFieldChange(index, 'source', value)}
-                          >
-                            <SelectTrigger className={index === 0 && errors.source ? 'border-red-500' : ''}>
-                              <SelectValue placeholder="Select source" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {apiPublications.length > 0 ? (
-                                apiPublications.map((pub) => (
-                                  <SelectItem key={pub} value={pub}>
-                                    {pub}
-                                  </SelectItem>
-                                ))
-                              ) : (
-                                <SelectItem value="loading" disabled>
-                                  Loading...
-                                </SelectItem>
-                              )}
-                            </SelectContent>
-                          </Select>
+                            onValueChange={(v) => onFieldChange(index, 'source', v)}
+                            placeholder="Select source"
+                            options={apiPublications.map((p) => ({ value: p, label: p }))}
+                            className={index === 0 && errors.source ? 'border-red-500' : ''}
+                          />
                           {index === 0 && errors.source && <p className="text-red-500 text-sm">{errors.source}</p>}
                         </div>
+
+                        {/* Placement */}
                         <div className="min-w-[160px]">
                           {index === 0 && <Label htmlFor="placement">Placement</Label>}
-                          <Select
+                          <SearchableSelect
                             value={editorial.placement || ''}
-                            onValueChange={(value) => onFieldChange(index, 'placement', value)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select placement" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {apiPlacements.length > 0 ? (
-                                apiPlacements.map((placement) => (
-                                  <SelectItem key={placement} value={placement}>
-                                    {placement}
-                                  </SelectItem>
-                                ))
-                              ) : (
-                                <SelectItem value="loading" disabled>
-                                  Loading...
-                                </SelectItem>
-                              )}
-                            </SelectContent>
-                          </Select>
+                            onValueChange={(v) => onFieldChange(index, 'placement', v)}
+                            placeholder="Select placement"
+                            options={apiPlacements.map((p) => ({ value: p, label: p }))}
+                          />
                         </div>
+
+                        {/* Title */}
                         <div className="min-w-[160px]">
                           {index === 0 && (
                             <Label htmlFor="title">
@@ -351,6 +395,8 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                           />
                           {index === 0 && errors.title && <p className="text-red-500 text-sm">{errors.title}</p>}
                         </div>
+
+                        {/* Print/Web Clips */}
                         <div className="min-w-[160px]">
                           {index === 0 && <Label htmlFor="print_web_clips">Print/Web Clips (URL)</Label>}
                           <Input
@@ -361,6 +407,8 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                             placeholder="Enter URL"
                           />
                         </div>
+
+                        {/* Reporter */}
                         <div className="min-w-[160px]">
                           {index === 0 && <Label htmlFor="reporter">Reporter</Label>}
                           <Input
@@ -371,160 +419,84 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                             placeholder="Enter reporter name"
                           />
                         </div>
+
+                        {/* Country */}
                         <div className="min-w-[160px]">
                           {index === 0 && (
                             <Label htmlFor="country">
                               Country <span className="text-red-500">*</span>
                             </Label>
                           )}
-                          <Select
+                          <SearchableSelect
                             value={editorial.country || ''}
-                            onValueChange={(value) => onFieldChange(index, 'country', value)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select country" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {apiCountries.length > 0 ? (
-                                apiCountries.map((country) => (
-                                  <SelectItem key={country} value={country}>
-                                    {country}
-                                  </SelectItem>
-                                ))
-                              ) : (
-                                <SelectItem value="loading" disabled>
-                                  Loading...
-                                </SelectItem>
-                              )}
-                            </SelectContent>
-                          </Select>
+                            onValueChange={(v) => onFieldChange(index, 'country', v)}
+                            placeholder="Select country"
+                            options={apiCountries.map((c) => ({ value: c, label: c }))}
+                          />
                           {index === 0 && errors.country && <p className="text-red-500 text-sm">{errors.country}</p>}
                         </div>
+
+                        {/* Language */}
                         <div className="min-w-[160px]">
                           {index === 0 && (
                             <Label htmlFor="language">
                               Language <span className="text-red-500">*</span>
                             </Label>
                           )}
-                          <Select
+                          <SearchableSelect
                             value={editorial.language || ''}
-                            onValueChange={(value) => onFieldChange(index, 'language', value)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select language" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {apiLanguages.length > 0 ? (
-                                apiLanguages.map((language) => (
-                                  <SelectItem key={language} value={language}>
-                                    {language}
-                                  </SelectItem>
-                                ))
-                              ) : (
-                                <SelectItem value="loading" disabled>
-                                  Loading...
-                                </SelectItem>
-                              )}
-                            </SelectContent>
-                          </Select>
+                            onValueChange={(v) => onFieldChange(index, 'language', v)}
+                            placeholder="Select language"
+                            options={apiLanguages.map((l) => ({ value: l, label: l }))}
+                          />
                           {index === 0 && errors.language && <p className="text-red-500 text-sm">{errors.language}</p>}
                         </div>
+
+                        {/* Spokesperson */}
                         <div className="min-w-[160px]">
                           {index === 0 && <Label htmlFor="spokesperson">Spokesperson</Label>}
-                          <Select
+                          <SearchableSelect
                             value={editorial.spokesperson || ''}
-                            onValueChange={(value) => onFieldChange(index, 'spokesperson', value)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select spokesperson" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {apiSpokespersons.length > 0 ? (
-                                apiSpokespersons.map((spokesperson) => (
-                                  <SelectItem key={spokesperson} value={spokesperson}>
-                                    {spokesperson}
-                                  </SelectItem>
-                                ))
-                              ) : (
-                                <SelectItem value="loading" disabled>
-                                  Loading...
-                                </SelectItem>
-                              )}
-                            </SelectContent>
-                          </Select>
+                            onValueChange={(v) => onFieldChange(index, 'spokesperson', v)}
+                            placeholder="Select spokesperson"
+                            options={apiSpokespersons.map((s) => ({ value: s, label: s }))}
+                          />
                         </div>
+
+                        {/* CEO Media Presence */}
                         <div className="min-w-[160px]">
                           {index === 0 && <Label htmlFor="ceo_media_presence">CEO Media Presence</Label>}
-                          <Select
+                          <SearchableSelect
                             value={editorial.ceo_media_presence || ''}
-                            onValueChange={(value) => onFieldChange(index, 'ceo_media_presence', value)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select presence" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {apiCeoMediaPresence.length > 0 ? (
-                                apiCeoMediaPresence.map((option) => (
-                                  <SelectItem key={option} value={option}>
-                                    {option}
-                                  </SelectItem>
-                                ))
-                              ) : (
-                                <SelectItem value="loading" disabled>
-                                  Loading...
-                                </SelectItem>
-                              )}
-                            </SelectContent>
-                          </Select>
+                            onValueChange={(v) => onFieldChange(index, 'ceo_media_presence', v)}
+                            placeholder="Select presence"
+                            options={apiCeoMediaPresence.map((o) => ({ value: o, label: o }))}
+                          />
                         </div>
+
+                        {/* CEO Thought Leadership */}
                         <div className="min-w-[160px]">
-                          {index === 0 && <Label htmlFor="ceo_thought_leadership">CEO Thought Leadership</Label>}
-                          <Select
+                          {index === 0 && <Label>CEO Thought Leadership</Label>}
+                          <SearchableSelect
                             value={editorial.ceo_thought_leadership || ''}
-                            onValueChange={(value) => onFieldChange(index, 'ceo_thought_leadership', value)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select leadership" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {apiCeoThoughtLeadership.length > 0 ? (
-                                apiCeoThoughtLeadership.map((option) => (
-                                  <SelectItem key={option} value={option}>
-                                    {option}
-                                  </SelectItem>
-                                ))
-                              ) : (
-                                <SelectItem value="loading" disabled>
-                                  Loading...
-                                </SelectItem>
-                              )}
-                            </SelectContent>
-                          </Select>
+                            onValueChange={(v) => onFieldChange(index, 'ceo_thought_leadership', v)}
+                            placeholder="Select leadership"
+                            options={apiCeoThoughtLeadership.map((o) => ({ value: o, label: o }))}
+                          />
                         </div>
+
+                        {/* Activity */}
                         <div className="min-w-[160px]">
                           {index === 0 && <Label htmlFor="activity">Activity</Label>}
-                          <Select
+                          <SearchableSelect
                             value={editorial.activity || ''}
-                            onValueChange={(value) => onFieldChange(index, 'activity', value)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select activity" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {apiActivities.length > 0 ? (
-                                apiActivities.map((activity) => (
-                                  <SelectItem key={activity} value={activity}>
-                                    {activity}
-                                  </SelectItem>
-                                ))
-                              ) : (
-                                <SelectItem value="loading" disabled>
-                                  Loading...
-                                </SelectItem>
-                              )}
-                            </SelectContent>
-                          </Select>
+                            onValueChange={(v) => onFieldChange(index, 'activity', v)}
+                            placeholder="Select activity"
+                            options={apiActivities.map((a) => ({ value: a, label: a }))}
+                          />
                         </div>
+
+                        {/* Circulation */}
                         <div className="min-w-[160px]">
                           {index === 0 && <Label htmlFor="circulation">Circulation</Label>}
                           <Input
@@ -536,6 +508,8 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                             placeholder="Enter number"
                           />
                         </div>
+
+                        {/* Audience Reach */}
                         <div className="min-w-[160px]">
                           {index === 0 && <Label htmlFor="audience_reach">Audience Reach</Label>}
                           <Input
@@ -547,72 +521,51 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                             placeholder="Enter number"
                           />
                         </div>
+
+                        {/* Online Channel */}
                         <div className="min-w-[160px]">
                           {index === 0 && <Label htmlFor="online_channel">Online Channel</Label>}
-                          <Select
+                          <SearchableSelect
                             value={editorial.online_channel || ''}
-                            onValueChange={(value) => onFieldChange(index, 'online_channel', value)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select channel" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {apiOnlineChannels.length > 0 ? (
-                                apiOnlineChannels.map((channel) => (
-                                  <SelectItem key={channel} value={channel}>
-                                    {channel}
-                                  </SelectItem>
-                                ))
-                              ) : (
-                                <SelectItem value="loading" disabled>
-                                  Loading...
-                                </SelectItem>
-                              )}
-                            </SelectContent>
-                          </Select>
+                            onValueChange={(v) => onFieldChange(index, 'online_channel', v)}
+                            placeholder="Select channel"
+                            options={apiOnlineChannels.map((c) => ({ value: c, label: c }))}
+                          />
                         </div>
+
+                        {/* Sentiment */}
                         <div className="min-w-[160px]">
                           {index === 0 && <Label htmlFor="sentiment">Sentiment</Label>}
                           <Select
                             value={editorial.sentiment || ''}
-                            onValueChange={(value) => onFieldChange(index, 'sentiment', value)}
+                            onValueChange={(v) => onFieldChange(index, 'sentiment', v)}
                           >
                             <SelectTrigger>
                               <SelectValue placeholder="Select sentiment" />
                             </SelectTrigger>
                             <SelectContent>
-                              {SENTIMENT_OPTIONS.map((sentiment) => (
-                                <SelectItem key={sentiment} value={sentiment}>
-                                  {sentiment}
-                                </SelectItem>
+                              {SENTIMENT_OPTIONS.map((s) => (
+                                <SelectItem key={s} value={s}>{s}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                         </div>
+
+                        {/* Sentiment Keyword */}
                         <div className="min-w-[160px]">
                           {index === 0 && <Label htmlFor="sentiment_keyword_indicator_id">Sentiment Keyword</Label>}
-                          <Select
+                          <SearchableSelect
                             value={editorial.sentiment_keyword_indicator_id?.toString() || ''}
-                            onValueChange={(value) => onFieldChange(index, 'sentiment_keyword_indicator_id', parseInt(value))}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select keyword" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {apiSentimentKeywords.length > 0 ? (
-                                apiSentimentKeywords.map((kw) => (
-                                  <SelectItem key={kw.id} value={kw.id.toString()}>
-                                    {kw.keyword_indicator}
-                                  </SelectItem>
-                                ))
-                              ) : (
-                                <SelectItem value="loading" disabled>
-                                  Loading...
-                                </SelectItem>
-                              )}
-                            </SelectContent>
-                          </Select>
+                            onValueChange={(v) => onFieldChange(index, 'sentiment_keyword_indicator_id', parseInt(v))}
+                            placeholder="Select keyword"
+                            options={apiSentimentKeywords.map((kw) => ({
+                              value: kw.id.toString(),
+                              label: kw.keyword_indicator,
+                            }))}
+                          />
                         </div>
+
+                        {/* Advert Spend */}
                         <div className="min-w-[160px]">
                           {index === 0 && <Label htmlFor="advert_spend">Advert Spend</Label>}
                           <Input
@@ -624,29 +577,16 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                             placeholder="Enter amount"
                           />
                         </div>
+
+                        {/* Page Size */}
                         <div className="min-w-[160px]">
                           {index === 0 && <Label htmlFor="page_size">Page Size</Label>}
-                          <Select
+                          <SearchableSelect
                             value={editorial.page_size || ''}
-                            onValueChange={(value) => onFieldChange(index, 'page_size', value)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select page size" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {apiPageSizes.length > 0 ? (
-                                apiPageSizes.map((size) => (
-                                  <SelectItem key={size} value={size}>
-                                    {size}
-                                  </SelectItem>
-                                ))
-                              ) : (
-                                <SelectItem value="loading" disabled>
-                                  Loading...
-                                </SelectItem>
-                              )}
-                            </SelectContent>
-                          </Select>
+                            onValueChange={(v) => onFieldChange(index, 'page_size', v)}
+                            placeholder="Select page size"
+                            options={apiPageSizes.map((s) => ({ value: s, label: s }))}
+                          />
                         </div>
                       </div>
                     ))
@@ -657,6 +597,8 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Notes Section */}
           <div className="border-t border-gray-300 bg-gray-50 p-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
@@ -705,6 +647,7 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                 />
               </div>
             </div>
+
             {onReviewAction && (
               <div className="flex justify-center space-x-4 mt-6 pt-4 border-t border-gray-200">
                 <Button onClick={() => onReviewAction('reject')} variant="destructive">
@@ -722,6 +665,9 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
   );
 };
 
+// ──────────────────────────────────────────────────────────────────────
+//  Main Page Component
+// ──────────────────────────────────────────────────────────────────────
 const CreateEditorialPage = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -764,7 +710,7 @@ const CreateEditorialPage = () => {
           supervisor_note: '',
           admin_note: '',
         },
-  ].filter(Boolean)); // Ensure no undefined/null entries
+  ].filter(Boolean));
   const [activeIndex, setActiveIndex] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -791,8 +737,6 @@ const CreateEditorialPage = () => {
       const fetchDropdownOptions = async () => {
         setLoading(true);
         try {
-          const token = localStorage.getItem('token');
-          console.log('Token used for API calls:', token);
           const [
             spokespersonRes,
             placementRes,
@@ -822,6 +766,7 @@ const CreateEditorialPage = () => {
             axios.get(`${BASE_URL}/sentiment-keyword-indicators/?limit=1000`),
             axios.get(`${BASE_URL}/companies/?limit=1000`),
           ]);
+
           setApiSpokespersons(spokespersonRes.data?.data?.[0]?.categories?.[0]?.values?.map((v: any) => v.value) || []);
           setApiPlacements(placementRes.data?.data?.[0]?.categories?.[0]?.values?.map((v: any) => v.value) || []);
           setApiOnlineChannels(onlineChannelRes.data?.data?.[0]?.categories?.[0]?.values?.map((v: any) => v.value) || []);
@@ -836,7 +781,7 @@ const CreateEditorialPage = () => {
           setApiSentimentKeywords(sentimentKeywordRes.data?.data?.data || []);
           setApiCompanies(companyRes.data?.data?.data || []);
         } catch (err) {
-          console.error('API fetch error:', err.response?.data || err.message);
+          console.error('API fetch error:', err);
           toast({
             title: 'Failed to load options',
             description: `Error: ${err.response?.data?.message || err.message}`,
@@ -853,7 +798,6 @@ const CreateEditorialPage = () => {
   const validateForm = (data: Editorial) => {
     const newErrors: Record<string, string> = {};
     if (!data.date) newErrors.date = 'Date is required.';
-    if (!data.online_channel) newErrors.online_channel = 'Online Channel is required.';
     if (!data.source) newErrors.source = 'Source is required.';
     if (!data.company_id) newErrors.company_id = 'Company is required.';
     if (!data.title) newErrors.title = 'Title is required.';
@@ -874,8 +818,8 @@ const CreateEditorialPage = () => {
     };
     setEditorials(updatedEditorials);
     if (errors[name]) {
-      setErrors((prevErrors) => {
-        const newErrors = { ...prevErrors };
+      setErrors((prev) => {
+        const newErrors = { ...prev };
         delete newErrors[name];
         return newErrors;
       });
@@ -883,8 +827,8 @@ const CreateEditorialPage = () => {
   };
 
   const handleClearError = (fieldName: string) => {
-    setErrors((prevErrors) => {
-      const newErrors = { ...prevErrors };
+    setErrors((prev) => {
+      const newErrors = { ...prev };
       delete newErrors[fieldName];
       return newErrors;
     });
@@ -908,44 +852,41 @@ const CreateEditorialPage = () => {
         ...(user?.role === 'Analyst' && { analyst_note: editorials[activeIndex].analyst_note || '' }),
         ...(user?.role === 'Supervisor' && { supervisor_note: editorials[activeIndex].supervisor_note || '' }),
         ...(user?.role === 'Admin' && { admin_note: editorials[activeIndex].admin_note || '' }),
-        editorials: editorials.map((editorial) => ({
-          online_channel: editorial.online_channel,
-          source: editorial.source,
-          audience_reach: editorial.audience_reach,
-          placement: editorial.placement,
-          title: editorial.title,
-          reporter: editorial.reporter,
-          country: editorial.country,
-          spokesperson: editorial.spokesperson,
-          activity: editorial.activity,
-          sentiment: editorial.sentiment,
-          sentiment_keyword_indicator_id: editorial.sentiment_keyword_indicator_id,
-          advert_spend: editorial.advert_spend,
-          circulation: editorial.circulation,
-          page_size: editorial.page_size,
-          language: editorial.language,
-          ceo_media_presence: editorial.ceo_media_presence,
-          ceo_thought_leadership: editorial.ceo_thought_leadership,
-          print_web_clips: editorial.print_web_clips,
-          filename: editorial.filename,
-          original_name: editorial.original_name,
-          file_path: editorial.file_path,
-          file_size: editorial.file_size,
-          mime_type: editorial.mime_type,
-          file_type: editorial.file_type,
+        editorials: editorials.map((e) => ({
+          online_channel: e.online_channel,
+          source: e.source,
+          audience_reach: e.audience_reach,
+          placement: e.placement,
+          title: e.title,
+          reporter: e.reporter,
+          country: e.country,
+          spokesperson: e.spokesperson,
+          activity: e.activity,
+          sentiment: e.sentiment,
+          sentiment_keyword_indicator_id: e.sentiment_keyword_indicator_id,
+          advert_spend: e.advert_spend,
+          circulation: e.circulation,
+          page_size: e.page_size,
+          language: e.language,
+          ceo_media_presence: e.ceo_media_presence,
+          ceo_thought_leadership: e.ceo_thought_leadership,
+          print_web_clips: e.print_web_clips,
+          filename: e.filename,
+          original_name: e.original_name,
+          file_path: e.file_path,
+          file_size: e.file_size,
+          mime_type: e.mime_type,
+          file_type: e.file_type,
         })),
       };
 
       const response = isEditMode
         ? await axios.put(`${BASE_URL}/editorials/update/${currentEditorial.id}`, payload)
         : await axios.post(`${BASE_URL}/editorials/create`, payload);
-      toast({
-        title: 'Success',
-        description: `Editorial ${isEditMode ? 'updated' : 'created'} successfully!`,
-      });
+
+      toast({ title: 'Success', description: `Editorial ${isEditMode ? 'updated' : 'created'} successfully!` });
       navigate('/dashboard/editorial');
     } catch (err) {
-      console.error('Submission error:', err);
       toast({
         title: 'Submission failed',
         description: Array.isArray(err.response?.data?.message)
@@ -965,10 +906,7 @@ const CreateEditorialPage = () => {
     try {
       const newStatus = action === 'approve' ? 'approved' : 'rejected';
       await axios.patch(`${BASE_URL}/editorials/${currentEditorial.id}/status`, { status: newStatus });
-      toast({
-        title: 'Success',
-        description: `Editorial status updated to ${newStatus}.`,
-      });
+      toast({ title: 'Success', description: `Editorial status updated to ${newStatus}.` });
       navigate('/editorials');
     } catch (err) {
       toast({
@@ -1042,6 +980,7 @@ const CreateEditorialPage = () => {
           </div>
         )}
       </div>
+
       <div className="w-full h-full flex flex-col">
         {loading ? (
           <div className="flex items-center justify-center h-full">
@@ -1076,6 +1015,7 @@ const CreateEditorialPage = () => {
           />
         )}
       </div>
+
       <div className="flex justify-end gap-2 mt-6">
         <Button type="button" variant="outline" onClick={handleCancel} disabled={isSubmitting}>
           Cancel
