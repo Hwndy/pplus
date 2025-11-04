@@ -49,7 +49,7 @@ function convertSwotDataToEmailFormat(analyses: any[]): EmailItem[] {
       <p><strong>Created at:</strong> ${format(new Date(item.created_at), 'MMM d, yyyy HH:mm')}</p>
       <p><strong>Updated at:</strong> ${format(new Date(item.updated_at), 'MMM d, yyyy HH:mm')}</p>
     `,
-    isRead: false,
+    isRead: localStorage.getItem(`swot-read-${item.id}`) === 'true', // Check localStorage
     preview: item.analyst_note ? item.analyst_note.substring(0, 120) + '...' : 'SWOT analysis details...',
   }));
 }
@@ -66,6 +66,7 @@ function EmailListView({ emails, title, description }: { emails: EmailItem[], ti
 
   const handleEmailClick = (email: EmailItem) => {
     if (!email.isRead) {
+      localStorage.setItem(`swot-read-${email.id}`, 'true'); // Save to localStorage
       const updatedEmails = emailsState.map(e =>
         e.id === email.id ? { ...e, isRead: true } : e
       );
@@ -255,7 +256,7 @@ const SwotAnalysisPage: React.FC = () => {
       try {
         console.log('Determining company...');
         const month = getMonthFromDateRange(filterValues.dateRange);
-        let url = 'https://pplus-t71x.onrender.com/api/report/competitive-intelligence';
+        let url = 'https://pplus-ec37.onrender.com/api/report/competitive-intelligence';
         if (month) url += `?month=${month}`;
 
         const response = await fetch(url, {
@@ -303,7 +304,7 @@ const SwotAnalysisPage: React.FC = () => {
       try {
         console.log('Fetching SWOT data for company:', selectedCompany);
         const month = getMonthFromDateRange(filterValues.dateRange);
-        let url = 'https://pplus-t71x.onrender.com/api/report/swot-analysis';
+        let url = 'https://pplus-ec37.onrender.com/api/report/swot-analysis';
         url += `?company=${encodeURIComponent(selectedCompany)}`;
         if (month) url += `&month=${month}`;
 

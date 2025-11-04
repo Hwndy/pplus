@@ -186,7 +186,7 @@ export default function OutcomeInsightsPage() {
     totalPages: 0,
   });
 
-  const BASE_URL = 'https://pplus-t71x.onrender.com/api';
+  const BASE_URL = 'https://pplus-ec37.onrender.com/api';
   const getAuthHeaders = () => ({
     'Content-Type': 'application/json',
     Authorization: `Bearer ${token ?? ''}`,

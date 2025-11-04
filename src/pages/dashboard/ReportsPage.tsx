@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/components/ui/use-toast';
 
 // Base URL for the API, as identified from the Postman file
-const API_BASE = "https://pplus-t71x.onrender.com/api";
+const API_BASE = "https://pplus-ec37.onrender.com/api";
 
 // Helper function to handle API calls
 async function jsonFetch(path, options = {}) {

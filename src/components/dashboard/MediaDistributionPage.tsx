@@ -12,6 +12,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Cell,
 } from 'recharts';
 
 export function MediaDistributionPage() {
@@ -79,7 +80,7 @@ export function MediaDistributionPage() {
     const fetchThematicData = async () => {
       setDataLoading(true);
       try {
-        let url = 'https://pplus-t71x.onrender.com/api/report/top-thematic-distribution-breakdown';
+        let url = 'https://pplus-ec37.onrender.com/api/report/top-thematic-distribution-breakdown';
         const month = getMonthFromDateRange(filterValues.dateRange);
         if (month) url += `?month=${month}&company=${user.company || 'Glo Nigeria'}`;
         else url += '?company=Glo Nigeria';
@@ -91,7 +92,9 @@ export function MediaDistributionPage() {
 
         const result = await response.json();
         if (result.success) {
-          setThematicData(result.data);
+          // Limit to top 10
+          const limitedItems = result.data.items.slice(0, 10);
+          setThematicData({ ...result.data, items: limitedItems });
         } else {
           throw new Error(result.message || 'Failed to fetch thematic data');
         }
@@ -107,11 +110,44 @@ export function MediaDistributionPage() {
     fetchThematicData();
   }, [authLoading, isAuthenticated, user, token, filterValues]);
 
-  const chartData = thematicData?.items.map((item, index) => ({
-    name: item.title,
-    value: 1, // Fixed value for bar height, as items are unique occurrences
-    color: ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'][index % 5],
+  // Consistent color palette (same as breakdown)
+  const colors = [
+    '#0088FE', // Blue
+    '#00C49F', // Teal
+    '#FFBB28', // Yellow
+    '#FF8042', // Orange
+    '#8884d8', // Purple
+    '#FF6384', // Pink
+    '#36A2EB', // Light Blue
+    '#FFCE56', // Light Yellow
+    '#4BC0C0', // Cyan
+    '#9966FF', // Violet
+  ];
+
+  const chartData = thematicData?.items.map((item: any, index: number) => ({
+    activity: item.activity,
+    title: item.title,
+    value: 1,
+    fill: colors[index % colors.length],
   })) || [];
+
+  // Dynamic height: 50px per item + padding
+  const chartHeight = Math.max(400, chartData.length * 50 + 60);
+
+  // Custom Tooltip Component
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="bg-white p-4 rounded-lg shadow-lg border border-gray-200">
+          <p className="font-semibold text-gray-800">{data.activity}</p>
+          <p className="text-sm text-gray-600 mt-1">{data.title}</p>
+          <p className="text-xs text-gray-500 mt-2">Occurrences: {data.value}</p>
+        </div>
+      );
+    }
+    return null;
+  };
 
   if (authLoading || dataLoading) {
     return <div className="flex justify-center items-center h-screen">Loading...</div>;
@@ -119,6 +155,7 @@ export function MediaDistributionPage() {
 
   return (
     <div className="space-y-8 animate-fade-in">
+      {/* Header */}
       <div className="bg-gradient-to-r from-orange-600 via-red-600 to-pink-600 rounded-2xl p-8 text-white relative overflow-hidden">
         <div className="absolute inset-0 bg-black/10"></div>
         <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-white/10 transform translate-x-32 -translate-y-32"></div>
@@ -141,6 +178,7 @@ export function MediaDistributionPage() {
         </div>
       </div>
 
+      {/* Filters */}
       <UniversalFilter
         filters={filterOptions}
         values={filterValues}
@@ -148,44 +186,55 @@ export function MediaDistributionPage() {
         onReset={resetFilters}
       />
 
+      {/* Charts & Breakdown */}
       <div className="grid grid-cols-1 gap-6">
+        {/* Bar Chart */}
         <DataCard title="Thematic Distribution of Media Activities" variant="glass" icon={<BarChart2 size={24} />}>
-          <div className="h-80 p-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <RechartsBarChart
-                layout="vertical"
-                data={chartData}
-                margin={{ top: 5, right: 30, left: 150, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" domain={[0, 1]} hide />
-                <YAxis dataKey="name" type="category" width={150} />
-                <Tooltip
-                  formatter={(value) => `${value}`}
-                  contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)', border: 'none' }}
-                />
-                <Bar dataKey="value" fill={(entry) => entry.color} name="Occurrences" barSize={20} />
-              </RechartsBarChart>
-            </ResponsiveContainer>
+          <div className="w-full overflow-x-auto">
+            <div style={{ minWidth: '600px' }}>
+              <ResponsiveContainer width="100%" height={chartHeight}>
+                <RechartsBarChart
+                  layout="vertical"
+                  data={chartData}
+                  // margin={{ top: 20, right: 30, left: 0, bottom: 20 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                  <XAxis type="number" domain={[0, 1]} hide />
+                  <YAxis
+                    dataKey="activity"
+                    type="category"
+                    width={170}
+                    tick={{ fontSize: 13, fill: '#374151' }}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }} />
+                  <Bar dataKey="value" barSize={28} radius={[0, 4, 4, 0]}>
+                    {chartData.map((entry: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Bar>
+                </RechartsBarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </DataCard>
 
+        {/* Thematic Breakdown List */}
         <DataCard title="Thematic Distribution Breakdown" variant="glass" icon={<BarChart2 size={24} />}>
-          <div className="p-4">
-            {thematicData?.items.map((item, index) => (
-              <div key={item.title} className="mb-4 border rounded-md overflow-hidden">
+          <div className="p-4 space-y-4">
+            {thematicData?.items.map((item: any, index: number) => (
+              <div key={item.title} className="border rounded-lg overflow-hidden shadow-sm">
                 <div className="flex">
                   <div
-                    className="w-16 flex items-center justify-center p-4 text-2xl font-bold"
-                    style={{ backgroundColor: ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'][index % 5] }}
+                    className="w-16 flex items-center justify-center p-4 text-2xl font-bold text-white"
+                    style={{ backgroundColor: colors[index % colors.length] }}
                   >
                     {String(index + 1).padStart(2, '0')}
                   </div>
                   <div className="p-4 bg-muted/20 flex-1">
-                    <h3 className="text-lg font-semibold mb-2">{item.activity}</h3>
-                    <ul className="list-disc pl-5 space-y-1">
-                      <li className="text-sm">{item.title}</li>
-                    </ul>
+                    <h3 className="text-lg font-semibold text-foreground mb-1">{item.activity}</h3>
+                    <p className="text-sm text-muted-foreground">{item.title}</p>
                   </div>
                 </div>
               </div>

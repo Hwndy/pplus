@@ -677,7 +677,7 @@ const CreateEditorialPage = () => {
   const reviewId = searchParams.get('review');
   const isReviewMode = !!reviewId;
 
-  const BASE_URL = 'https://pplus-t71x.onrender.com/api';
+  const BASE_URL = 'https://pplus-ec37.onrender.com/api';
   const { user, isSessionValidated } = useAuth();
   const [editorials, setEditorials] = useState<Editorial[]>([
     isEditMode && location.state?.editorialData
