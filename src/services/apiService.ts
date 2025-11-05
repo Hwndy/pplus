@@ -634,7 +634,7 @@ class ApiService {
     const headers = [
       'Date', 'Company', 'Industry', 'Brand', 'Sub-Industry', 'Source', 'Placement',
       'Title', 'Print/Web Clips', 'Reporter', 'Country', 'Language', 'Spokesperson',
-      'CEO Media Presence', 'CEO Thought Leadership', 'Activity', 'Circulation',
+      'CEO Thought Leadership', 'Activity', 'Circulation',
       'Audience Reach', 'Media Type', 'Online Channel', 'Sentiment',
       'Sentiment Classification', 'Sentiment Score', 'Advert Spend', 'Page Size',
       'Status', 'Analyst Note', 'Supervisor Note', 'Admin Note',

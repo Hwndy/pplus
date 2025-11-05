@@ -22,7 +22,6 @@ interface Editorial {
   audience_reach: number;
   placement: string;
   language: string;
-  ceo_media_presence: string | null;
   ceo_thought_leadership: string | null;
   title: string;
   print_web_clips: string | null;

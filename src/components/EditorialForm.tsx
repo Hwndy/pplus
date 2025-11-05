@@ -38,7 +38,6 @@
 //   country: string;
 //   language: string;
 //   spokesperson: string;
-//   ceoMediaPresence: string;
 //   ceoThoughtLeadership: string;
 //   activity: string;
 //   circulation?: number;
@@ -114,7 +113,6 @@
 //   'Oladele Sotubo (CEO, Stanbic IBTC Asset Management)', 'Akinjide Orimolade (CEO, Stanbic IBTC Insurance)',
 //   'Demola Sogunle (CEO, Stanbic IBTC Holdings)'
 // ];
-// const ceoMediaPresenceOptions = ['High', 'Medium', 'Low', 'None'];
 // const ceoThoughtLeadershipOptions = ['Strong', 'Moderate', 'Weak', 'None'];
 // const printWebClipsOptions = ['Print Only', 'Web Only', 'Both Print and Web', 'Social Media'];
 // const onlineChannels = ['Website', 'Social Media', 'Mobile App', 'Email Newsletter', 'Podcast'];
@@ -220,7 +218,6 @@
 //       printWebClips: '',
 //       reporter: '',
 //       spokesperson: '',
-//       ceoMediaPresence: '',
 //       ceoThoughtLeadership: '',
 //       activity: '',
 //       circulation: 0,
@@ -589,25 +586,6 @@
 //                         {spokespersons.map((spokesperson) => (
 //                           <SelectItem key={spokesperson} value={spokesperson}>
 //                             {spokesperson}
-//                           </SelectItem>
-//                         ))}
-//                       </SelectContent>
-//                     </Select>
-//                   </div>
-
-//                   <div className="min-w-[160px]">
-//                     {rowIndex === 0 && <Label htmlFor="ceoMediaPresence">CEO Media Presence</Label>}
-//                     <Select
-//                       value={row.ceoMediaPresence}
-//                       onValueChange={(value) => handleDynamicRowChange(rowIndex, 'ceoMediaPresence', value)}
-//                     >
-//                       <SelectTrigger>
-//                         <SelectValue placeholder="Select presence level" />
-//                       </SelectTrigger>
-//                       <SelectContent>
-//                         {ceoMediaPresenceOptions.map((option) => (
-//                           <SelectItem key={option} value={option}>
-//                             {option}
 //                           </SelectItem>
 //                         ))}
 //                       </SelectContent>

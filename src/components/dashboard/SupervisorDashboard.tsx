@@ -173,7 +173,6 @@ interface GenericEntry {
   circulation?: number;
   page_size?: string;
   language?: string;
-  ceo_media_presence?: string;
   ceo_thought_leadership?: string;
   print_web_clips?: string | null;
 }
@@ -345,7 +344,6 @@ export function SupervisorDashboard() {
         circulation: rawEntry.circulation,
         page_size: rawEntry.page_size,
         language: rawEntry.language,
-        ceo_media_presence: rawEntry.ceo_media_presence,
         ceo_thought_leadership: rawEntry.ceo_thought_leadership,
         print_web_clips: rawEntry.print_web_clips,
       };
@@ -950,12 +948,6 @@ export function SupervisorDashboard() {
                   <div className="space-y-2">
                     <Label>Language</Label>
                     <Card><CardContent className="p-4"><p>{currentEntry.language}</p></CardContent></Card>
-                  </div>
-                )}
-                {currentEntry.ceo_media_presence && (
-                  <div className="space-y-2">
-                    <Label>CEO Media Presence</Label>
-                    <Card><CardContent className="p-4"><p>{currentEntry.ceo_media_presence}</p></CardContent></Card>
                   </div>
                 )}
                 {currentEntry.ceo_thought_leadership && (

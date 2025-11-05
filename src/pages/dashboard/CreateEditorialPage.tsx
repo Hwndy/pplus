@@ -48,7 +48,6 @@ export interface Editorial {
   audience_reach?: number;
   placement: string;
   language: string;
-  ceo_media_presence: string;
   ceo_thought_leadership: string;
   title: string;
   print_web_clips: string;
@@ -176,7 +175,6 @@ interface EditorialFormProps {
   apiPlacements: string[];
   apiOnlineChannels: string[];
   apiPublications: string[];
-  apiCeoMediaPresence: string[];
   apiCeoThoughtLeadership: string[];
   apiLanguages: string[];
   apiCountries: string[];
@@ -208,7 +206,6 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
   apiPlacements = [],
   apiOnlineChannels = [],
   apiPublications = [],
-  apiCeoMediaPresence = [],
   apiCeoThoughtLeadership = [],
   apiLanguages = [],
   apiCountries = [],
@@ -238,7 +235,6 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
       print_web_clips: '',
       reporter: '',
       spokesperson: '',
-      ceo_media_presence: '',
       ceo_thought_leadership: '',
       activity: '',
       circulation: 0,
@@ -463,17 +459,6 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                           />
                         </div>
 
-                        {/* CEO Media Presence */}
-                        <div className="min-w-[160px]">
-                          {index === 0 && <Label htmlFor="ceo_media_presence">CEO Media Presence</Label>}
-                          <SearchableSelect
-                            value={editorial.ceo_media_presence || ''}
-                            onValueChange={(v) => onFieldChange(index, 'ceo_media_presence', v)}
-                            placeholder="Select presence"
-                            options={apiCeoMediaPresence.map((o) => ({ value: o, label: o }))}
-                          />
-                        </div>
-
                         {/* CEO Thought Leadership */}
                         <div className="min-w-[160px]">
                           {index === 0 && <Label>CEO Thought Leadership</Label>}
@@ -693,7 +678,6 @@ const CreateEditorialPage = () => {
           audience_reach: 0,
           placement: '',
           language: '',
-          ceo_media_presence: '',
           ceo_thought_leadership: '',
           title: '',
           print_web_clips: '',
@@ -722,7 +706,6 @@ const CreateEditorialPage = () => {
   const [apiPlacements, setApiPlacements] = useState<string[]>([]);
   const [apiOnlineChannels, setApiOnlineChannels] = useState<string[]>([]);
   const [apiPublications, setApiPublications] = useState<string[]>([]);
-  const [apiCeoMediaPresence, setApiCeoMediaPresence] = useState<string[]>([]);
   const [apiCeoThoughtLeadership, setApiCeoThoughtLeadership] = useState<string[]>([]);
   const [apiLanguages, setApiLanguages] = useState<string[]>([]);
   const [apiCountries, setApiCountries] = useState<string[]>([]);
@@ -742,7 +725,6 @@ const CreateEditorialPage = () => {
             placementRes,
             onlineChannelRes,
             publicationRes,
-            ceoMediaPresenceRes,
             ceoThoughtLeadershipRes,
             languageRes,
             countryRes,
@@ -756,7 +738,6 @@ const CreateEditorialPage = () => {
             axios.get(`${BASE_URL}/data-parameters/category/Placement`),
             axios.get(`${BASE_URL}/data-parameters/category/Online_Channel`),
             axios.get(`${BASE_URL}/data-parameters/category/Publications`),
-            axios.get(`${BASE_URL}/data-parameters/category/CEO_Media_Presence`),
             axios.get(`${BASE_URL}/data-parameters/category/CEO_Thought_Leadership`),
             axios.get(`${BASE_URL}/data-parameters/category/Language`),
             axios.get(`${BASE_URL}/data-parameters/category/Country`),
@@ -771,7 +752,6 @@ const CreateEditorialPage = () => {
           setApiPlacements(placementRes.data?.data?.[0]?.categories?.[0]?.values?.map((v: any) => v.value) || []);
           setApiOnlineChannels(onlineChannelRes.data?.data?.[0]?.categories?.[0]?.values?.map((v: any) => v.value) || []);
           setApiPublications(publicationRes.data?.data?.[0]?.categories?.[0]?.values?.map((v: any) => v.value) || []);
-          setApiCeoMediaPresence(ceoMediaPresenceRes.data?.data?.[0]?.categories?.[0]?.values?.map((v: any) => v.value) || []);
           setApiCeoThoughtLeadership(ceoThoughtLeadershipRes.data?.data?.[0]?.categories?.[0]?.values?.map((v: any) => v.value) || []);
           setApiLanguages(languageRes.data?.data?.[0]?.categories?.[0]?.values?.map((v: any) => v.value) || []);
           setApiCountries(countryRes.data?.data?.[0]?.categories?.[0]?.values?.map((v: any) => v.value) || []);
@@ -868,7 +848,6 @@ const CreateEditorialPage = () => {
           circulation: e.circulation,
           page_size: e.page_size,
           language: e.language,
-          ceo_media_presence: e.ceo_media_presence,
           ceo_thought_leadership: e.ceo_thought_leadership,
           print_web_clips: e.print_web_clips,
           filename: e.filename,
@@ -935,7 +914,6 @@ const CreateEditorialPage = () => {
         audience_reach: 0,
         placement: '',
         language: '',
-        ceo_media_presence: '',
         ceo_thought_leadership: '',
         title: '',
         print_web_clips: '',
@@ -1004,7 +982,6 @@ const CreateEditorialPage = () => {
             apiPlacements={apiPlacements}
             apiOnlineChannels={apiOnlineChannels}
             apiPublications={apiPublications}
-            apiCeoMediaPresence={apiCeoMediaPresence}
             apiCeoThoughtLeadership={apiCeoThoughtLeadership}
             apiLanguages={apiLanguages}
             apiCountries={apiCountries}
