@@ -459,7 +459,7 @@ const DailyMentionsTablePage: React.FC = () => {
           },
         });
 
-        const mentionsData = response.data?.data?.data || [];
+        const mentionsData = response.data?.data || [];
         const pagination = response.data?.data?.pagination || { total: 0, totalPages: 1 };
 
         if (!Array.isArray(mentionsData)) {
