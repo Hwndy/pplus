@@ -31,6 +31,7 @@ export function PublicationsAnalysisPage() {
   const { user, token, isAuthenticated, isLoading: authLoading } = useAuth();
   const [filterValues, setFilterValues] = useState<FilterValues>({});
   const [analysisData, setAnalysisData] = useState<any>(null);
+  const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
   const currentDate = new Date();
   const formattedDate = `${currentDate.getDate()} ${currentDate.toLocaleString('default', { month: 'short' })} ${currentDate.getFullYear()} ${currentDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZoneName: 'short', hour12: true })}`;
@@ -91,14 +92,54 @@ export function PublicationsAnalysisPage() {
     return `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}`;
   };
 
+  // Determine company from competitive-intelligence (same as other pages)
   useEffect(() => {
     if (authLoading || !isAuthenticated || !user) return;
+
+    const determineCompany = async () => {
+      setDataLoading(true);
+      try {
+        const month = getMonthFromDateRange(filterValues.dateRange);
+        let url = 'https://pplus-ec37.onrender.com/api/report/competitive-intelligence';
+        if (month) url += `?month=${month}`;
+
+        const response = await fetch(url, {
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        });
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+        const result = await response.json();
+        if (result.success) {
+          const compInt = result.data.competitive_intelligence;
+          const subSectors = Object.keys(compInt);
+          if (subSectors.length > 0) {
+            const firstSub = subSectors[0];
+            const companies = compInt[firstSub].companies_in_category;
+            if (companies.length > 0) {
+              setSelectedCompany(companies[0]);
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error determining company:', err);
+        toast.error('Error determining company');
+      } finally {
+        setDataLoading(false);
+      }
+    };
+
+    determineCompany();
+  }, [authLoading, isAuthenticated, user, token, filterValues]);
+
+  // Fetch analysis data using determined company
+  useEffect(() => {
+    if (!selectedCompany || authLoading || !isAuthenticated) return;
 
     const fetchAnalysisData = async () => {
       setDataLoading(true);
       try {
-        const company = user.company || 'Glo Nigeria';
-        let url = `https://pplus-ec37.onrender.com/api/report/publication-reporter-spokesperson-analysis`;
+        let url = `https://pplus-ec37.onrender.com/api/report/publication-reporter-spokesperson-analysis?company=${encodeURIComponent(selectedCompany)}`;
         const month = getMonthFromDateRange(filterValues.dateRange);
         if (month) url += `&month=${month}`;
 
@@ -123,7 +164,7 @@ export function PublicationsAnalysisPage() {
     };
 
     fetchAnalysisData();
-  }, [authLoading, isAuthenticated, user, token, filterValues]);
+  }, [selectedCompany, filterValues, token, authLoading, isAuthenticated]);
 
   const printPublications = analysisData?.analysis?.print_publications_volume?.sources.map((s: any) => ({
     name: s.source,
@@ -139,19 +180,19 @@ export function PublicationsAnalysisPage() {
 
   const printReporters = analysisData?.analysis?.print_reporters?.reporters.map((r: any) => ({
     name: r.reporter,
-    publication: '', // No publication data in API, can be added if provided
+    publication: '',
     value: r.count,
     percentage: parseFloat(r.percentage),
   })) || [];
 
   const onlineReporters = analysisData?.analysis?.online_reporters?.reporters.map((r: any) => ({
     name: r.reporter,
-    publication: '', // No publication data in API, can be added if provided
+    publication: '',
     value: r.count,
     percentage: parseFloat(r.percentage),
   })) || [];
 
-  const spokespersons = []; // API doesn't provide spokesperson data; adjust if endpoint changes
+  const spokespersons = []; // API doesn't provide spokesperson data yet
 
   if (authLoading || dataLoading) {
     return <div className="flex justify-center items-center h-screen">Loading...</div>;

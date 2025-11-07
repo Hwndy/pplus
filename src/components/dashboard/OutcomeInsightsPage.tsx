@@ -5,8 +5,12 @@ import { format } from 'date-fns';
 import { Mail, MailOpen, Clock } from 'lucide-react';
 
 // Utility to concatenate class names
-const cn = (...classes: (string | undefined | null | false)[]) =>
-  classes.filter(Boolean).join(' ');
+const cn = (...classes: (
+  | string
+  | undefined
+  | null
+  | false
+)[]) => classes.filter(Boolean).join(' ');
 
 // Interface for InsightItem
 interface InsightItem {
@@ -20,10 +24,17 @@ interface InsightItem {
 }
 
 // Convert insights data to InsightItem format
-const convertOutcomeInsightsToEmailFormat = (insights: any[]): InsightItem[] =>
+const convertOutcomeInsightsToEmailFormat = (
+  insights: any[]
+): InsightItem[] =>
   insights.map((item) => ({
     id: item.id.toString(),
-    title: item.analyst_note || `Outcome Insight - ${format(new Date(item.date), 'MMM d, yyyy')}`,
+    title:
+      item.analyst_note ||
+      `Outcome Insight - ${format(
+        new Date(item.date),
+        'MMM d, yyyy'
+      )}`,
     sender: {
       name: item.created_by?.username || 'Unknown Analyst',
       email: item.created_by?.email || 'N/A',
@@ -33,27 +44,44 @@ const convertOutcomeInsightsToEmailFormat = (insights: any[]): InsightItem[] =>
       <h3>Status: ${item.status}</h3>
       <h3>Insights:</h3>
       <ul>${item.insights
-        .map((i: any) => `<li><strong>${i.category}:</strong> ${i.insight}</li>`)
+        .map(
+          (i: any) =>
+            `<li><strong>${i.category}:</strong> ${i.insight}</li>`
+        )
         .join('')}</ul>
       <p><strong>Total Insights:</strong> ${item.total_insights}</p>
-      <p><strong>Analyst Note:</strong> ${item.analyst_note || 'N/A'}</p>
-      <p><strong>Supervisor Note:</strong> ${item.supervisor_note || 'N/A'}</p>
-      ${item.approved_by
-        ? `<p><strong>Approved by:</strong> ${item.approved_by.username} (${item.approved_by.email})</p>`
-        : '<p><strong>Approved by:</strong> Not yet approved</p>'}
-      <p><strong>Created at:</strong> ${format(new Date(item.created_at), 'MMM d, yyyy HH:mm')}</p>
-      <p><strong>Updated at:</strong> ${format(new Date(item.updated_at), 'MMM d, yyyy HH:mm')}</p>
+      <p><strong>Analyst Note:</strong> ${
+        item.analyst_note || 'N/A'
+      }</p>
+      <p><strong>Supervisor Note:</strong> ${
+        item.supervisor_note || 'N/A'
+      }</p>
+      ${
+        item.approved_by
+          ? `<p><strong>Approved by:</strong> ${item.approved_by.username} (${item.approved_by.email})</p>`
+          : '<p><strong>Approved by:</strong> Not yet approved</p>'
+      }
+      <p><strong>Created at:</strong> ${format(
+        new Date(item.created_at),
+        'MMM d, yyyy HH:mm'
+      )}</p>
+      <p><strong>Updated at:</strong> ${format(
+        new Date(item.updated_at),
+        'MMM d, yyyy HH:mm'
+      )}</p>
     `,
-    isRead: false,
-    preview: item.analyst_note ? item.analyst_note.substring(0, 120) + '...' : 'Outcome insight details...',
+    isRead: localStorage.getItem(`insight-read-${item.id}`) === 'true', // ← NOW PERSISTENT
+    preview: item.analyst_note
+      ? item.analyst_note.substring(0, 120) + '...'
+      : 'Outcome insight details...',
   }));
 
 // InsightListView component
-const InsightListView: React.FC<{ insights: InsightItem[]; title: string; description: string }> = ({
-  insights,
-  title,
-  description,
-}) => {
+const InsightListView: React.FC<{
+  insights: InsightItem[];
+  title: string;
+  description: string;
+}> = ({ insights, title, description }) => {
   const [selectedInsight, setSelectedInsight] = useState<InsightItem | null>(null);
   const [insightsState, setInsightsState] = useState<InsightItem[]>(insights);
 
@@ -64,9 +92,11 @@ const InsightListView: React.FC<{ insights: InsightItem[]; title: string; descri
 
   const handleInsightClick = (insight: InsightItem) => {
     if (!insight.isRead) {
-      setInsightsState((prev) =>
-        prev.map((i) => (i.id === insight.id ? { ...i, isRead: true } : i))
+      localStorage.setItem(`insight-read-${insight.id}`, 'true'); // ← SAVE TO LOCALSTORAGE
+      const updatedInsights = insightsState.map((i) =>
+        i.id === insight.id ? { ...i, isRead: true } : i
       );
+      setInsightsState(updatedInsights);
     }
     setSelectedInsight(insight);
   };
@@ -81,7 +111,9 @@ const InsightListView: React.FC<{ insights: InsightItem[]; title: string; descri
         {/* Insight List */}
         <div className="w-full md:w-2/5 border-r overflow-y-auto">
           {insightsState.length === 0 ? (
-            <div className="p-4 text-center text-gray-500">No outcome insights available</div>
+            <div className="p-4 text-center text-gray-500">
+              No outcome insights available
+            </div>
           ) : (
             insightsState.map((insight) => (
               <div
@@ -111,7 +143,9 @@ const InsightListView: React.FC<{ insights: InsightItem[]; title: string; descri
                       {insight.title}
                     </h4>
                     {insight.sender && (
-                      <p className="text-xs text-gray-500 font-medium">{insight.sender.name}</p>
+                      <p className="text-xs text-gray-500 font-medium">
+                        {insight.sender.name}
+                      </p>
                     )}
                     {insight.preview && (
                       <p
@@ -140,18 +174,32 @@ const InsightListView: React.FC<{ insights: InsightItem[]; title: string; descri
           {selectedInsight ? (
             <div className="animate-fade-in">
               <div className="mb-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-2">{selectedInsight.title}</h2>
+                <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                  {selectedInsight.title}
+                </h2>
                 <div className="flex items-center justify-between text-sm text-gray-500 mb-1">
                   {selectedInsight.sender && (
                     <div>
-                      From: <span className="font-medium">{selectedInsight.sender.name}</span> &lt;{selectedInsight.sender.email}&gt;
+                      From:{' '}
+                      <span className="font-medium">
+                        {selectedInsight.sender.name}
+                      </span>{' '}
+                      &lt;{selectedInsight.sender.email}&gt;
                     </div>
                   )}
-                  {selectedInsight.date && <div>{format(new Date(selectedInsight.date), 'MMM d, yyyy')}</div>}
+                  {selectedInsight.date && (
+                    <div>
+                      {format(new Date(selectedInsight.date), 'MMM d, yyyy')}
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="prose prose-sm max-w-none text-gray-700 border-t pt-4">
-                <div dangerouslySetInnerHTML={{ __html: selectedInsight.content }} />
+                <div
+                  dangerouslySetInnerHTML={{
+                    __html: selectedInsight.content,
+                  }}
+                />
               </div>
             </div>
           ) : (
@@ -169,7 +217,9 @@ const InsightListView: React.FC<{ insights: InsightItem[]; title: string; descri
 // Main OutcomeInsightsPage component
 const OutcomeInsightsPage: React.FC = () => {
   const { user, token, isAuthenticated, isLoading: authLoading } = useAuth();
-  const [filterValues, setFilterValues] = useState<{ dateRange?: { start: string; end: string } }>({});
+  const [filterValues, setFilterValues] = useState<{
+    dateRange?: { start: string; end: string };
+  }>({});
   const [insightData, setInsightData] = useState<any[]>([]);
   const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
@@ -273,11 +323,9 @@ const OutcomeInsightsPage: React.FC = () => {
             }
           }
         }
-        setSelectedCompany('Glo Nigeria');
       } catch (err) {
         console.error('Error determining company:', err);
         toast.error('Error determining company');
-        setSelectedCompany('Glo Nigeria');
       } finally {
         setDataLoading(false);
       }
@@ -324,10 +372,17 @@ const OutcomeInsightsPage: React.FC = () => {
     fetchInsights();
   }, [selectedCompany, filterValues, token, authLoading, isAuthenticated]);
 
-  const insights = useMemo(() => convertOutcomeInsightsToEmailFormat(insightData), [insightData]);
+  const insights = useMemo(
+    () => convertOutcomeInsightsToEmailFormat(insightData),
+    [insightData]
+  );
 
   if (authLoading || dataLoading) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>;
+    return (
+      <div className="flex justify-center items-center h-screen">
+        Loading...
+      </div>
+    );
   }
 
   return (
@@ -336,7 +391,11 @@ const OutcomeInsightsPage: React.FC = () => {
         Outcome Insights
       </h2>
 
-      <FilterComponent values={filterValues} onChange={setFilterValues} onReset={() => setFilterValues({})} />
+      <FilterComponent
+        values={filterValues}
+        onChange={setFilterValues}
+        onReset={() => setFilterValues({})}
+      />
 
       <InsightListView
         insights={insights}

@@ -281,12 +281,9 @@ const SwotAnalysisPage: React.FC = () => {
             }
           }
         }
-        // Fallback to default if no competitive data
-        setSelectedCompany('Glo Nigeria');
       } catch (err) {
         console.error('Error determining company:', err);
         toast.error('Error determining company');
-        setSelectedCompany('Glo Nigeria');
       } finally {
         setDataLoading(false);
       }

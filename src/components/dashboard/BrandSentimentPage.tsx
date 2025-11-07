@@ -95,11 +95,9 @@ const BrandSentimentPage: React.FC = () => {
             }
           }
         }
-        setSelectedCompany('Glo Nigeria');
       } catch (err) {
         console.error('Error determining company:', err);
         toast.error('Error determining company');
-        setSelectedCompany('Glo Nigeria');
       } finally {
         setDataLoading(false);
       }
@@ -185,7 +183,7 @@ const BrandSentimentPage: React.FC = () => {
 
       <div className="mb-8">
         <h3 className="text-xl font-bold mb-4">Sentiment Distribution</h3>
-        <div className="flex h-10 w-full rounded overflow-hidden border border-gray-200">
+        <div className="flex h-10 w- full rounded overflow-hidden border border-gray-200">
           {chartData.map((segment, index) => (
             <div
               key={index}

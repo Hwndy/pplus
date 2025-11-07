@@ -20,6 +20,7 @@ export function MediaDistributionPage() {
   const [filterValues, setFilterValues] = useState<FilterValues>({});
   const [thematicData, setThematicData] = useState<any>(null);
   const [dataLoading, setDataLoading] = useState(true);
+  const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
   const currentDate = new Date();
   const formattedDate = `${currentDate.getDate()} ${currentDate.toLocaleString('default', { month: 'short' })} ${currentDate.getFullYear()} ${currentDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZoneName: 'short', hour12: true })}`;
 
@@ -74,16 +75,59 @@ export function MediaDistributionPage() {
     return `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}`;
   };
 
+  // Determine company from competitive-intelligence endpoint (same pattern as other pages)
   useEffect(() => {
     if (authLoading || !isAuthenticated || !user) return;
+
+    const determineCompany = async () => {
+      setDataLoading(true);
+      try {
+        const month = getMonthFromDateRange(filterValues.dateRange);
+        let url = 'https://pplus-ec37.onrender.com/api/report/competitive-intelligence';
+        if (month) url += `?month=${month}`;
+
+        const response = await fetch(url, {
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        });
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+        const result = await response.json();
+        if (result.success) {
+          const compInt = result.data.competitive_intelligence;
+          const subSectors = Object.keys(compInt);
+          if (subSectors.length > 0) {
+            const firstSub = subSectors[0];
+            const companies = compInt[firstSub].companies_in_category;
+            if (companies.length > 0) {
+              setSelectedCompany(companies[0]);
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error determining company:', err);
+        toast.error('Error determining company');
+      } finally {
+        setDataLoading(false);
+      }
+    };
+
+    determineCompany();
+  }, [authLoading, isAuthenticated, user, token, filterValues]);
+
+  // Fetch thematic data using determined company
+  useEffect(() => {
+    if (!selectedCompany || authLoading || !isAuthenticated) return;
 
     const fetchThematicData = async () => {
       setDataLoading(true);
       try {
         let url = 'https://pplus-ec37.onrender.com/api/report/top-thematic-distribution-breakdown';
         const month = getMonthFromDateRange(filterValues.dateRange);
-        if (month) url += `?month=${month}&company=${user.company || 'Glo Nigeria'}`;
-        else url += '?company=Glo Nigeria';
+        const params = new URLSearchParams();
+        if (month) params.append('month', month);
+        params.append('company', selectedCompany);
+        if (params.toString()) url += `?${params.toString()}`;
 
         const response = await fetch(url, {
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -108,7 +152,7 @@ export function MediaDistributionPage() {
     };
 
     fetchThematicData();
-  }, [authLoading, isAuthenticated, user, token, filterValues]);
+  }, [selectedCompany, filterValues, token, authLoading, isAuthenticated]);
 
   // Consistent color palette (same as breakdown)
   const colors = [
@@ -196,7 +240,6 @@ export function MediaDistributionPage() {
                 <RechartsBarChart
                   layout="vertical"
                   data={chartData}
-                  // margin={{ top: 20, right: 30, left: 0, bottom: 20 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
                   <XAxis type="number" domain={[0, 1]} hide />

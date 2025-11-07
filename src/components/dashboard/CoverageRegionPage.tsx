@@ -3,7 +3,6 @@ import { useAuth } from '@/components/auth/AuthContext';
 import { toast } from 'sonner';
 import { Globe, Twitter, Facebook, Instagram, MapPin } from 'lucide-react';
 import { UniversalFilter, FilterOption, FilterValues } from '@/components/ui/UniversalFilter';
-import { DataCard } from '@/components/ui/DataCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface SocialPlatformStats {
@@ -25,6 +24,7 @@ export function CoverageRegionPage() {
   const { user, token, isAuthenticated, isLoading: authLoading } = useAuth();
   const [filterValues, setFilterValues] = useState<FilterValues>({});
   const [socialData, setSocialData] = useState<any>(null);
+  const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
   const currentDate = new Date();
   const formattedDate = `${currentDate.getDate()} ${currentDate.toLocaleString('default', { month: 'short' })} ${currentDate.getFullYear()} ${currentDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZoneName: 'short', hour12: true })}`;
@@ -92,16 +92,56 @@ export function CoverageRegionPage() {
     return `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}`;
   };
 
+  // Determine company dynamically
   useEffect(() => {
     if (authLoading || !isAuthenticated || !user) return;
+
+    const determineCompany = async () => {
+      setDataLoading(true);
+      try {
+        const month = getMonthFromDateRange(filterValues.dateRange);
+        let url = 'https://pplus-ec37.onrender.com/api/report/competitive-intelligence';
+        if (month) url += `?month=${month}`;
+
+        const response = await fetch(url, {
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        });
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+        const result = await response.json();
+        if (result.success) {
+          const compInt = result.data.competitive_intelligence;
+          const subSectors = Object.keys(compInt);
+          if (subSectors.length > 0) {
+            const firstSub = subSectors[0];
+            const companies = compInt[firstSub].companies_in_category;
+            if (companies.length > 0) {
+              setSelectedCompany(companies[0]);
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error determining company:', err);
+        toast.error('Error determining company');
+      } finally {
+        setDataLoading(false);
+      }
+    };
+
+    determineCompany();
+  }, [authLoading, isAuthenticated, user, token, filterValues]);
+
+  // Fetch social & regional data using selectedCompany
+  useEffect(() => {
+    if (!selectedCompany || authLoading || !isAuthenticated) return;
 
     const fetchSocialData = async () => {
       setDataLoading(true);
       try {
-        const company = user.company || 'Glo Nigeria';
-        let url = `https://pplus-ec37.onrender.com/api/report/social-stats-online-coverage`;
+        let url = `https://pplus-ec37.onrender.com/api/report/social-stats-online-coverage?company=${encodeURIComponent(selectedCompany)}`;
         const month = getMonthFromDateRange(filterValues.dateRange);
-        if (month) url += `&month=${month}`;
+        if (month) url += `&month=${Month}`;
 
         const response = await fetch(url, {
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -124,7 +164,7 @@ export function CoverageRegionPage() {
     };
 
     fetchSocialData();
-  }, [authLoading, isAuthenticated, user, token, filterValues]);
+  }, [selectedCompany, filterValues, token, authLoading, isAuthenticated]);
 
   // Map social_media_metrics to SocialPlatformStats
   const socialPlatforms: SocialPlatformStats[] = socialData
@@ -133,8 +173,8 @@ export function CoverageRegionPage() {
         totalPosts: metrics.total_posts.toString(),
         followers: metrics.total_followers.toString(),
         following: metrics.total_following.toString(),
-        likes: platform === 'facebook' ? metrics.total_page_likes.toString() : undefined,
-        monthlyPosts: platform === 'facebook' ? metrics.total_monthly_posts.toString() : undefined,
+        likes: platform === 'facebook' ? metrics.total_page_likes?.toString() : undefined,
+        monthlyPosts: platform === 'facebook' ? metrics.total_monthly_posts?.toString() : undefined,
       }))
     : [];
 
@@ -199,46 +239,50 @@ export function CoverageRegionPage() {
         {/* Left side - Social Stats (3 columns) */}
         <div className="xl:col-span-3 space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {socialPlatforms.map((stat, index) => (
-              <Card key={index} className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-indigo-50 hover:shadow-xl transition-all duration-300">
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-lg font-bold text-gray-800 flex items-center gap-3">
-                    <div className="bg-gradient-to-br from-blue-500 to-indigo-500 p-2 rounded-lg">
-                      {getPlatformIcon(stat.platform)}
-                    </div>
-                    {stat.platform.charAt(0).toUpperCase() + stat.platform.slice(1)}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Total Posts</p>
-                      <p className="text-xl font-bold">{stat.totalPosts}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Followers</p>
-                      <p className="text-xl font-bold">{stat.followers}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Following</p>
-                      <p className="text-xl font-bold">{stat.following}</p>
-                    </div>
-                    {stat.likes && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Total Page Likes</p>
-                        <p className="text-xl font-bold">{stat.likes}</p>
+            {socialPlatforms.length === 0 ? (
+              <p className="col-span-3 text-center text-gray-500">No social media data available</p>
+            ) : (
+              socialPlatforms.map((stat, index) => (
+                <Card key={index} className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-indigo-50 hover:shadow-xl transition-all duration-300">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-lg font-bold text-gray-800 flex items-center gap-3">
+                      <div className="bg-gradient-to-br from-blue-500 to-indigo-500 p-2 rounded-lg">
+                        {getPlatformIcon(stat.platform)}
                       </div>
-                    )}
-                    {stat.monthlyPosts && (
+                      {stat.platform.charAt(0).toUpperCase() + stat.platform.slice(1)}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
                       <div>
-                        <p className="text-sm text-muted-foreground">Total Monthly Posts</p>
-                        <p className="text-xl font-bold">{stat.monthlyPosts}</p>
+                        <p className="text-sm text-muted-foreground">Total Posts</p>
+                        <p className="text-xl font-bold">{stat.totalPosts}</p>
                       </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                      <div>
+                        <p className="text-sm text-muted-foreground">Followers</p>
+                        <p className="text-xl font-bold">{stat.followers}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Following</p>
+                        <p className="text-xl font-bold">{stat.following}</p>
+                      </div>
+                      {stat.likes && (
+                        <div>
+                          <p className="text-sm text-muted-foreground">Total Page Likes</p>
+                          <p className="text-xl font-bold">{stat.likes}</p>
+                        </div>
+                      )}
+                      {stat.monthlyPosts && (
+                        <div>
+                          <p className="text-sm text-muted-foreground">Total Monthly Posts</p>
+                          <p className="text-xl font-bold">{stat.monthlyPosts}</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </div>
         </div>
 

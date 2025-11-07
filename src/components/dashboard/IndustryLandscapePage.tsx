@@ -2,14 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/components/auth/AuthContext';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { Mail, MailOpen, Clock } from 'lucide-react';
 import { EmailListView } from '@/components/dashboard/EmailListView';
 
-// Utility to concatenate class names
-const cn = (...classes: (string | undefined | null | false)[]) =>
-  classes.filter(Boolean).join(' ');
-
-// Interface for EmailItem
+// Interface for EmailItem (make sure this matches your shared component)
 interface EmailItem {
   id: string;
   title?: string;
@@ -20,7 +15,7 @@ interface EmailItem {
   preview?: string;
 }
 
-// Convert industry landscape data to EmailItem format
+// Convert industry landscape data to EmailItem format — NOW WITH localStorage!
 const convertIndustryDataToEmailFormat = (overviews: any[]): EmailItem[] =>
   overviews.map((item) => ({
     id: item.id.toString(),
@@ -44,7 +39,7 @@ const convertIndustryDataToEmailFormat = (overviews: any[]): EmailItem[] =>
       <p><strong>Created at:</strong> ${format(new Date(item.created_at), 'MMM d, yyyy HH:mm')}</p>
       <p><strong>Updated at:</strong> ${format(new Date(item.updated_at), 'MMM d, yyyy HH:mm')}</p>
     `,
-    isRead: false,
+    isRead: localStorage.getItem(`industry-read-${item.id}`) === 'true', // ← PERSISTENT NOW
     preview: item.analyst_note ? item.analyst_note.substring(0, 120) + '...' : 'Industry update details...',
   }));
 
@@ -155,11 +150,9 @@ const IndustryLandscapePage: React.FC = () => {
             }
           }
         }
-        setSelectedCompany('Glo Nigeria');
       } catch (err) {
         console.error('Error determining company:', err);
         toast.error('Error determining company');
-        setSelectedCompany('Glo Nigeria');
       } finally {
         setDataLoading(false);
       }
@@ -219,12 +212,17 @@ const IndustryLandscapePage: React.FC = () => {
         Industry Updates
       </h2>
 
-      <FilterComponent values={filterValues} onChange={setFilterValues} onReset={() => setFilterValues({})} />
+      <FilterComponent
+        values={filterValues}
+        onChange={setFilterValues}
+        onReset={() => setFilterValues({})}
+      />
 
       <EmailListView
         emails={emails}
         title="Industry Updates Inbox"
         description={`Latest industry updates for ${selectedCompany || 'your business'}`}
+        storagePrefix="industry-read-" // ← THIS IS THE KEY!
       />
     </div>
   );
