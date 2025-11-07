@@ -1,15 +1,18 @@
-// Refactored SocialMediaMentionsPage.tsx
+// SocialMediaMentionsPage.tsx - FINAL WORKING VERSION
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Facebook, Twitter, Instagram, Linkedin, Eye, MoreHorizontal, Trash2 } from "lucide-react";
+import { Facebook, Twitter, Instagram, Eye, MoreHorizontal, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { SocialMediaMentionForm } from '../dashboard/components/SocialMediaMentionForm'; 
+import { SocialMediaMentionForm } from '../dashboard/components/SocialMediaMentionForm';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { useAuth } from '@/components/auth/AuthContext';
+
+const API_BASE = 'https://pplus-ec37.onrender.com/api';
 
 interface Metrics {
   page_likes?: number;
@@ -28,16 +31,9 @@ interface SocialMediaMention {
   metrics: Metrics[];
   analyst_note?: string;
   supervisor_note?: string;
-  created_by?: number;
-  approved_by?: number;
   status?: 'Pending' | 'Approved' | 'Rejected';
-  createdAt?: string;
-  updatedAt?: string;
-  company_data?: {
-    company_name: string;
-  };
+  company_data?: { company_name: string };
   creator_data?: { username: string };
-  approver_data?: { username: string };
 }
 
 interface Pagination {
@@ -48,6 +44,8 @@ interface Pagination {
 }
 
 export default function SocialMediaMentionsPage() {
+  const { user, token } = useAuth();
+
   const [loading, setLoading] = useState(true);
   const [mentions, setMentions] = useState<SocialMediaMention[]>([]);
   const [pagination, setPagination] = useState<Pagination>({ total: 0, page: 1, limit: 10, totalPages: 0 });
@@ -56,77 +54,123 @@ export default function SocialMediaMentionsPage() {
   const [editingMention, setEditingMention] = useState<SocialMediaMention | null>(null);
 
   const fetchMentions = async (page = 1, limit = 10) => {
+    if (!user || !token) {
+      setError('Please log in to continue.');
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
+
     try {
-      const response = await fetch(`https://pplus-ec37.onrender.com/api/social-media-mentions/supervisor-mentions?page=${page}&limit=${limit}`, {
+      // EXACT SAME LOGIC AS EDITORIAL PAGE
+      const endpoint = user.role.name === 'Supervisor'
+        ? `${API_BASE}/social-media-mentions/supervisor-mentions`
+        : user.role.name === 'Analyst'
+        ? `${API_BASE}/social-media-mentions/my-social-media-mentions`
+        : `${API_BASE}/social-media-mentions`; // Admin fallback
+
+      const url = `${endpoint}?page=${page}&limit=${limit}`;
+
+      const response = await fetch(url, {
         headers: {
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
         },
       });
-      const result = await response.json();
-      if (result.success) {
-        setMentions(result.data || []);
-        setPagination(result.data.pagination || { total: 0, page, limit, totalPages: 0 });
-      } else {
-        setError(result.message || 'Failed to fetch mentions');
+
+      if (!response.ok) {
+        const err = await response.text();
+        throw new Error(`HTTP ${response.status}: ${err}`);
       }
-    } catch (err) {
-      setError('Error fetching mentions');
-      console.error(err);
+
+      const result = await response.json();
+
+      if (result.success && Array.isArray(result.data)) {
+        const data = result.data;
+
+        // Client-side pagination fallback
+        const total = data.length;
+        const totalPages = Math.ceil(total / limit);
+
+        setMentions(data);
+        setPagination({ total, page, limit, totalPages });
+      } else {
+        throw new Error(result.message || 'Invalid response');
+      }
+    } catch (err: any) {
+      console.error('Fetch error:', err);
+      setError(err.message);
+      toast.error(err.message || 'Failed to load mentions');
+      setMentions([]);
     } finally {
       setLoading(false);
     }
   };
 
+  // Fetch on mount + when user changes
   useEffect(() => {
-    fetchMentions();
-  }, []);
+    if (user && token) {
+      fetchMentions(1, 10);
+    }
+  }, [user, token]);
+
+  // Refetch on page change
+  useEffect(() => {
+    if (user && token) {
+      fetchMentions(pagination.page, pagination.limit);
+    }
+  }, [pagination.page]);
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this mention?')) return;
+    if (!confirm('Delete this mention?')) return;
+
     try {
-      const response = await fetch(`https://pplus-ec37.onrender.com/api/social-media-mentions/delete/${id}`, {
+      const res = await fetch(`${API_BASE}/social-media-mentions/delete/${id}`, {
         method: 'PUT',
         headers: {
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
         },
       });
-      const result = await response.json();
-      if (result.success) {
-        toast.success('Mention deleted successfully');
+
+      if (!res.ok) throw new Error('Delete failed');
+      const data = await res.json();
+
+      if (data.success) {
+        toast.success('Deleted successfully');
         fetchMentions(pagination.page, pagination.limit);
       } else {
-        toast.error(result.message || 'Failed to delete mention');
+        toast.error(data.message);
       }
-    } catch (error) {
-      toast.error('Error deleting mention');
-      console.error(error);
+    } catch (err: any) {
+      toast.error(err.message || 'Delete failed');
     }
   };
 
   const handleUpdateStatus = async (id: number, status: 'Approved' | 'Rejected') => {
     try {
-      const response = await fetch(`https://pplus-ec37.onrender.com/api/social-media-mentions/${id}/status`, {
+      const res = await fetch(`${API_BASE}/social-media-mentions/${id}/status`, {
         method: 'PATCH',
         headers: {
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`,
         },
         body: JSON.stringify({ status }),
       });
-      const result = await response.json();
-      if (result.success) {
-        toast.success(`Mention ${status.toLowerCase()} successfully`);
+
+      if (!res.ok) throw new Error('Update failed');
+      const data = await res.json();
+
+      if (data.success) {
+        toast.success(`Marked as ${status}`);
         fetchMentions(pagination.page, pagination.limit);
       } else {
-        toast.error(result.message || `Failed to update status`);
+        toast.error(data.message);
       }
-    } catch (error) {
-      toast.error('Error updating status');
-      console.error(error);
+    } catch (err: any) {
+      toast.error(err.message || 'Update failed');
     }
   };
 
@@ -140,25 +184,24 @@ export default function SocialMediaMentionsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Social Media Mentions</h1>
+
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
-              Create Mention
-            </Button>
+            <Button>Create Mention</Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create Social Media Mention</DialogTitle>
             </DialogHeader>
-            <SocialMediaMentionForm 
-              mode="create" 
+            <SocialMediaMentionForm
+              mode="create"
               onSuccess={() => {
                 setIsCreateOpen(false);
-                fetchMentions(pagination.page, pagination.limit);
-              }} 
+                fetchMentions(1, 10);
+              }}
             />
           </DialogContent>
         </Dialog>
@@ -169,6 +212,12 @@ export default function SocialMediaMentionsPage() {
           <CardTitle>Mentions List</CardTitle>
         </CardHeader>
         <CardContent>
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md text-red-700">
+              {error}
+            </div>
+          )}
+
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -179,67 +228,95 @@ export default function SocialMediaMentionsPage() {
                   <TableHead>Date</TableHead>
                   <TableHead>Metrics</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Action</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-4">Loading...</TableCell>
+                    <TableCell colSpan={7} className="text-center py-10">
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                        <span>Loading...</span>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ) : mentions.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-4">No mentions found</TableCell>
+                    <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
+                      No mentions found
+                    </TableCell>
                   </TableRow>
                 ) : (
                   mentions.map((mention) => (
                     <TableRow key={mention.id}>
-                      <TableCell>{mention.id}</TableCell>
-                      <TableCell>{mention.company_data?.company_name || 'N/A'}</TableCell>
-                      <TableCell>{getPlatformIcon(mention.social_media_type)} {mention.social_media_type}</TableCell>
-                      <TableCell>{format(new Date(mention.date), 'MMM d, yyyy')}</TableCell>
-                      <TableCell>
-                        {mention.metrics.map((m, i) => (
-                          <div key={i}>
-                            {m.page_likes && `Likes: ${m.page_likes}`}
-                            {m.average_likes && `Avg Likes: ${m.average_likes}`}
-                            {m.average_comments && `Avg Comments: ${m.average_comments}`}
-                            {m.posts && `Posts: ${m.posts}`}
-                            {m.followers && `Followers: ${m.followers}`}
-                            {m.following && `Following: ${m.following}`}
-                          </div>
-                        ))}
+                      <TableCell className="font-mono">{mention.id}</TableCell>
+                      <TableCell className="font-medium">
+                        {mention.company_data?.company_name || 'N/A'}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={mention.status === 'Approved' ? 'default' : 'secondary'}>
+                        <div className="flex items-center gap-2">
+                          {getPlatformIcon(mention.social_media_type)}
+                          <span>{mention.social_media_type}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>{format(new Date(mention.date), 'MMM d, yyyy')}</TableCell>
+                      <TableCell>
+                        <div className="text-sm space-y-1">
+                          {mention.metrics[0] && (
+                            <>
+                              {mention.metrics[0].page_likes && <div>Likes: {mention.metrics[0].page_likes}</div>}
+                              {mention.metrics[0].followers && <div>Followers: {mention.metrics[0].followers}</div>}
+                              {mention.metrics[0].posts && <div>Posts: {mention.metrics[0].posts}</div>}
+                            </>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            mention.status === 'Approved' ? 'default' :
+                            mention.status === 'Rejected' ? 'destructive' :
+                            'secondary'
+                          }
+                        >
                           {mention.status || 'Pending'}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <Button variant="ghost" size="sm">
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => setEditingMention(mention)}>
-                              <Eye className="mr-2 h-4 w-4" />
-                              Edit
+                              <Eye className="mr-2 h-4 w-4" /> View/Edit
                             </DropdownMenuItem>
-                            {mention.status === 'Pending' && (
+
+                            {mention.status === 'Pending' && user?.role.name === 'Supervisor' && (
                               <>
-                                <DropdownMenuItem onClick={() => handleUpdateStatus(mention.id, 'Approved')}>
+                                <DropdownMenuItem
+                                  onClick={() => handleUpdateStatus(mention.id, 'Approved')}
+                                  className="text-green-600"
+                                >
                                   Approve
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleUpdateStatus(mention.id, 'Rejected')}>
+                                <DropdownMenuItem
+                                  onClick={() => handleUpdateStatus(mention.id, 'Rejected')}
+                                  className="text-red-600"
+                                >
                                   Reject
                                 </DropdownMenuItem>
                               </>
                             )}
-                            <DropdownMenuItem onClick={() => handleDelete(mention.id)}>
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
+
+                            <DropdownMenuItem
+                              onClick={() => handleDelete(mention.id)}
+                              className="text-red-600"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" /> Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -250,23 +327,50 @@ export default function SocialMediaMentionsPage() {
               </TableBody>
             </Table>
           </div>
-          {error && <p className="text-red-600 text-sm mt-2">{error}</p>}
+
+          {/* Pagination */}
+          {pagination.totalPages > 1 && (
+            <div className="flex items-center justify-between mt-6">
+              <p className="text-sm text-muted-foreground">
+                Showing {(pagination.page - 1) * pagination.limit + 1}–{Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total}
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
+                  disabled={pagination.page === 1}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
+                  disabled={pagination.page === pagination.totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
+      {/* Edit Dialog */}
       <Dialog open={!!editingMention} onOpenChange={() => setEditingMention(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Social Media Mention</DialogTitle>
+            <DialogTitle>Edit Mention</DialogTitle>
           </DialogHeader>
           {editingMention && (
-            <SocialMediaMentionForm 
-              mode="edit" 
-              initialData={editingMention} 
+            <SocialMediaMentionForm
+              mode="edit"
+              initialData={editingMention}
               onSuccess={() => {
                 setEditingMention(null);
                 fetchMentions(pagination.page, pagination.limit);
-              }} 
+              }}
             />
           )}
         </DialogContent>
