@@ -67,7 +67,7 @@ export default function SocialMediaMentionsPage() {
       });
       const result = await response.json();
       if (result.success) {
-        setMentions(result.data.data || []);
+        setMentions(result.data || []);
         setPagination(result.data.pagination || { total: 0, page, limit, totalPages: 0 });
       } else {
         setError(result.message || 'Failed to fetch mentions');

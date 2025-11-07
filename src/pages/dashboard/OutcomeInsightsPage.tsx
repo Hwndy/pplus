@@ -211,7 +211,7 @@ export default function OutcomeInsightsPage() {
       const json = await res.json();
 
       if (json.success) {
-        setOutcomeInsights(json.data.data ?? []);
+        setOutcomeInsights(json.data?? []);
         setPagination(json.data.pagination ?? { total: 0, page, limit, totalPages: 0 });
       } else {
         throw new Error(json.message ?? 'Failed');

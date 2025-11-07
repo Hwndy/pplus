@@ -64,7 +64,7 @@ export function SwotMentionsPage() {
       const result = await response.json();
       console.log('SWOT API response:', result); // Debug log
       if (result.success) {
-        setSwotData(result.data.data || []); // Handle nested data array
+        setSwotData(result.data || []); // Handle nested data array
       } else {
         toast.error(result.message || 'Failed to fetch SWOT analyses');
       }
