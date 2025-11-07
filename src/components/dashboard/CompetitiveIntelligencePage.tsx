@@ -3,7 +3,7 @@ import { useAuth } from '@/components/auth/AuthContext';
 import { toast } from 'sonner';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { DataCard } from '@/components/ui/DataCard';
-import { BarChart2, AlertCircle } from 'lucide-react';
+import { BarChart2 } from 'lucide-react';
 
 const CompanyIcon = ({ company }: { company: string }) => {
   if (company.includes('MTN') || company.includes('Airtel')) {
@@ -17,15 +17,6 @@ const CompanyIcon = ({ company }: { company: string }) => {
   }
   return <div className="w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center text-white font-bold text-xs">?</div>;
 };
-
-// Empty State Component
-const EmptyChartState = ({ title }: { title: string }) => (
-  <div className="h-full flex flex-col items-center justify-center text-gray-400">
-    <AlertCircle size={48} className="mb-4 opacity-50" />
-    <p className="text-sm font-medium">No data available</p>
-    <p className="text-xs mt-1">{title}</p>
-  </div>
-);
 
 export function CompetitiveIntelligencePage() {
   const { user, token, isAuthenticated, isLoading: authLoading } = useAuth();
@@ -53,8 +44,8 @@ export function CompetitiveIntelligencePage() {
         }
       } catch (err) {
         console.error('Error fetching competitive intelligence:', err);
-        toast.error('Failed to load competitive intelligence data');
-        setData(null); // Keep data as null on error
+        toast.error('Error fetching competitive intelligence');
+        setData(null);
       } finally {
         setLoading(false);
       }
@@ -63,62 +54,40 @@ export function CompetitiveIntelligencePage() {
     fetchData();
   }, [authLoading, isAuthenticated, user, token]);
 
-  // Always show loading first
-  if (loading || authLoading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="text-lg">Loading competitive intelligence...</div>
-      </div>
-    );
+  if (loading) {
+    return <div className="flex justify-center items-center h-screen">Loading...</div>;
   }
 
-  // Extract data safely with fallbacks
-  const competitiveIntelligence = data?.competitive_intelligence || {};
-  const mediaProminences = data?.monitoring_summary?.media_prominences || [];
+  if (!data || !data.competitive_intelligence) {
+    return <div className="text-center text-gray-500">No data available</div>;
+  }
 
   // Prepare media share data
-  const mediaShareData = Object.values(competitiveIntelligence).length > 0
-    ? Object.entries(competitiveIntelligence).flatMap(([_, sector]: any) =>
-        (sector.analysis?.competitive_media_share?.shares || []).map((share: any) => ({
-          name: share.company,
-          value: parseFloat(share.percentage) || 0,
-        }))
-      )
-    : [];
+  const mediaShareData = Object.entries(data.competitive_intelligence).flatMap(([_, sector]) =>
+    sector.analysis.competitive_media_share.shares.map(share => ({
+      name: share.company,
+      value: parseFloat(share.percentage),
+    }))
+  );
 
-  // Prepare prominence data
-  const mediaProminenceData: Record<string, any[]> = {};
-
-  if (Object.keys(competitiveIntelligence).length > 0) {
-    mediaProminences.forEach((prominence: string) => {
-      const allCompanies: any[] = [];
-      Object.values(competitiveIntelligence).forEach((sector: any) => {
-        const analysis = sector.analysis?.media_prominence_analysis?.[prominence];
-        if (analysis?.companies) {
-          allCompanies.push(...analysis.companies);
-        }
-      });
-
-      // Aggregate and sort if needed
-      const map = new Map<string, number>();
-      allCompanies.forEach((c: any) => {
-        const val = parseFloat(c.percentage) || 0;
-        map.set(c.company, (map.get(c.company) || 0) + val);
-      });
-
-      mediaProminenceData[prominence] = Array.from(map.entries())
-        .map(([name, value]) => ({ name, value }))
-        .sort((a, b) => b.value - a.value)
-        .slice(0, 10); // top 10
+  // Prepare media prominence data for each prominence
+  const mediaProminenceData = {};
+  const prominences = data.monitoring_summary.media_prominences;
+  Object.entries(data.competitive_intelligence).forEach(([_, sector]) => {
+    prominences.forEach((prominence: string) => {
+      const prominenceAnalysis = sector.analysis.media_prominence_analysis[prominence];
+      if (prominenceAnalysis) {
+        const prominenceData = prominenceAnalysis.companies.map(company => ({
+          name: company.company,
+          value: parseFloat(company.percentage),
+        }));
+        mediaProminenceData[prominence] = prominenceData;
+      }
     });
-  }
-
-  const hasAnyData = mediaShareData.length > 0 ||
-    Object.values(mediaProminenceData).some(arr => arr.length > 0);
+  });
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header - Always visible */}
       <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-2xl p-6 text-white relative overflow-hidden">
         <div className="absolute inset-0 bg-black/10"></div>
         <div className="relative z-10 flex items-center justify-between">
@@ -133,117 +102,112 @@ export function CompetitiveIntelligencePage() {
         </div>
       </div>
 
-      {/* Show subtle hint if completely empty */}
-      {!loading && !hasAnyData && (
-        <div className="text-center py-12">
-          <AlertCircle className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-          <p className="text-gray-500">No competitive intelligence data available at this time.</p>
-          <p className="text-sm text-gray-400 mt-2">Data will appear here once monitoring is active.</p>
-        </div>
-      )}
-
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Competitive Media Share */}
         <DataCard title="Top - Competitive Media Share" variant="glass" icon={<BarChart2 size={24} />}>
           <div className="h-80">
-            {mediaShareData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={mediaShareData} layout="vertical" margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" domain={[0, 100]} />
-                  <YAxis
-                    dataKey="name"
-                    type="category"
-                    width={120}
-                    tick={(props) => {
-                      const { x, y, payload } = props;
-                      return (
-                        <g transform={`translate(${x},${y})`}>
-                          <CompanyIcon company={payload.value} />
-                          <text x={34} y={4} textAnchor="start" fill="#666" fontSize={12}>
-                            {payload.value}
-                          </text>
-                        </g>
-                      );
-                    }}
-                  />
-                  <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
-                  <Bar dataKey="value" fill="#3b82f6" radius={[0, 8, 8, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <EmptyChartState title="Competitive Media Share" />
-            )}
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={mediaShareData}
+                layout="vertical"
+                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" domain={[0, 100]} />
+                <YAxis
+                  dataKey="name"
+                  type="category"
+                  width={0}
+                  tick={(props) => {
+                    const { x, y, payload } = props;
+                    return (
+                      <g transform={`translate(${x},${y})`}>
+                        <CompanyIcon company={payload.value} />
+                        <text x={10} y={4} textAnchor="start" fill="#666" fontSize={12}>
+                          {payload.value}
+                        </text>
+                      </g>
+                    );
+                  }}
+                />
+                <Tooltip formatter={(value) => `${value}%`} />
+                <Bar dataKey="value" fill="#0088FE" name="Percentage" />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </DataCard>
 
-        {/* Market Share Prominence */}
-        <DataCard title="Top - Media Prominence On Market Share" variant="glass" icon={<BarChart2 size={24} />}>
-          <div className="h-80">
-            {mediaProminenceData['Market Share']?.length > 0 ? (
+        {/* Media Prominence on Market Share */}
+        {mediaProminenceData['Market Share'] && (
+          <DataCard title="Top - Media Prominence On Market Share" variant="glass" icon={<BarChart2 size={24} />}>
+            <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={mediaProminenceData['Market Share']} layout="vertical" margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                <BarChart
+                  data={mediaProminenceData['Market Share']}
+                  layout="vertical"
+                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis type="number" domain={[0, 100]} />
                   <YAxis
                     dataKey="name"
                     type="category"
-                    width={120}
+                    width={0}
                     tick={(props) => {
                       const { x, y, payload } = props;
                       return (
                         <g transform={`translate(${x},${y})`}>
                           <CompanyIcon company={payload.value} />
-                          <text x={34} y={4} textAnchor="start" fill="#666" fontSize={12}>
+                          <text x={10} y={4} textAnchor="start" fill="#666" fontSize={12}>
                             {payload.value}
                           </text>
                         </g>
                       );
                     }}
                   />
-                  <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
-                  <Bar dataKey="value" fill="#10b981" radius={[0, 8, 8, 0]} />
+                  <Tooltip formatter={(value) => `${value}%`} />
+                  <Bar dataKey="value" fill="#0088FE" name="Percentage" />
                 </BarChart>
               </ResponsiveContainer>
-            ) : (
-              <EmptyChartState title="Market Share Prominence" />
-            )}
-          </div>
-        </DataCard>
+            </div>
+          </DataCard>
+        )}
 
-        {/* Customer Engagement Prominence */}
-        <DataCard title="Top - Media Prominence On Customer Engagement" variant="glass" icon={<BarChart2 size={24} />}>
-          <div className="h-80">
-            {mediaProminenceData['Customer Engagement']?.length > 0 ? (
+        {/* Media Prominence on Customer Engagement */}
+        {mediaProminenceData['Customer Engagement'] && (
+          <DataCard title="Top - Media Prominence On Customer Engagement" variant="glass" icon={<BarChart2 size={24} />}>
+            <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={mediaProminenceData['Customer Engagement']} layout="vertical" margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                <BarChart
+                  data={mediaProminenceData['Customer Engagement']}
+                  layout="vertical"
+                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis type="number" domain={[0, 100]} />
                   <YAxis
                     dataKey="name"
                     type="category"
-                    width={120}
+                    width={0}
                     tick={(props) => {
                       const { x, y, payload } = props;
                       return (
                         <g transform={`translate(${x},${y})`}>
                           <CompanyIcon company={payload.value} />
-                          <text x={34} y={4} textAnchor="start" fill="#666" fontSize={12}>
+                          <text x={10} y={4} textAnchor="start" fill="#666" fontSize={12}>
                             {payload.value}
                           </text>
                         </g>
                       );
                     }}
                   />
-                  <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
-                  <Bar dataKey="value" fill="#f59e0b" radius={[0, 8, 8, 0]} />
+                  <Tooltip formatter={(value) => `${value}%`} />
+                  <Bar dataKey="value" fill="#0088FE" name="Percentage" />
                 </BarChart>
               </ResponsiveContainer>
-            ) : (
-              <EmptyChartState title="Customer Engagement Prominence" />
-            )}
-          </div>
-        </DataCard>
+            </div>
+          </DataCard>
+        )}
       </div>
 
       <div className="text-xs text-gray-500 mt-8 border-t pt-4">
