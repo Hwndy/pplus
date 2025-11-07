@@ -91,7 +91,7 @@ const EditorialPage = () => {
         throw new Error('Network response was not ok');
       }
       const result = await response.json();
-      setEditorials(result.data.editorial || []);
+      setEditorials(result.data || []);
       setTotalPages(result.data.meta?.totalPage || 1);
       setTotalItems(result.data.meta?.total || 0);
     } catch (err: any) {
