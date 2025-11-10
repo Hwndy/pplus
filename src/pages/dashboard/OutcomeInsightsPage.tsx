@@ -46,7 +46,7 @@ import { Separator } from '@/components/ui/separator';
 
 interface InsightItem {
   category: string;
-  analysis: string;   // <-- UI uses “analysis”, backend expects “insight”
+  analysis: string;
 }
 
 interface OutcomeInsight {
@@ -75,7 +75,7 @@ interface Pagination {
 }
 
 /* ------------------------------------------------------------------ */
-/*                         READ-ONLY VIEW MODAL                        */
+/*                         BEAUTIFUL VIEW MODAL                        */
 /* ------------------------------------------------------------------ */
 function ViewOutcomeModal({
   outcome,
@@ -92,74 +92,116 @@ function ViewOutcomeModal({
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b">
-          <DialogTitle>{outcome.company.company_name} – Outcome Insight</DialogTitle>
+      <DialogContent className="max-w-5xl max-h-[92vh] overflow-y-auto bg-white">
+        <DialogHeader className="border-b pb-6">
+          <DialogTitle className="text-2xl font-bold flex items-center justify-between">
+            <span>{outcome.company.company_name}</span>
+            <Badge variant="outline" className="text-lg px-4">
+              Outcome & Insight
+            </Badge>
+          </DialogTitle>
+          <p className="text-sm text-gray-500 mt-2">
+            ID: <span className="font-mono">{outcome.id}</span> • 
+            Created by <strong>{outcome.creator_data?.username || '—'}</strong> • 
+            {format(new Date(outcome.date), 'MMMM d, yyyy')}
+          </p>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 px-6 py-4">
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-              <div><strong>Date:</strong> {format(new Date(outcome.date), 'MMM d, yyyy')}</div>
-              <div><strong>Status:</strong>{' '}
-                <Badge
-                  variant={
-                    outcome.status === 'approved'
-                      ? 'default'
-                      : outcome.status === 'pending'
-                      ? 'secondary'
-                      : 'outline'
-                  }
-                >
-                  {outcome.status}
-                </Badge>
-              </div>
-              <div><strong>Created by:</strong> {outcome.creator_data?.username ?? '—'}</div>
-              <div><strong>Approved by:</strong> {outcome.approver_data?.username ?? '—'}</div>
-              <div><strong>Last edited:</strong>{' '}
-                {outcome.updatedAt ? format(new Date(outcome.updatedAt), 'MMM d, yyyy') : '—'}
-              </div>
-            </div>
+        <ScrollArea className="flex-1 px-6 py-6">
+          <div className="space-y-10">
 
-            <Separator />
-
-            <div className="space-y-6">
-              {Object.entries(grouped).map(([cat, analyses]) => (
-                <div key={cat}>
-                  <h4 className="font-semibold text-lg">{cat}</h4>
-                  <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 mt-2">
-                    {analyses.map((a, i) => (
-                      <li key={i}>{a}</li>
-                    ))}
-                  </ul>
+            {/* Metadata */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-sm bg-gray-50 p-6 rounded-lg">
+              <div>
+                <strong className="text-gray-600">Status</strong>
+                <div className="mt-2">
+                  <Badge
+                    variant={
+                      outcome.status === 'approved' ? 'default' :
+                      outcome.status === 'pending' ? 'secondary' :
+                      'destructive'
+                    }
+                    className="text-lg"
+                  >
+                    {outcome.status.charAt(0).toUpperCase() + outcome.status.slice(1)}
+                  </Badge>
                 </div>
-              ))}
+              </div>
+              <div>
+                <strong className="text-gray-600">Created</strong>
+                <p className="mt-2">{format(new Date(outcome.createdAt), 'MMM d, yyyy')}</p>
+              </div>
+              <div>
+                <strong className="text-gray-600">Last Edited</strong>
+                <p className="mt-2">
+                  {outcome.updatedAt ? format(new Date(outcome.updatedAt), 'MMM d, yyyy') : '—'}
+                </p>
+              </div>
+              <div>
+                <strong className="text-gray-600">Approved By</strong>
+                <p className="mt-2 font-medium">
+                  {outcome.approver_data?.username || '—'}
+                </p>
+              </div>
             </div>
 
+            {/* Insights */}
+            <div>
+              <h3 className="text-xl font-semibold mb-6 text-indigo-700">Insights by Category</h3>
+              <div className="space-y-8">
+                {Object.entries(grouped).map(([category, analyses]) => (
+                  <Card key={category} className="border-2 hover:border-indigo-300 transition-all">
+                    <CardHeader>
+                      <CardTitle className="text-lg font-bold text-indigo-900">
+                        {category}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-3">
+                        {analyses.map((analysis, i) => (
+                          <li key={i} className="flex items-start gap-3">
+                            <span className="text-indigo-600 mt-1">•</span>
+                            <span className="text-gray-700 leading-relaxed">{analysis}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+
+            {/* Notes */}
             {(outcome.analyst_note || outcome.supervisor_note) && (
-              <>
-                <Separator className="my-6" />
-                <div className="space-y-3">
+              <div className="space-y-6 border-t pt-8">
+                <h3 className="text-xl font-semibold text-indigo-700">Notes</h3>
+                <div className="grid md:grid-cols-2 gap-6">
                   {outcome.analyst_note && (
                     <div>
-                      <p className="font-medium">Analyst Note</p>
-                      <p className="text-sm mt-1">{outcome.analyst_note}</p>
+                      <label className="text-sm font-medium text-gray-700">Analyst Note</label>
+                      <div className="mt-3 p-5 bg-amber-50 rounded-lg border border-amber-200">
+                        <p className="text-gray-800 leading-relaxed">{outcome.analyst_note}</p>
+                      </div>
                     </div>
                   )}
                   {outcome.supervisor_note && (
                     <div>
-                      <p className="font-medium">Supervisor Note</p>
-                      <p className="text-sm mt-1">{outcome.supervisor_note}</p>
+                      <label className="text-sm font-medium text-gray-700">Supervisor Note</label>
+                      <div className="mt-3 p-5 bg-blue-50 rounded-lg border border-blue-200">
+                        <p className="text-gray-800 leading-relaxed">{outcome.supervisor_note}</p>
+                      </div>
                     </div>
                   )}
                 </div>
-              </>
+              </div>
             )}
           </div>
         </ScrollArea>
 
-        <DialogFooter className="px-6 py-4 border-t">
-          <Button variant="outline" onClick={onClose}>Close</Button>
+        <DialogFooter className="border-t px-6 py-4">
+          <Button variant="outline" onClick={onClose} size="lg">
+            Close
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -187,114 +229,110 @@ export default function OutcomeInsightsPage() {
   });
 
   const BASE_URL = 'https://pplus-ec37.onrender.com/api';
-  const getAuthHeaders = () => ({
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${token ?? ''}`,
-  });
 
-  /* --------------------------- FETCH --------------------------- */
   const fetchOutcomeInsights = async (page = 1, limit = 10) => {
+    if (!user || !token) {
+      setError('Authentication required');
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
-    try {
-      if (!token || !user) throw new Error('Authentication required');
 
-      const role = typeof user.role === 'string' ? user.role : user.role?.name;
-      let endpoint = `${BASE_URL}/outcome-insights?page=${page}&limit=${limit}`;
+    try {
+      const role = user.role?.name || user.role;
+      let endpoint = `${BASE_URL}/outcome-insights`;
 
       if (role === 'Supervisor')
-        endpoint = `${BASE_URL}/outcome-insights/supervisor-mentions?page=${page}&limit=${limit}`;
+        endpoint = `${BASE_URL}/outcome-insights/supervisor-mentions`;
       else if (role === 'Analyst')
-        endpoint = `${BASE_URL}/outcome-insights/my-insights?page=${page}&limit=${limit}`;
+        endpoint = `${BASE_URL}/outcome-insights/my-insights`;
 
-      const res = await fetch(endpoint, { headers: getAuthHeaders() });
+      const url = `${endpoint}?page=${page}&limit=${limit}`;
+
+      const res = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
       const json = await res.json();
 
-      if (json.success) {
-        setOutcomeInsights(json.data?? []);
-        setPagination(json.data.pagination ?? { total: 0, page, limit, totalPages: 0 });
-      } else {
-        throw new Error(json.message ?? 'Failed');
+      let items: OutcomeInsight[] = [];
+      let meta: Pagination = { total: 0, page, limit, totalPages: 0 };
+
+      if (json.success && json.data) {
+        // Admin: { data: { data: [...], pagination: {} } }
+        if (json.data.data && Array.isArray(json.data.data)) {
+          items = json.data.data;
+          meta = json.data.pagination || meta;
+        }
+        // Analyst/Supervisor: { data: [...] }
+        else if (Array.isArray(json.data)) {
+          items = json.data;
+          meta = json.pagination || { total: items.length, page, limit, totalPages: Math.ceil(items.length / limit) };
+        }
       }
+
+      setOutcomeInsights(items.filter(o => !o.is_deleted));
+      setPagination(meta);
+
     } catch (err: any) {
-      setError(err.message);
-      toast.error(err.message);
+      console.error('Fetch error:', err);
+      setError(err.message || 'Failed to load insights');
+      toast.error(err.message || 'Failed to load insights');
+      setOutcomeInsights([]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchOutcomeInsights();
+    fetchOutcomeInsights(1, 10);
   }, [user, token]);
 
-  /* --------------------------- EDIT LOGIC --------------------------- */
+  useEffect(() => {
+    fetchOutcomeInsights(pagination.page, pagination.limit);
+  }, [pagination.page]);
+
   const handleEdit = (outcome: OutcomeInsight) => {
     setSelectedOutcome(outcome);
     setIsEditMode(true);
     setIsCreateOpen(true);
   };
 
-  const handleCloseForm = (refresh: boolean = false) => {
+  const handleCloseForm = (refresh = false) => {
     setIsCreateOpen(false);
     setIsEditMode(false);
     setSelectedOutcome(null);
     if (refresh) fetchOutcomeInsights(pagination.page, pagination.limit);
   };
 
-  // --------------------------------------------------------------
-  //  Convert backend shape → form shape
-  // --------------------------------------------------------------
   const getFormInitialData = (outcome: OutcomeInsight) => ({
     id: outcome.id,
     company_id: outcome.company_id,
     date: outcome.date.split('T')[0],
     insights: outcome.insights.map(i => ({
       category: i.category,
-      analysis: i.analysis,   // <-- UI uses `analysis`
+      analysis: i.analysis,
     })),
     analyst_note: outcome.analyst_note || '',
     supervisor_note: outcome.supervisor_note || '',
   });
 
-  /* --------------------------- CREATE / UPDATE --------------------------- */
-  const handleCreateOrUpdate = async (formData: any) => {
-    const isEdit = isEditMode && selectedOutcome?.id;
-    const url = isEdit
-      ? `${BASE_URL}/outcome-insights/update/${selectedOutcome!.id}`
-      : `${BASE_URL}/outcome-insights/create`;
-    const method = isEdit ? 'PUT' : 'POST';
-
-    try {
-      const res = await fetch(url, {
-        method,
-        headers: getAuthHeaders(),
-        body: JSON.stringify(formData),
-      });
-      const json = await res.json();
-
-      if (json.success) {
-        toast.success(isEdit ? 'Updated successfully' : 'Created successfully');
-        handleCloseForm(true);
-      } else {
-        toast.error(json.message ?? 'Operation failed');
-      }
-    } catch {
-      toast.error(`Error ${isEdit ? 'updating' : 'creating'}`);
-    }
-  };
-
-  /* --------------------------- RENDER --------------------------- */
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 p-6 bg-gray-50 min-h-screen">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Outcome & Insights</h1>
-          <p className="text-gray-600 mt-1">Manage outcome analysis and insights</p>
+          <h1 className="text-3xl font-bold text-gray-900">Outcome & Insights</h1>
+          <p className="text-gray-600 mt-1">Strategic analysis and actionable recommendations</p>
         </div>
-
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           <Button
             variant="outline"
             onClick={() => fetchOutcomeInsights(pagination.page, pagination.limit)}
@@ -303,24 +341,20 @@ export default function OutcomeInsightsPage() {
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-
-          {/* CREATE / EDIT DIALOG */}
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                <Plus className="h-4 w-4 mr-2" />
-                Create Outcome
+              <Button className="bg-indigo-950 hover:bg-indigo-800">
+                <Plus className="mr-2 h-4 w-4" />
+                Create Insight
               </Button>
             </DialogTrigger>
-
-            <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0">
-              <DialogHeader className="px-6 pt-6 pb-4 border-b">
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
                 <DialogTitle>{isEditMode ? 'Edit' : 'Create'} Outcome & Insight</DialogTitle>
               </DialogHeader>
-
-              <ScrollArea className="flex-1 px-6 py-4">
+              <ScrollArea className="mt-4">
                 <OutcomeInsightForm
-                  key={selectedOutcome?.id ?? 'new'}   // remount on edit
+                  key={selectedOutcome?.id ?? 'new'}
                   onClose={handleCloseForm}
                   initialData={selectedOutcome ? getFormInitialData(selectedOutcome) : undefined}
                   isEdit={isEditMode}
@@ -333,166 +367,162 @@ export default function OutcomeInsightsPage() {
 
       {/* Error */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-600">{error}</p>
-          <Button variant="outline" size="sm" onClick={() => fetchOutcomeInsights()} className="mt-2">
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+          {error}
+          <Button variant="outline" size="sm" onClick={() => fetchOutcomeInsights()} className="ml-4">
             Retry
           </Button>
         </div>
       )}
 
       {/* Table */}
-      <Card className="border shadow-sm">
-        <CardHeader><CardTitle>Outcome & Insight Entries</CardTitle></CardHeader>
+      <Card className="shadow-lg">
+        <CardHeader>
+          <CardTitle>All Insights</CardTitle>
+        </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-12">Sn.</TableHead>
+                  <TableHead>S/N</TableHead>
                   <TableHead>Company</TableHead>
                   <TableHead>Categories</TableHead>
-                  <TableHead>Analyses</TableHead>
-                  <TableHead>Creation Date</TableHead>
-                  <TableHead>Last Edited</TableHead>
-                  <TableHead>Created By</TableHead>
-                  <TableHead>Approved By</TableHead>
+                  <TableHead>Key Insights</TableHead>
+                  <TableHead>Date</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Action</TableHead>
+                  <TableHead>Created By</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
-
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-8">
-                      <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
-                      Loading...
+                    <TableCell colSpan={8} className="text-center py-16">
+                      <div className="flex items-center justify-center gap-3">
+                        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+                        <span>Loading insights...</span>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ) : outcomeInsights.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
-                      No insights found.
+                    <TableCell colSpan={8} className="text-center py-16 text-gray-500">
+                      <p className="text-lg font-medium">No insights found</p>
+                      <p className="text-sm mt-2">Create your first outcome insight</p>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  outcomeInsights
-                    .filter(o => !o.is_deleted)
-                    .map((o, i) => {
-                      const categories = o.insights.map(x => x.category).join(', ');
-                      const analyses = o.insights.map(x => x.analysis).join(' • ');
-                      return (
-                        <TableRow key={o.id}>
-                          <TableCell className="text-center font-medium">
-                            {i + 1 + (pagination.page - 1) * pagination.limit}
-                          </TableCell>
-                          <TableCell className="font-medium">{o.company.company_name}</TableCell>
-                          <TableCell>
-                            <span className="text-xs">{categories || '—'}</span>
-                          </TableCell>
-                          <TableCell className="max-w-[300px] truncate">
-                            <span className="text-sm text-muted-foreground">
-                              {analyses || 'No analysis'}
-                            </span>
-                          </TableCell>
-                          <TableCell>{format(new Date(o.createdAt), 'MMM d, yyyy')}</TableCell>
-                          <TableCell>{o.updatedAt ? format(new Date(o.updatedAt), 'MMM d, yyyy') : '—'}</TableCell>
-                          <TableCell>{o.creator_data?.username ?? '—'}</TableCell>
-                          <TableCell>{o.approver_data?.username ?? '—'}</TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={
-                                o.status === 'approved'
-                                  ? 'default'
-                                  : o.status === 'pending'
-                                  ? 'secondary'
-                                  : 'outline'
-                              }
-                              className="capitalize"
+                  outcomeInsights.map((o, i) => {
+                    const categories = o.insights.map(x => x.category).slice(0, 2).join(', ');
+                    const more = o.insights.length > 2 ? ` +${o.insights.length - 2} more` : '';
+                    return (
+                      <TableRow key={o.id} className="hover:bg-gray-50">
+                        <TableCell className="font-medium">
+                          {(pagination.page - 1) * pagination.limit + i + 1}
+                        </TableCell>
+                        <TableCell className="font-medium">{o.company.company_name}</TableCell>
+                        <TableCell className="text-sm">
+                          {categories}{more && <span className="text-gray-500">{more}</span>}
+                        </TableCell>
+                        <TableCell className="max-w-md">
+                          <p className="text-sm text-gray-600 line-clamp-2">
+                            {o.insights[0]?.analysis || 'No analysis'}
+                          </p>
+                        </TableCell>
+                        <TableCell>{format(new Date(o.date), 'MMM d, yyyy')}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              o.status === 'approved' ? 'default' :
+                              o.status === 'pending' ? 'secondary' :
+                              'destructive'
+                            }
+                          >
+                            {o.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{o.creator_data?.username || '—'}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setSelectedOutcome(o);
+                                setIsViewOpen(true);
+                              }}
                             >
-                              {o.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedOutcome(o);
-                                  setIsViewOpen(true);
-                                }}
-                                className="h-8 w-8 p-0"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => handleEdit(o)}>
-                                    <Edit className="mr-2 h-4 w-4" /> Edit
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => {
-                                      if (window.confirm(`Delete insight for ${o.company.company_name}?`)) {
-                                        fetch(`${BASE_URL}/outcome-insights/update/${o.id}`, {
-                                          method: 'PUT',
-                                          headers: getAuthHeaders(),
-                                          body: JSON.stringify({ is_deleted: true }),
-                                        })
-                                          .then(r => r.json())
-                                          .then(j => {
-                                            if (j.success) {
-                                              toast.success('Insight deleted');
-                                              fetchOutcomeInsights(pagination.page, pagination.limit);
-                                            } else {
-                                              toast.error(j.message ?? 'Delete failed');
-                                            }
-                                          })
-                                          .catch(() => toast.error('Network error'));
-                                      }
-                                    }}
-                                    className="text-red-600"
-                                  >
-                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleEdit(o)}>
+                                  <Edit className="mr-2 h-4 w-4" /> Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => {
+                                    if (confirm(`Delete insight for ${o.company.company_name}?`)) {
+                                      fetch(`${BASE_URL}/outcome-insights/update/${o.id}`, {
+                                        method: 'PUT',
+                                        headers: {
+                                          'Authorization': `Bearer ${token}`,
+                                          'Content-Type': 'application/json',
+                                        },
+                                        body: JSON.stringify({ is_deleted: true }),
+                                      })
+                                        .then(r => r.json())
+                                        .then(j => {
+                                          if (j.success) {
+                                            toast.success('Deleted');
+                                            fetchOutcomeInsights(pagination.page, pagination.limit);
+                                          }
+                                        });
+                                    }
+                                  }}
+                                  className="text-red-600"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
           </div>
 
+          {/* Pagination */}
           {pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between py-4">
-              <div className="text-sm text-muted-foreground">
-                Showing {(pagination.page - 1) * pagination.limit + 1} to{' '}
-                {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total}
-              </div>
+            <div className="flex items-center justify-between mt-8 text-sm">
+              <p className="text-gray-600">
+                Showing {(pagination.page - 1) * pagination.limit + 1}–{Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total}
+              </p>
               <div className="flex gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => fetchOutcomeInsights(pagination.page - 1)}
+                  onClick={() => setPagination(p => ({ ...p, page: p.page - 1 }))}
                   disabled={pagination.page === 1}
                 >
                   <ChevronLeft className="h-4 w-4" /> Previous
                 </Button>
+                <span className="px-4 py-2 bg-gray-100 rounded-md">
+                  Page {pagination.page} of {pagination.totalPages}
+                </span>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => fetchOutcomeInsights(pagination.page + 1)}
+                  onClick={() => setPagination(p => ({ ...p, page: p.page + 1 }))}
                   disabled={pagination.page === pagination.totalPages}
                 >
                   Next <ChevronRight className="h-4 w-4" />
