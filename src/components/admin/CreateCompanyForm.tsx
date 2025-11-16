@@ -26,7 +26,6 @@ interface Company {
 
 interface Subsidiary {
   id?: number;
-  prefix?: string;
   subsidiary_company_id: number;
 }
 
@@ -36,7 +35,6 @@ interface CompanyFormData {
   email: string;
   industry: string;
   sub_industry: string;
-  prefix: string; // Retained for subsidiaries, removed from second row
   subsidiaries: Subsidiary[];
   office_address: string;
   office_state: string;
@@ -71,7 +69,6 @@ export default function CreateCompanyForm({
       email: '',
       industry: '',
       sub_industry: '',
-      prefix: '',
       subsidiaries: [],
       office_address: '',
       office_state: '',
@@ -117,10 +114,8 @@ export default function CreateCompanyForm({
         email: initialValues.email || '',
         industry: initialValues.industry || '',
         sub_industry: initialValues.sub_industry || '',
-        prefix: initialValues.prefix || '', // Retained for subsidiaries
         subsidiaries: initialValues.subsidiaries.map(sub => ({
           id: sub.id,
-          prefix: sub.prefix || '',
           subsidiary_company_id: sub.subsidiary_company_id || 0,
         })) || [],
         office_address: initialValues.office_address || '',
@@ -149,7 +144,6 @@ export default function CreateCompanyForm({
       email: '',
       industry: '',
       sub_industry: '',
-      prefix: '', // Removed from second row input
       subsidiaries: [],
       office_address: '',
       office_state: '',
@@ -186,7 +180,7 @@ export default function CreateCompanyForm({
     setCompanyForms(prev => prev.map((form, i) => 
       i === formIndex ? {
         ...form,
-        subsidiaries: [...form.subsidiaries, { subsidiary_company_id: 0, prefix: '' }]
+        subsidiaries: [...form.subsidiaries, { subsidiary_company_id: 0}]
       } : form
     ));
   };
@@ -237,7 +231,6 @@ export default function CreateCompanyForm({
         const subsidiaryData = form.subsidiaries
           .filter(sub => sub.subsidiary_company_id > 0)
           .map(sub => ({
-            prefix: sub.prefix || null,
             subsidiary_company_id: sub.subsidiary_company_id,
           }));
 
@@ -536,7 +529,7 @@ export default function CreateCompanyForm({
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="flex-1">
+                        {/*<div className="flex-1">
                           <FormLabel>Prefix</FormLabel>
                           <Input
                             value={sub.prefix || ''}
@@ -544,7 +537,7 @@ export default function CreateCompanyForm({
                             placeholder="Prefix (optional)"
                             disabled={isDisabled}
                           />
-                        </div>
+                        </div>*/}
                         {!isViewMode && (
                           <Button
                             type="button"
