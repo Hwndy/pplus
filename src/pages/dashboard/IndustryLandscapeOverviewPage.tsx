@@ -73,8 +73,8 @@ interface Pagination {
   totalPages: number;
 }
 
-const API_BASE = 'https://pplus-ec37.onrender.com/api/industry-landscape-overview';
-const COMPANIES_API = 'https://pplus-ec37.onrender.com/api/companies';
+const API_BASE = 'https://pplus-uw2m.onrender.com/api/industry-landscape-overview';
+const COMPANIES_API = 'https://pplus-uw2m.onrender.com/api/companies';
 
 /* ====================== FORM COMPONENT ====================== */
 function IndustryLandscapeForm({
