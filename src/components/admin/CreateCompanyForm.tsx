@@ -26,7 +26,7 @@ interface Company {
 
 interface Subsidiary {
   id?: number;
-  subsidiary_company_id: number;
+  subsidiary_id: number;
 }
 
 interface CompanyFormData {
@@ -116,7 +116,7 @@ export default function CreateCompanyForm({
         sub_industry: initialValues.sub_industry || '',
         subsidiaries: initialValues.subsidiaries.map(sub => ({
           id: sub.id,
-          subsidiary_company_id: sub.subsidiary_company_id || 0,
+          subsidiary_id: sub.subsidiary_id || 0,
         })) || [],
         office_address: initialValues.office_address || '',
         office_state: initialValues.office_state || '',
@@ -229,9 +229,9 @@ export default function CreateCompanyForm({
         };
 
         const subsidiaryData = form.subsidiaries
-          .filter(sub => sub.subsidiary_company_id > 0)
+          .filter(sub => sub.subsidiary_id > 0)
           .map(sub => ({
-            subsidiary_company_id: sub.subsidiary_company_id,
+            subsidiary_id: sub.subsidiary_id,
           }));
 
         const payload = { ...companyData };
@@ -513,8 +513,8 @@ export default function CreateCompanyForm({
                         <div className="flex-1">
                           <FormLabel>Subsidiary Company</FormLabel>
                           <Select
-                            value={sub.subsidiary_company_id ? sub.subsidiary_company_id.toString() : ''}
-                            onValueChange={(val) => handleSubsidiaryChange(formIndex, subIndex, 'subsidiary_company_id', val)}
+                            value={sub.subsidiary_id ? sub.subsidiary_id.toString() : ''}
+                            onValueChange={(val) => handleSubsidiaryChange(formIndex, subIndex, 'subsidiary_id', val)}
                             disabled={isDisabled}
                           >
                             <SelectTrigger>

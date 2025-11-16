@@ -53,7 +53,7 @@ const companyMonitoringSchema = z.object({
 });
 
 const subsidiaryMonitoringSchema = z.object({
-  subsidiary_company_id: z.string().min(1, 'Subsidiary is required'),
+  subsidiary_id: z.string().min(1, 'Subsidiary is required'),
   competitor_subsidiary_ids: z.array(z.string()).min(1, 'At least one competitor subsidiary is required'),
   media_prominence: z.array(z.string()).min(1, 'At least one media prominence is required'),
 });
@@ -105,7 +105,7 @@ export default function EditUserForm({
   const [supervisors, setSupervisors] = useState<User[]>([]);
   const [companies, setCompanies] = useState<{ id: number; company_name: string }[]>([]);
   const [subsidiaries, setSubsidiaries] = useState<
-    { id: number; subsidiary_company_id: number; company_name: string }[]
+    { id: number; subsidiary_id: number; company_name: string }[]
   >([]);
   const [mediaProminenceOptions, setMediaProminenceOptions] = useState<string[]>([]);
 
@@ -164,7 +164,7 @@ export default function EditUserForm({
         const subsData = Array.isArray(subsidiariesRes.data)
           ? subsidiariesRes.data.map((i: any) => ({
               id: i.id,
-              subsidiary_company_id: i.subsidiary_company_id,
+              subsidiary_id: i.subsidiary_id,
               company_name: i.subsidiaryCompany.company_name,
             }))
           : [];
@@ -223,7 +223,7 @@ export default function EditUserForm({
     form.setValue('company_monitorings', initCompany, { shouldValidate: true });
 
     const initSubs = (user.subsidiary_monitorings || []).map((s: any) => ({
-      subsidiary_company_id: s.subsidiary_company_id.toString(),
+      subsidiary_id: s.subsidiary_id.toString(),
       competitor_subsidiary_ids: (s.competitor_subsidiary_ids || []).map(String),
       media_prominence: s.media_prominence || [],
     }));
@@ -253,7 +253,7 @@ export default function EditUserForm({
     const cur = form.getValues('subsidiary_monitorings') ?? [];
     form.setValue('subsidiary_monitorings', [
       ...cur,
-      { subsidiary_company_id: '', competitor_subsidiary_ids: [], media_prominence: [] },
+      { subsidiary_id: '', competitor_subsidiary_ids: [], media_prominence: [] },
     ], { shouldValidate: true, shouldDirty: true, shouldTouch: true });
   };
 
@@ -261,7 +261,7 @@ export default function EditUserForm({
     const cur = form.getValues('subsidiary_monitorings') ?? [];
     const updated = cur.filter((_, i) => i !== idx);
     form.setValue('subsidiary_monitorings', updated.length ? updated : [{
-      subsidiary_company_id: '', competitor_subsidiary_ids: [], media_prominence: [],
+      subsidiary_id: '', competitor_subsidiary_ids: [], media_prominence: [],
     }], { shouldValidate: true, shouldDirty: true, shouldTouch: true });
   };
 
@@ -303,7 +303,7 @@ export default function EditUserForm({
         }));
 
         payload.subsidiary_monitorings = (values.subsidiary_monitorings ?? []).map(s => ({
-          subsidiary_company_id: Number(s.subsidiary_company_id),
+          subsidiary_id: Number(s.subsidiary_id),
           competitor_subsidiary_ids: (s.competitor_subsidiary_ids ?? []).map(Number),
           media_prominence: s.media_prominence ?? [],
         }));

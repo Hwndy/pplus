@@ -51,7 +51,7 @@ const companyMonitoringSchema = z.object({
 });
 
 const subsidiaryMonitoringSchema = z.object({
-  subsidiary_company_id: z.string().min(1, 'Subsidiary is required'),
+  subsidiary_id: z.string().min(1, 'Subsidiary is required'),
   competitor_subsidiary_ids: z
     .array(z.string())
     .min(1, 'At least one competitor is required'),
@@ -102,7 +102,7 @@ export default function CreateUserForm({
     { id: number; company_name: string }[]
   >([]);
   const [subsidiaries, setSubsidiaries] = useState<
-    { id: number; subsidiary_company_id: number; company_name: string }[]
+    { id: number; subsidiary_id: number; company_name: string }[]
   >([]);
   const [mediaProminenceOptions, setMediaProminenceOptions] = useState<string[]>([]);
 
@@ -154,7 +154,7 @@ export default function CreateUserForm({
         const subsData = Array.isArray(subsidiariesRes.data)
           ? subsidiariesRes.data.map((i: any) => ({
               id: i.id,
-              subsidiary_company_id: i.subsidiary_company_id,
+              subsidiary_id: i.subsidiary_id,
               company_name: i.subsidiaryCompany.company_name,
             }))
           : [];
@@ -266,7 +266,7 @@ export default function CreateUserForm({
       [
         ...current,
         {
-          subsidiary_company_id: '',
+          subsidiary_id: '',
           competitor_subsidiary_ids: [],
           media_prominence: [],
         },
@@ -320,11 +320,11 @@ export default function CreateUserForm({
 
         // Subsidiary monitoring: optional — only send if filled
         const validSubs = (values.subsidiary_monitorings ?? [])
-          .filter(s => s.subsidiary_company_id && s.competitor_subsidiary_ids?.length > 0 && s.media_prominence?.length > 0);
+          .filter(s => s.subsidiary_id && s.competitor_subsidiary_ids?.length > 0 && s.media_prominence?.length > 0);
 
         if (validSubs.length > 0) {
           payload.subsidiary_monitorings = validSubs.map((s) => ({
-            subsidiary_company_id: Number(s.subsidiary_company_id),
+            subsidiary_id: Number(s.subsidiary_id),
             competitor_subsidiary_ids: (s.competitor_subsidiary_ids ?? []).map(Number),
             media_prominence: s.media_prominence ?? [],
           }));
@@ -677,7 +677,7 @@ export default function CreateUserForm({
                             <FormLabel>Competitor Subsidiaries</FormLabel>
                             <MultiSelect
                               options={subsidiaries.map((s) => ({
-                                value: s.subsidiary_company_id.toString(),
+                                value: s.subsidiary_id.toString(),
                                 label: s.company_name,
                               }))}
                               selected={field.value ?? []}
