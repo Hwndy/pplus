@@ -3,9 +3,7 @@ import { Plus, Pencil, Trash2, FileSpreadsheet, RefreshCw, Loader2, ChevronLeft,
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/DataTable';
 import { toast } from 'sonner';
-import { useNavigate, useLocation } from 'react-router-dom';
-// Update the import path to the correct location of AuthContext
-// import { useAuth } from '@/contexts/AuthContext'; // Import useAuth from AuthContext
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/components/auth/AuthContext';
 
 interface Editorial {
@@ -48,7 +46,6 @@ interface Editorial {
   file_size: string | null;
   mime_type: string | null;
   file_type: string | null;
-  is_deleted: boolean;
   status?: string;
 }
 
@@ -56,48 +53,83 @@ const API_BASE = "https://pplus-ec37.onrender.com/api";
 
 const EditorialPage = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const { user, token } = useAuth(); // Use AuthContext to get user and token
+  const { user, token } = useAuth();
+
   const [editorials, setEditorials] = useState<Editorial[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const editorialsPerPage = 10;
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
+  const editorialsPerPage = 10;
 
   const fetchEditorials = async () => {
+    if (!token || !user) {
+      toast.error("Authentication required");
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
-    try {
-      if (!token || !user) {
-        throw new Error('Authentication required');
-      }
 
+    try {
       const headers = {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       };
 
-      // Determine endpoint based on user role
+      // Select correct endpoint based on role
       const endpoint = user.role.name === 'Supervisor'
-        ? `${API_BASE}/editorials/supervisor-mentions?page=${currentPage}&limit=${editorialsPerPage}`
+        ? `${API_BASE}/editorials/supervisor-mentions`
         : user.role.name === 'Analyst'
-        ? `${API_BASE}/editorials/my-editorials?page=${currentPage}&limit=${editorialsPerPage}`
-        : `${API_BASE}/editorials?page=${currentPage}&limit=${editorialsPerPage}`;
+        ? `${API_BASE}/editorials/my-editorials`
+        : `${API_BASE}/editorials`;
 
-      const response = await fetch(endpoint, { headers });
+      const url = `${endpoint}?page=${currentPage}&limit=${editorialsPerPage}`;
+
+      const response = await fetch(url, { headers });
       if (!response.ok) {
-        throw new Error('Network response was not ok');
+        throw new Error(`HTTP ${response.status}: Failed to fetch editorials`);
       }
+
       const result = await response.json();
-      setEditorials(result.data || []);
-      setTotalPages(result.data.meta?.totalPage || 1);
-      setTotalItems(result.data.meta?.total || 0);
+
+      // Normalize response regardless of structure
+      let items: Editorial[] = [];
+      let meta = { total: 0, currentPage: 1, totalPage: 1, pageSize: 10 };
+
+      if (result.success && result.data) {
+        // Case 1: Admin endpoint → { editorial: [...], meta: {} }
+        if (Array.isArray(result.data.editorial)) {
+          items = result.data.editorial;
+          meta = result.data.meta || meta;
+        }
+        // Case 2: Analyst/Supervisor → direct array in result.data
+        else if (Array.isArray(result.data)) {
+          items = result.data;
+          meta = result.meta || meta;
+        }
+        // Case 3: Some endpoints return { data: [...], meta: {} }
+        else if (Array.isArray(result.data.data)) {
+          items = result.data.data;
+          meta = result.data.meta || meta;
+        }
+      }
+
+      setEditorials(items);
+      setTotalPages(meta.totalPage || 1);
+      setTotalItems(meta.total || 0);
+
+      if (items.length === 0 && currentPage > 1) {
+        setCurrentPage(1); // Reset to page 1 if current page is empty
+      }
+
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch editorials');
+      console.error("Fetch error:", err);
+      setError(err.message || "Failed to load editorials");
+      toast.error(err.message || "Failed to load editorials");
       setEditorials([]);
-      toast.error(err.message || 'Failed to fetch editorials');
     } finally {
       setLoading(false);
     }
@@ -105,30 +137,27 @@ const EditorialPage = () => {
 
   useEffect(() => {
     fetchEditorials();
-  }, [currentPage, user, token]); // Add user and token to dependencies
+  }, [currentPage, user, token]);
 
   const handleDelete = async (id: number) => {
-    if (!token) {
-      toast.error('Authentication required');
-      return;
-    }
+    if (!token) return toast.error("Authentication required");
+
     try {
       setLoading(true);
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      };
       const response = await fetch(`${API_BASE}/editorials/delete/${id}`, {
         method: 'PUT',
-        headers,
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
       });
-      if (!response.ok) {
-        throw new Error('Failed to delete editorial');
-      }
-      toast.success('Editorial deleted successfully');
+
+      if (!response.ok) throw new Error("Failed to delete editorial");
+
+      toast.success("Editorial deleted successfully");
       fetchEditorials();
     } catch (err: any) {
-      toast.error(err.message || 'Failed to delete editorial');
+      toast.error(err.message || "Failed to delete editorial");
     } finally {
       setLoading(false);
     }
@@ -155,24 +184,24 @@ const EditorialPage = () => {
       header: 'Date',
       cell: ({ row }: any) => {
         const date = new Date(row.original.date);
-        return date.toLocaleDateString();
+        return date.toLocaleDateString('en-GB');
       },
     },
     {
       accessorKey: 'status',
       header: 'Status',
       cell: ({ row }: any) => {
-        const status = row.getValue('status') || 'Pending';
-        let statusColor = '';
-        switch(status.toLowerCase()) {
-          case 'approved': statusColor = 'bg-green-100 text-green-800'; break;
-          case 'rejected': statusColor = 'bg-red-100 text-red-800'; break;
-          case 'pending': default: statusColor = 'bg-yellow-100 text-yellow-800'; break;
-        }
+        const status = (row.getValue('status') || 'pending').toLowerCase();
+        const colors: Record<string, string> = {
+          approved: 'bg-green-100 text-green-800',
+          rejected: 'bg-red-100 text-red-800',
+          pending: 'bg-yellow-100 text-yellow-800',
+        };
+        const color = colors[status] || colors.pending;
         return (
-          <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColor}`}>
-            {status}
-          </div>
+          <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}>
+            {status.charAt(0).toUpperCase() + status.slice(1)}
+          </span>
         );
       },
     },
@@ -182,7 +211,7 @@ const EditorialPage = () => {
       cell: ({ row }: any) => {
         const editorial = row.original;
         return (
-          <div className="flex space-x-2">
+          <div className="flex gap-2">
             <Button variant="ghost" size="icon" onClick={() => handleEdit(editorial)}>
               <Pencil className="h-4 w-4" />
             </Button>
@@ -195,26 +224,15 @@ const EditorialPage = () => {
     },
   ];
 
-  const handlePreviousPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(prevPage => prevPage - 1);
-    }
-  };
-
-  const handleNextPage = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage(prevPage => prevPage + 1);
-    }
-  };
-
   return (
-    <div className="h-full flex flex-col overflow-auto">
-      <div className="flex justify-between items-center mb-6">
+    <div className="h-full flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Editorial</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Editorial</h1>
           <p className="text-gray-600 mt-1">Manage editorial content and media coverage</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           <Button variant="outline" onClick={fetchEditorials} disabled={loading}>
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
@@ -223,41 +241,60 @@ const EditorialPage = () => {
             <FileSpreadsheet className="mr-2 h-4 w-4" />
             Batch Upload
           </Button>
-          <Button onClick={handleCreate} className="bg-indigo-950">
+          <Button onClick={handleCreate} className="bg-indigo-950 hover:bg-indigo-800">
             <Plus className="mr-2 h-4 w-4" />
             Create Editorial
           </Button>
         </div>
       </div>
+
+      {/* Error State */}
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
-          <p className="text-red-600">Error loading editorials: {error}</p>
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-red-700 font-medium">{error}</p>
         </div>
       )}
-      <div className="flex-1 overflow-auto">
+
+      {/* Table */}
+      <div className="flex-1 overflow-hidden border rounded-lg bg-white">
         {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="flex flex-col items-center gap-2">
-              <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
-              <p className="text-gray-500">Loading editorials...</p>
-            </div>
+          <div className="flex flex-col items-center justify-center h-96">
+            <Loader2 className="h-10 w-10 animate-spin text-indigo-600" />
+            <p className="mt-3 text-gray-500">Loading editorials...</p>
+          </div>
+        ) : editorials.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-96 text-gray-500">
+            <p className="text-lg">No editorials found</p>
+            <p className="text-sm mt-2">Try creating one or adjusting filters</p>
           </div>
         ) : (
           <DataTable columns={columns} data={editorials} />
         )}
       </div>
-      <div className="mt-4 flex items-center justify-between">
-        <div className="text-sm text-gray-500">
+
+      {/* Pagination */}
+      <div className="mt-4 flex items-center justify-between text-sm">
+        <div className="text-gray-600">
           Showing {editorials.length} of {totalItems} entries
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handlePreviousPage} disabled={currentPage === 1}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1 || loading}
+          >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <span className="text-sm text-gray-700">
+          <span className="px-3 text-gray-700">
             Page {currentPage} of {totalPages}
           </span>
-          <Button variant="outline" size="sm" onClick={handleNextPage} disabled={currentPage === totalPages}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages || loading}
+          >
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
