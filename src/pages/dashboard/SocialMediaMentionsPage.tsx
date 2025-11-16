@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useAuth } from '@/components/auth/AuthContext';
 
-const API_BASE = 'https://pplus-uw2m.onrender.com/api';
+const API_BASE = 'https://pplus-e31a.onrender.com/api';
 
 interface Metrics {
   page_likes?: number;

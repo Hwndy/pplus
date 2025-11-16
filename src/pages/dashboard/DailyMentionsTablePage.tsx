@@ -81,7 +81,7 @@ axios.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-const BASE_URL = 'https://pplus-uw2m.onrender.com/api';
+const BASE_URL = 'https://pplus-e31a.onrender.com/api';
 const ITEMS_PER_PAGE = 10;
 
 const DailyMentionsTablePage: React.FC = () => {

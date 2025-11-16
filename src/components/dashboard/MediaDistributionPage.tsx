@@ -83,7 +83,7 @@ export function MediaDistributionPage() {
       setDataLoading(true);
       try {
         const month = getMonthFromDateRange(filterValues.dateRange);
-        let url = 'https://pplus-uw2m.onrender.com/api/report/competitive-intelligence';
+        let url = 'https://pplus-e31a.onrender.com/api/report/competitive-intelligence';
         if (month) url += `?month=${month}`;
 
         const response = await fetch(url, {
@@ -122,7 +122,7 @@ export function MediaDistributionPage() {
     const fetchThematicData = async () => {
       setDataLoading(true);
       try {
-        let url = 'https://pplus-uw2m.onrender.com/api/report/top-thematic-distribution-breakdown';
+        let url = 'https://pplus-e31a.onrender.com/api/report/top-thematic-distribution-breakdown';
         const month = getMonthFromDateRange(filterValues.dateRange);
         const params = new URLSearchParams();
         if (month) params.append('month', month);

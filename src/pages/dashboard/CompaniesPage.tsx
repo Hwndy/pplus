@@ -115,7 +115,7 @@ const CompaniesPage = () => {
   const fetchCompanies = async () => {
     setLoading(true);
     try {
-      const res = await axios.get('https://pplus-uw2m.onrender.com/api/companies/', {
+      const res = await axios.get('https://pplus-e31a.onrender.com/api/companies/', {
         params: apiParams
       });
       const apiData = res.data?.data;
@@ -144,7 +144,7 @@ const CompaniesPage = () => {
   const openFormDialog = async (company: any = null, viewMode = false) => {
     if (company && !viewMode) {
       try {
-        const res = await axios.get(`https://pplus-uw2m.onrender.com/api/companies/${company.id}`);
+        const res = await axios.get(`https://pplus-e31a.onrender.com/api/companies/${company.id}`);
         setSelectedCompany(res.data.company);
       } catch (err) {
         toast.error('Failed to load company details');
@@ -169,7 +169,7 @@ const CompaniesPage = () => {
 
   const handleDelete = async (id: string, companyName: string) => {
     try {
-      await axios.put(`https://pplus-uw2m.onrender.com/api/companies/delete/${id}`);
+      await axios.put(`https://pplus-e31a.onrender.com/api/companies/delete/${id}`);
       toast.success(`${companyName} deleted successfully`);
       fetchCompanies();
     } catch (err: any) {

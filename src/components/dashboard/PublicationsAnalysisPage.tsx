@@ -100,7 +100,7 @@ export function PublicationsAnalysisPage() {
       setDataLoading(true);
       try {
         const month = getMonthFromDateRange(filterValues.dateRange);
-        let url = 'https://pplus-uw2m.onrender.com/api/report/competitive-intelligence';
+        let url = 'https://pplus-e31a.onrender.com/api/report/competitive-intelligence';
         if (month) url += `?month=${month}`;
 
         const response = await fetch(url, {
@@ -139,7 +139,7 @@ export function PublicationsAnalysisPage() {
     const fetchAnalysisData = async () => {
       setDataLoading(true);
       try {
-        let url = `https://pplus-uw2m.onrender.com/api/report/publication-reporter-spokesperson-analysis?company=${encodeURIComponent(selectedCompany)}`;
+        let url = `https://pplus-e31a.onrender.com/api/report/publication-reporter-spokesperson-analysis?company=${encodeURIComponent(selectedCompany)}`;
         const month = getMonthFromDateRange(filterValues.dateRange);
         if (month) url += `&month=${month}`;
 

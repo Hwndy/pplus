@@ -54,7 +54,7 @@ export function OutcomeInsightForm({
   isEdit = false,
 }: OutcomeInsightFormProps) {
   const { token } = useAuth();
-  const BASE_URL = 'https://pplus-uw2m.onrender.com/api';
+  const BASE_URL = 'https://pplus-e31a.onrender.com/api';
 
   /* --------------------- STATE --------------------- */
   const [companies, setCompanies] = useState<Company[]>([]);
