@@ -100,7 +100,7 @@ export function CoverageRegionPage() {
       setDataLoading(true);
       try {
         const month = getMonthFromDateRange(filterValues.dateRange);
-        let url = 'https://pplus-e31a.onrender.com/api/report/competitive-intelligence';
+        let url = 'https://pplus-07cr.onrender.com/api/report/competitive-intelligence';
         if (month) url += `?month=${month}`;
 
         const response = await fetch(url, {
@@ -139,7 +139,7 @@ export function CoverageRegionPage() {
     const fetchSocialData = async () => {
       setDataLoading(true);
       try {
-        let url = `https://pplus-e31a.onrender.com/api/report/social-stats-online-coverage?company=${encodeURIComponent(selectedCompany)}`;
+        let url = `https://pplus-07cr.onrender.com/api/report/social-stats-online-coverage?company=${encodeURIComponent(selectedCompany)}`;
         const month = getMonthFromDateRange(filterValues.dateRange);
         if (month) url += `&month=${Month}`;
 

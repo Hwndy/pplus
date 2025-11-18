@@ -83,7 +83,7 @@ export function SocialMediaMentionForm({ mode, initialData, onSuccess }: SocialM
     const fetchCompanies = async () => {
       try {
         const token = localStorage.getItem('token') || '';
-        const response = await fetch('https://pplus-e31a.onrender.com/api/companies', {
+        const response = await fetch('https://pplus-07cr.onrender.com/api/companies', {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
@@ -201,8 +201,8 @@ export function SocialMediaMentionForm({ mode, initialData, onSuccess }: SocialM
     setLoading(true);
 
     const url = mode === 'create'
-      ? 'https://pplus-e31a.onrender.com/api/social-media-mentions/create'
-      : `https://pplus-e31a.onrender.com/api/social-media-mentions/update/${initialData?.id}`;
+      ? 'https://pplus-07cr.onrender.com/api/social-media-mentions/create'
+      : `https://pplus-07cr.onrender.com/api/social-media-mentions/update/${initialData?.id}`;
     const method = mode === 'create' ? 'POST' : 'PUT';
 
     try {

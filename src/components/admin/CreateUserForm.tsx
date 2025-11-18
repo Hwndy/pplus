@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import {
   Pencil,
   Image,
@@ -37,27 +37,20 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Zod Schema
+// Zod Schema — Updated to match backend: subsidiary_monitorings nested
 // ──────────────────────────────────────────────────────────────────────────────
-const companyMonitoringSchema = z.object({
-  company_id: z.string().min(1, 'Company is required'),
-  competitor_company_ids: z
-    .array(z.string())
-    .min(1, 'At least one competitor is required'),
-  media_prominence: z
-    .array(z.string())
-    .min(1, 'At least one media prominence is required'),
-  monitoring_date: z.date({ required_error: 'Monitoring date is required' }),
-});
-
 const subsidiaryMonitoringSchema = z.object({
   subsidiary_id: z.string().min(1, 'Subsidiary is required'),
-  competitor_subsidiary_ids: z
-    .array(z.string())
-    .min(1, 'At least one competitor is required'),
-  media_prominence: z
-    .array(z.string())
-    .min(1, 'At least one media prominence is required'),
+  competitor_subsidiary_ids: z.array(z.string()).min(1, 'At least one competitor is required'),
+  media_prominence: z.array(z.string()).min(1, 'At least one media prominence is required'),
+});
+
+const companyMonitoringSchema = z.object({
+  company_id: z.string().min(1, 'Company is required'),
+  competitor_company_ids: z.array(z.string()).min(1, 'At least one competitor is required'),
+  media_prominence: z.array(z.string()).min(1, 'At least one media prominence is required'),
+  monitoring_date: z.date({ required_error: 'Monitoring date is required' }),
+  subsidiary_monitorings: z.array(subsidiaryMonitoringSchema).optional().default([]),
 });
 
 const formSchema = z
@@ -71,7 +64,6 @@ const formSchema = z
     password: z.string().min(6, 'Password must be at least 6 characters'),
     confirmPassword: z.string(),
     company_monitorings: z.array(companyMonitoringSchema).optional(),
-    subsidiary_monitorings: z.array(subsidiaryMonitoringSchema).optional(),
   })
   .refine((d) => d.password === d.confirmPassword, {
     message: "Passwords don't match",
@@ -118,8 +110,12 @@ export default function CreateUserForm({
       confirmPassword: '',
       supervisorId: '',
       company_monitorings: [],
-      subsidiary_monitorings: [],
     },
+  });
+
+  const { fields: companyFields, append: appendCompany, remove: removeCompany } = useFieldArray({
+    control: form.control,
+    name: 'company_monitorings',
   });
 
   const selectedRole = form.watch('role');
@@ -196,97 +192,22 @@ export default function CreateUserForm({
     }
 
     if (isClient) {
-      const currentCompany = form.getValues('company_monitorings') ?? [];
-      const currentSubsidiary = form.getValues('subsidiary_monitorings') ?? [];
-
-      if (currentCompany.length === 0) {
-        form.setValue('company_monitorings', [
-          {
-            company_id: '',
-            competitor_company_ids: [],
-            media_prominence: [],
-            monitoring_date: null,
-          },
-        ], { shouldValidate: true });
-      }
-
-      // Subsidiary monitoring is OPTIONAL — only init if needed
-      if (currentSubsidiary.length === 0) {
-        form.setValue('subsidiary_monitorings', [], { shouldValidate: true });
-      }
-    } else {
-      form.setValue('company_monitorings', [], { shouldValidate: true });
-      form.setValue('subsidiary_monitorings', [], { shouldValidate: true });
-    }
-  }, [selectedRole, form]);
-
-  // ────────────────────────────────────────────────────────────────────────
-  // Add/Remove Rows
-  // ────────────────────────────────────────────────────────────────────────
-  const addCompanyMonitoring = () => {
-    const current = form.getValues('company_monitorings') ?? [];
-    form.setValue(
-      'company_monitorings',
-      [
-        ...current,
-        {
+      if (companyFields.length === 0) {
+        appendCompany({
           company_id: '',
           competitor_company_ids: [],
           media_prominence: [],
           monitoring_date: null,
-        },
-      ],
-      { shouldValidate: true, shouldDirty: true, shouldTouch: true }
-    );
-  };
-
-  const removeCompanyMonitoring = (idx: number) => {
-    const current = form.getValues('company_monitorings') ?? [];
-    const updated = current.filter((_, i) => i !== idx);
-    form.setValue(
-      'company_monitorings',
-      updated.length > 0
-        ? updated
-        : [
-            {
-              company_id: '',
-              competitor_company_ids: [],
-              media_prominence: [],
-              monitoring_date: null,
-            },
-          ],
-      { shouldValidate: true, shouldDirty: true, shouldTouch: true }
-    );
-  };
-
-  const addSubsidiaryMonitoring = () => {
-    const current = form.getValues('subsidiary_monitorings') ?? [];
-    form.setValue(
-      'subsidiary_monitorings',
-      [
-        ...current,
-        {
-          subsidiary_id: '',
-          competitor_subsidiary_ids: [],
-          media_prominence: [],
-        },
-      ],
-      { shouldValidate: true, shouldDirty: true, shouldTouch: true }
-    );
-  };
-
-  const removeSubsidiaryMonitoring = (idx: number) => {
-    const current = form.getValues('subsidiary_monitorings') ?? [];
-    const updated = current.filter((_, i) => i !== idx);
-    form.setValue(
-      'subsidiary_monitorings',
-      updated,
-      { shouldValidate: true, shouldDirty: true, shouldTouch: true }
-    );
-  };
+          subsidiary_monitorings: [],
+        });
+      }
+    } else {
+      form.setValue('company_monitorings', []);
+    }
+  }, [selectedRole, form, companyFields.length, appendCompany]);
 
   // ────────────────────────────────────────────────────────────────────────
-  // Submit
+  // Submit — Now sends nested structure exactly as backend expects
   // ────────────────────────────────────────────────────────────────────────
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (isSubmitting) return;
@@ -305,30 +226,24 @@ export default function CreateUserForm({
         avatar,
       };
 
-      if (values.role === 'Client') {
-        // Company monitoring: required, at least one valid entry
-        payload.company_monitorings = (values.company_monitorings ?? [])
-          .filter(c => c.company_id && c.competitor_company_ids?.length > 0 && c.media_prominence?.length > 0)
+      if (values.role === 'Client' && values.company_monitorings && values.company_monitorings.length > 0) {
+        payload.company_monitorings = values.company_monitorings
+          .filter(c => c.company_id && c.competitor_company_ids.length > 0 && c.media_prominence.length > 0)
           .map((c) => ({
             company_id: Number(c.company_id),
-            competitor_company_ids: (c.competitor_company_ids ?? []).map(Number),
-            media_prominence: c.media_prominence ?? [],
+            competitor_company_ids: c.competitor_company_ids.map(Number),
+            media_prominence: c.media_prominence,
             monitoring_date: c.monitoring_date
-              ? c.monitoring_date.toISOString()
-              : new Date().toISOString(),
+              ? c.monitoring_date.toISOString().split('T')[0]
+              : new Date().toISOString().split('T')[0],
+            subsidiary_monitorings: (c.subsidiary_monitorings || [])
+              .filter(s => s.subsidiary_id && s.competitor_subsidiary_ids.length > 0 && s.media_prominence.length > 0)
+              .map((s) => ({
+                subsidiary_id: Number(s.subsidiary_id),
+                competitor_subsidiary_ids: s.competitor_subsidiary_ids.map(Number),
+                media_prominence: s.media_prominence,
+              })),
           }));
-
-        // Subsidiary monitoring: optional — only send if filled
-        const validSubs = (values.subsidiary_monitorings ?? [])
-          .filter(s => s.subsidiary_id && s.competitor_subsidiary_ids?.length > 0 && s.media_prominence?.length > 0);
-
-        if (validSubs.length > 0) {
-          payload.subsidiary_monitorings = validSubs.map((s) => ({
-            subsidiary_id: Number(s.subsidiary_id),
-            competitor_subsidiary_ids: (s.competitor_subsidiary_ids ?? []).map(Number),
-            media_prominence: s.media_prominence ?? [],
-          }));
-        }
       }
 
       const res = await apiService.createUser(payload);
@@ -353,9 +268,6 @@ export default function CreateUserForm({
       </div>
     );
   }
-
-  const companyMonitorings = form.getValues('company_monitorings') ?? [];
-  const subsidiaryMonitorings = form.getValues('subsidiary_monitorings') ?? [];
 
   return (
     <div className="p-4 max-w-6xl mx-auto">
@@ -405,7 +317,7 @@ export default function CreateUserForm({
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email</FormLabel>
+                <FormLabel>Label</FormLabel>
                 <FormControl>
                   <Input {...field} type="email" placeholder="Enter email" className="bg-gray-50 border-gray-200" />
                 </FormControl>
@@ -508,158 +420,46 @@ export default function CreateUserForm({
             />
           )}
 
-          {/* Client Monitoring */}
+          {/* Client Monitoring — Now with Nested Subsidiary Monitorings */}
           {showClientFields && (
             <>
-              {/* Company Monitoring (Required) */}
               <div className="space-y-4">
                 <Label className="font-semibold text-lg">Company Monitoring</Label>
-                {companyMonitorings.map((_, idx) => (
+
+                {companyFields.map((companyField, companyIdx) => (
                   <div
-                    key={idx}
-                    className="grid grid-cols-1 md:grid-cols-4 gap-4 border p-4 rounded-md relative"
+                    key={companyField.id}
+                    className="border p-6 rounded-md bg-gray-50 relative space-y-6"
                   >
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon"
-                      onClick={() => removeCompanyMonitoring(idx)}
+                      onClick={() => removeCompany(companyIdx)}
                       className="absolute top-2 right-2 text-red-500 hover:text-red-700"
-                      disabled={companyMonitorings.length === 1}
+                      disabled={companyFields.length === 1}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
 
-                    <FormField
-                      control={form.control}
-                      name={`company_monitorings.${idx}.company_id`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Company *</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger className="bg-gray-50 border-gray-200">
-                                <SelectValue placeholder="Select company" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {companies.map((c) => (
-                                <SelectItem key={c.id} value={c.id.toString()}>
-                                  {c.company_name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name={`company_monitorings.${idx}.competitor_company_ids`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Competitors *</FormLabel>
-                          <MultiSelect
-                            options={companies.map((c) => ({
-                              value: c.id.toString(),
-                              label: c.company_name,
-                            }))}
-                            selected={field.value ?? []}
-                            onChange={(values) => {
-                              field.onChange(values ?? []);
-                              form.trigger(`company_monitorings.${idx}.competitor_company_ids`);
-                            }}
-                            placeholder="Select competitors"
-                          />
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name={`company_monitorings.${idx}.media_prominence`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Media Prominence *</FormLabel>
-                          <MultiSelect
-                            options={mediaProminenceOptions.map((v) => ({
-                              value: v,
-                              label: v,
-                            }))}
-                            selected={field.value ?? []}
-                            onChange={(values) => {
-                              field.onChange(values ?? []);
-                              form.trigger(`company_monitorings.${idx}.media_prominence`);
-                            }}
-                            placeholder="Select at least one"
-                          />
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name={`company_monitorings.${idx}.monitoring_date`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Date *</FormLabel>
-                          <input
-                            type="date"
-                            className="w-full px-3 py-2 border rounded-md bg-gray-50 border-gray-200"
-                            value={field.value ? field.value.toISOString().split('T')[0] : ''}
-                            onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : null)}
-                          />
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                ))}
-
-                <Button type="button" onClick={addCompanyMonitoring} variant="outline" className="w-full">
-                  <Plus className="mr-2 h-4 w-4" /> Add Company Monitoring
-                </Button>
-              </div>
-
-              {/* Subsidiary Monitoring (Optional) */}
-              {subsidiaryMonitorings.length > 0 && (
-                <div className="space-y-4 pt-6">
-                  <Label className="font-semibold text-lg">Subsidiary Monitoring (Optional)</Label>
-                  {subsidiaryMonitorings.map((_, idx) => (
-                    <div
-                      key={idx}
-                      className="grid grid-cols-1 md:grid-cols-3 gap-4 border p-4 rounded-md relative"
-                    >
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeSubsidiaryMonitoring(idx)}
-                        className="absolute top-2 right-2 text-red-500 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-
+                    {/* Company Monitoring Fields */}
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       <FormField
                         control={form.control}
-                        name={`subsidiary_monitorings.${idx}.subsidiary_company_id`}
+                        name={`company_monitorings.${companyIdx}.company_id`}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Subsidiary</FormLabel>
+                            <FormLabel>Company *</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
-                                <SelectTrigger className="bg-gray-50 border-gray-200">
-                                  <SelectValue placeholder="Select subsidiary" />
+                                <SelectTrigger className="bg-white border-gray-200">
+                                  <SelectValue placeholder="Select company" />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                {subsidiaries.map((s) => (
-                                  <SelectItem key={s.id} value={s.subsidiary_company_id.toString()}>
-                                    {s.company_name}
+                                {companies.map((c) => (
+                                  <SelectItem key={c.id} value={c.id.toString()}>
+                                    {c.company_name}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -671,19 +471,19 @@ export default function CreateUserForm({
 
                       <FormField
                         control={form.control}
-                        name={`subsidiary_monitorings.${idx}.competitor_subsidiary_ids`}
+                        name={`company_monitorings.${companyIdx}.competitor_company_ids`}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Competitor Subsidiaries</FormLabel>
+                            <FormLabel>Competitors *</FormLabel>
                             <MultiSelect
-                              options={subsidiaries.map((s) => ({
-                                value: s.subsidiary_id.toString(),
-                                label: s.company_name,
+                              options={companies.map((c) => ({
+                                value: c.id.toString(),
+                                label: c.company_name,
                               }))}
                               selected={field.value ?? []}
                               onChange={(values) => {
                                 field.onChange(values ?? []);
-                                form.trigger(`subsidiary_monitorings.${idx}.competitor_subsidiary_ids`);
+                                form.trigger(`company_monitorings.${companyIdx}.competitor_company_ids`);
                               }}
                               placeholder="Select competitors"
                             />
@@ -694,10 +494,10 @@ export default function CreateUserForm({
 
                       <FormField
                         control={form.control}
-                        name={`subsidiary_monitorings.${idx}.media_prominence`}
+                        name={`company_monitorings.${companyIdx}.media_prominence`}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Media Prominence</FormLabel>
+                            <FormLabel>Media Prominence *</FormLabel>
                             <MultiSelect
                               options={mediaProminenceOptions.map((v) => ({
                                 value: v,
@@ -706,7 +506,7 @@ export default function CreateUserForm({
                               selected={field.value ?? []}
                               onChange={(values) => {
                                 field.onChange(values ?? []);
-                                form.trigger(`subsidiary_monitorings.${idx}.media_prominence`);
+                                form.trigger(`company_monitorings.${companyIdx}.media_prominence`);
                               }}
                               placeholder="Select at least one"
                             />
@@ -714,25 +514,152 @@ export default function CreateUserForm({
                           </FormItem>
                         )}
                       />
+
+                      <FormField
+                        control={form.control}
+                        name={`company_monitorings.${companyIdx}.monitoring_date`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Date *</FormLabel>
+                            <input
+                              type="date"
+                              className="w-full px-3 py-2 border rounded-md bg-white border-gray-200"
+                              value={field.value ? field.value.toISOString().split('T')[0] : ''}
+                              onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value) : null)}
+                            />
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
-                  ))}
 
-                  <Button type="button" onClick={addSubsidiaryMonitoring} variant="outline" className="w-full">
-                    <Plus className="mr-2 h-4 w-4" /> Add Subsidiary Monitoring
-                  </Button>
-                </div>
-              )}
+                    {/* Nested Subsidiary Monitorings */}
+                    <div className="space-y-4 border-t pt-4">
+                      <div className="flex justify-between items-center">
+                        <Label className="text-base font-medium">Subsidiary Monitorings (Optional)</Label>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            const current = form.getValues(`company_monitorings.${companyIdx}.subsidiary_monitorings`) || [];
+                            form.setValue(`company_monitorings.${companyIdx}.subsidiary_monitorings`, [
+                              ...current,
+                              { subsidiary_id: '', competitor_subsidiary_ids: [], media_prominence: [] },
+                            ]);
+                          }}
+                        >
+                          <Plus className="h-4 w-4 mr-1" /> Add Subsidiary
+                        </Button>
+                      </div>
 
-              {subsidiaryMonitorings.length === 0 && (
-                <Button
-                  type="button"
-                  onClick={addSubsidiaryMonitoring}
-                  variant="outline"
-                  className="w-full mt-4"
-                >
-                  <Plus className="mr-2 h-4 w-4" /> Add Subsidiary Monitoring (Optional)
+                      {(form.watch(`company_monitorings.${companyIdx}.subsidiary_monitorings`) || []).map((_, subIdx) => (
+                        <div
+                          key={subIdx}
+                          className="grid grid-cols-1 md:grid-cols-3 gap-4 border p-4 rounded-md bg-white relative"
+                        >
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              const subs = form.getValues(`company_monitorings.${companyIdx}.subsidiary_monitorings`) || [];
+                              form.setValue(
+                                `company_monitorings.${companyIdx}.subsidiary_monitorings`,
+                                subs.filter((_, i) => i !== subIdx)
+                              );
+                            }}
+                            className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+
+                          <FormField
+                            control={form.control}
+                            name={`company_monitorings.${companyIdx}.subsidiary_monitorings.${subIdx}.subsidiary_id`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Subsidiary</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                  <FormControl>
+                                    <SelectTrigger className="bg-gray-50 border-gray-200">
+                                      <SelectValue placeholder="Select subsidiary" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {subsidiaries.map((s) => (
+                                      <SelectItem key={s.id} value={s.subsidiary_id.toString()}>
+                                        {s.company_name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name={`company_monitorings.${companyIdx}.subsidiary_monitorings.${subIdx}.competitor_subsidiary_ids`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Competitor Subsidiaries</FormLabel>
+                                <MultiSelect
+                                  options={subsidiaries.map((s) => ({
+                                    value: s.subsidiary_id.toString(),
+                                    label: s.company_name,
+                                  }))}
+                                  selected={field.value ?? []}
+                                  onChange={(values) => {
+                                    field.onChange(values ?? []);
+                                    form.trigger(`company_monitorings.${companyIdx}.subsidiary_monitorings.${subIdx}.competitor_subsidiary_ids`);
+                                  }}
+                                  placeholder="Select competitors"
+                                />
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name={`company_monitorings.${companyIdx}.subsidiary_monitorings.${subIdx}.media_prominence`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Media Prominence</FormLabel>
+                                <MultiSelect
+                                  options={mediaProminenceOptions.map((v) => ({
+                                    value: v,
+                                    label: v,
+                                  }))}
+                                  selected={field.value ?? []}
+                                  onChange={(values) => {
+                                    field.onChange(values ?? []);
+                                    form.trigger(`company_monitorings.${companyIdx}.subsidiary_monitorings.${subIdx}.media_prominence`);
+                                  }}
+                                  placeholder="Select at least one"
+                                />
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+
+                <Button type="button" onClick={() => appendCompany({
+                  company_id: '',
+                  competitor_company_ids: [],
+                  media_prominence: [],
+                  monitoring_date: null,
+                  subsidiary_monitorings: [],
+                })} variant="outline" className="w-full">
+                  <Plus className="mr-2 h-4 w-4" /> Add Company Monitoring
                 </Button>
-              )}
+              </div>
             </>
           )}
 

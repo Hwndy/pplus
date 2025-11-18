@@ -76,7 +76,7 @@ export function ExecutiveSummaryPage() {
   const [loading, setLoading] = useState(true);
   const [hasData, setHasData] = useState(false);
 
-  const API_URL = 'https://pplus-e31a.onrender.com/api/report/executive-summary';
+  const API_URL = 'https://pplus-07cr.onrender.com/api/report/executive-summary';
 
   const fetchData = useCallback(async () => {
     if (!token) {

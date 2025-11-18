@@ -104,7 +104,7 @@ const AuthContext = createContext<AuthContextType>({
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
   const navigate = useNavigate();
-  const API_BASE_URL = 'https://pplus-e31a.onrender.com/api';
+  const API_BASE_URL = 'https://pplus-07cr.onrender.com/api';
 
   const clearAuthData = useCallback(() => {
     localStorage.removeItem('token');

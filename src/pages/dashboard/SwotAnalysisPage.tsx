@@ -256,7 +256,7 @@ const SwotAnalysisPage: React.FC = () => {
       try {
         console.log('Determining company...');
         const month = getMonthFromDateRange(filterValues.dateRange);
-        let url = 'https://pplus-e31a.onrender.com/api/report/competitive-intelligence';
+        let url = 'https://pplus-07cr.onrender.com/api/report/competitive-intelligence';
         if (month) url += `?month=${month}`;
 
         const response = await fetch(url, {
@@ -301,7 +301,7 @@ const SwotAnalysisPage: React.FC = () => {
       try {
         console.log('Fetching SWOT data for company:', selectedCompany);
         const month = getMonthFromDateRange(filterValues.dateRange);
-        let url = 'https://pplus-e31a.onrender.com/api/report/swot-analysis';
+        let url = 'https://pplus-07cr.onrender.com/api/report/swot-analysis';
         url += `?company=${encodeURIComponent(selectedCompany)}`;
         if (month) url += `&month=${month}`;
 
