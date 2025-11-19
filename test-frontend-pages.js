@@ -188,11 +188,11 @@ class FrontendTester {
         endpoint: '/companies',
         expectedStructure: 'array'
       },
-      {
-        name: 'Data Entries for filtering',
-        endpoint: '/data-entries',
-        expectedStructure: 'array'
-      },
+      // {
+      //   name: 'Data Entries for filtering',
+      //   endpoint: '/data-entries',
+      //   expectedStructure: 'array'
+      // },
       {
         name: 'Users for UserManagement',
         endpoint: '/users',

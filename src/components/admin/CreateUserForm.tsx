@@ -94,7 +94,7 @@ export default function CreateUserForm({
     { id: number; company_name: string }[]
   >([]);
   const [subsidiaries, setSubsidiaries] = useState<
-    { id: number; subsidiary_id: number; company_name: string }[]
+    { id: number; company_name: string }[]
   >([]);
   const [mediaProminenceOptions, setMediaProminenceOptions] = useState<string[]>([]);
 
@@ -588,7 +588,7 @@ export default function CreateUserForm({
                                   </FormControl>
                                   <SelectContent>
                                     {subsidiaries.map((s) => (
-                                      <SelectItem key={s.id} value={s.subsidiary_id.toString()}>
+                                      <SelectItem key={s.id} value={s.id.toString()}>
                                         {s.company_name}
                                       </SelectItem>
                                     ))}
@@ -607,7 +607,7 @@ export default function CreateUserForm({
                                 <FormLabel>Competitor Subsidiaries</FormLabel>
                                 <MultiSelect
                                   options={subsidiaries.map((s) => ({
-                                    value: s.subsidiary_id.toString(),
+                                    value: s.id.toString(),
                                     label: s.company_name,
                                   }))}
                                   selected={field.value ?? []}

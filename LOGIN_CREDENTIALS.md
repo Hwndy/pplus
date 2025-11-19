@@ -86,7 +86,6 @@ All endpoints are working and returning data:
 - `/api/users` - 11 users
 - `/api/media-channels` - 10 channels
 - `/api/data-parameters` - 10 parameters
-- `/api/data-entries` - 20 entries
 - `/api/editorials` - 15 editorials
 - `/api/swot-analysis` - 10 analyses
 - `/api/daily-mentions` - 12 mentions

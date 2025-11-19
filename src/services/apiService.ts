@@ -32,7 +32,7 @@ export interface CompanyMonitoring {
 }
 
 export interface SubsidiaryMonitoring {
-  subsidiary_id: string;
+  subsidiary_company_id: string;
   competitor_subsidiary_ids: string[];
   media_prominence: string[];
 }
@@ -265,7 +265,7 @@ export interface ApiResponse<T = unknown> {
 // ──────────────────────────────────────────────────────────────────────────────
 class ApiService {
   private token: string | null = null;
-  private baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://pplus-07cr.onrender.com/api';
+  private baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://pplus-ec37.onrender.com/api';
 
   constructor() {
     console.log('ApiService initialized with baseUrl:', this.baseUrl);
@@ -454,7 +454,7 @@ class ApiService {
         monitoring_date: cm.monitoring_date ? new Date(cm.monitoring_date).toISOString() : new Date().toISOString(),
       })),
       subsidiary_monitorings: data.subsidiary_monitorings?.map(sm => ({
-        subsidiary_id: Number(sm.subsidiary_id),
+        subsidiary_company_id: Number(sm.subsidiary_company_id),
         competitor_subsidiary_ids: sm.competitor_subsidiary_ids.map(Number),
         media_prominence: sm.media_prominence,
       })),
