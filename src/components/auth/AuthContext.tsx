@@ -26,6 +26,11 @@ export interface User {
   updatedAt?: string;
 }
 
+export interface MonitoringPair {
+  pair_id: number;
+  company_name: string;
+}
+
 interface AuthState {
   user: User | null;
   token: string | null;
@@ -33,11 +38,15 @@ interface AuthState {
   isLoading: boolean;
   error: string | null;
   isSessionValidated: boolean;
+  monitoringPairs: MonitoringPair[];
+  activePair: MonitoringPair | null;
 }
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  setActivePair: (pair: MonitoringPair) => void;
+  loadMonitoringPairs: () => Promise<void>;
 }
 
 // --- REDUCER ---
@@ -48,6 +57,8 @@ const initialState: AuthState = {
   isLoading: true,
   error: null,
   isSessionValidated: false,
+  monitoringPairs: [],
+  activePair: null,
 };
 
 const authReducer = (state: AuthState, action: any): AuthState => {
@@ -73,6 +84,8 @@ const authReducer = (state: AuthState, action: any): AuthState => {
         token: null,
         isLoading: false,
         error: null,
+        monitoringPairs: [],
+        activePair: null,
       };
     case 'AUTH_ERROR':
       return {
@@ -82,6 +95,19 @@ const authReducer = (state: AuthState, action: any): AuthState => {
         token: null,
         isLoading: false,
         error: action.payload.error,
+        monitoringPairs: [],
+        activePair: null,
+      };
+    case 'SET_MONITORING_PAIRS':
+      return {
+        ...state,
+        monitoringPairs: action.payload,
+        activePair: action.payload[0] || null,
+      };
+    case 'SET_ACTIVE_PAIR':
+      return {
+        ...state,
+        activePair: action.payload,
       };
     default:
       return state;
@@ -96,8 +122,12 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   error: null,
   isSessionValidated: false,
+  monitoringPairs: [],
+  activePair: null,
   login: async () => {},
   logout: () => {},
+  setActivePair: () => {},
+  loadMonitoringPairs: async () => {},
 });
 
 // --- AUTH PROVIDER ---
@@ -109,7 +139,52 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const clearAuthData = useCallback(() => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('activePairId');
     dispatch({ type: 'LOG_OUT' });
+  }, []);
+
+  const loadMonitoringPairs = useCallback(async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/report/monitoring-pairs`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        const pairs: MonitoringPair[] = result.data.pairs.map((p: any) => ({
+          pair_id: p.pair_id,
+          company_name: p.base_company.company_name.trim(),
+        }));
+
+        dispatch({ type: 'SET_MONITORING_PAIRS', payload: pairs });
+
+        // Restore last selected pair from localStorage
+        const savedPairId = localStorage.getItem('activePairId');
+        const savedPair = pairs.find(p => p.pair_id === Number(savedPairId));
+        if (savedPair) {
+          dispatch({ type: 'SET_ACTIVE_PAIR', payload: savedPair });
+        } else if (pairs.length > 0) {
+          localStorage.setItem('activePairId', String(pairs[0].pair_id));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load monitoring pairs:', error);
+      toast.error('Could not load your monitoring companies');
+    }
+  }, []);
+
+  const setActivePair = useCallback((pair: MonitoringPair) => {
+    dispatch({ type: 'SET_ACTIVE_PAIR', payload: pair });
+    localStorage.setItem('activePairId', String(pair.pair_id));
+    toast.success(`Switched to ${pair.company_name}`);
   }, []);
 
   // Validate session on mount
@@ -145,6 +220,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             },
           });
           localStorage.setItem('user', JSON.stringify(user));
+
+          // Load monitoring pairs after successful session
+          await loadMonitoringPairs();
         } else {
           throw new Error(result.message || 'Session validation failed');
         }
@@ -165,7 +243,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     validateSession();
-  }, [navigate, clearAuthData]);
+  }, [navigate, clearAuthData, loadMonitoringPairs]);
 
   const login = useCallback(
     async (email: string, password: string) => {
@@ -202,6 +280,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         toast.success(`Welcome back, ${userDetails.username || 'User'}!`);
         navigate('/dashboard');
+
+        // Load monitoring pairs after login
+        await loadMonitoringPairs();
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
         dispatch({ type: 'AUTH_ERROR', payload: { error: errorMessage } });
@@ -211,7 +292,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         dispatch({ type: 'AUTH_END' });
       }
     },
-    [navigate]
+    [navigate, loadMonitoringPairs]
   );
 
   const logout = useCallback(async () => {
@@ -239,8 +320,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       ...state,
       login,
       logout,
+      setActivePair,
+      loadMonitoringPairs,
     }),
-    [state, login, logout]
+    [state, login, logout, setActivePair, loadMonitoringPairs]
   );
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;

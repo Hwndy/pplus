@@ -200,43 +200,43 @@ export function ExecutiveSummaryPage() {
       // Optional: restrict to month picker only
       // You can enhance UniversalFilter to support mode="month" if needed
     },
-    {
-      key: 'mediaType',
-      label: 'Media Type',
-      type: 'multiselect',
-      options: [
-        { value: 'online', label: 'Online Media' },
-        { value: 'print', label: 'Print Media' },
-      ],
-    },
-    {
-      key: 'language',
-      label: 'Language',
-      type: 'multiselect',
-      options: [
-        { value: 'english', label: 'English' },
-        { value: 'other', label: 'Other Languages' },
-      ],
-    },
-    {
-      key: 'sentiment',
-      label: 'Sentiment',
-      type: 'multiselect',
-      options: [
-        { value: 'positive', label: 'Positive' },
-        { value: 'neutral', label: 'Neutral' },
-        { value: 'negative', label: 'Negative' },
-      ],
-    },
-    {
-      key: 'region',
-      label: 'Region',
-      type: 'select',
-      options: [
-        { value: 'local', label: 'Local Media' },
-        { value: 'international', label: 'International Media' },
-      ],
-    },
+    // {
+    //   key: 'mediaType',
+    //   label: 'Media Type',
+    //   type: 'multiselect',
+    //   options: [
+    //     { value: 'online', label: 'Online Media' },
+    //     { value: 'print', label: 'Print Media' },
+    //   ],
+    // },
+    // {
+    //   key: 'language',
+    //   label: 'Language',
+    //   type: 'multiselect',
+    //   options: [
+    //     { value: 'english', label: 'English' },
+    //     { value: 'other', label: 'Other Languages' },
+    //   ],
+    // },
+    // {
+    //   key: 'sentiment',
+    //   label: 'Sentiment',
+    //   type: 'multiselect',
+    //   options: [
+    //     { value: 'positive', label: 'Positive' },
+    //     { value: 'neutral', label: 'Neutral' },
+    //     { value: 'negative', label: 'Negative' },
+    //   ],
+    // },
+    // {
+    //   key: 'region',
+    //   label: 'Region',
+    //   type: 'select',
+    //   options: [
+    //     { value: 'local', label: 'Local Media' },
+    //     { value: 'international', label: 'International Media' },
+    //   ],
+    // },
   ];
 
   if (loading) {

@@ -1,4 +1,3 @@
-
 import { useAuth } from '@/components/auth/AuthContext';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,7 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Bell, Search, Settings, User, LogOut, Menu, Clock, CheckCircle } from 'lucide-react';
+import { Bell, Search, Settings, User, LogOut, Clock, CheckCircle } from 'lucide-react';
 import { ReactNode, useState } from 'react';
 
 interface HeaderProps {
@@ -19,7 +18,8 @@ interface HeaderProps {
 }
 
 export function Header({ children }: HeaderProps) {
-  const { user, logout } = useAuth();
+  const { user, logout, activePair, monitoringPairs, setActivePair } = useAuth();
+
   const [notifications, setNotifications] = useState([
     {
       id: 1,
@@ -60,9 +60,7 @@ export function Header({ children }: HeaderProps) {
   const markAsRead = (id: number) => {
     setNotifications(prev =>
       prev.map(notification =>
-        notification.id === id
-          ? { ...notification, read: true }
-          : notification
+        notification.id === id ? { ...notification, read: true } : notification
       )
     );
   };
@@ -75,12 +73,29 @@ export function Header({ children }: HeaderProps) {
 
   if (!user) return null;
 
+  // Safe fallback letters
+  const getFallbackLetter = (str?: string) => {
+    return str && str.trim() ? str.trim()[0].toUpperCase() : '?';
+  };
+
+  const activeCompanyLetter = activePair?.company_name
+    ? getFallbackLetter(activePair.company_name)
+    : getFallbackLetter(user.name);
+
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 md:px-6">
       <div className="flex items-center gap-2 md:gap-4">
         {children}
-        <div className="hidden md:flex">
+        <div className="hidden md:flex items-center gap-3">
           <h1 className="text-lg font-semibold">P+Analytics Dashboard</h1>
+          {activePair && (
+            <>
+              <span className="text-muted-foreground">•</span>
+              <span className="text-sm font-medium text-foreground">
+                {activePair.company_name}
+              </span>
+            </>
+          )}
         </div>
         <div className="flex md:hidden">
           <h1 className="text-lg font-semibold">P+</h1>
@@ -97,6 +112,7 @@ export function Header({ children }: HeaderProps) {
           />
         </div>
 
+        {/* Notifications */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="btn-icon relative">
@@ -112,21 +128,14 @@ export function Header({ children }: HeaderProps) {
             <DropdownMenuLabel className="flex items-center justify-between">
               <span>Notifications</span>
               {unreadCount > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={markAllAsRead}
-                  className="text-xs h-6 px-2"
-                >
+                <Button variant="ghost" size="sm" onClick={markAllAsRead} className="text-xs h-6 px-2">
                   Mark all read
                 </Button>
               )}
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             {notifications.length === 0 ? (
-              <div className="p-4 text-center text-sm text-muted-foreground">
-                No notifications
-              </div>
+              <div className="p-4 text-center text-sm text-muted-foreground">No notifications</div>
             ) : (
               notifications.map((notification) => (
                 <DropdownMenuItem
@@ -145,13 +154,9 @@ export function Header({ children }: HeaderProps) {
                         }`}>
                           {notification.title}
                         </p>
-                        {!notification.read && (
-                          <Badge variant="secondary" className="text-xs">New</Badge>
-                        )}
+                        {!notification.read && <Badge variant="secondary" className="text-xs">New</Badge>}
                       </div>
-                      <p className="text-xs text-gray-500 mb-1 line-clamp-2">
-                        {notification.message}
-                      </p>
+                      <p className="text-xs text-gray-500 mb-1 line-clamp-2">{notification.message}</p>
                       <div className="flex items-center gap-1 text-xs text-gray-400">
                         <Clock className="h-3 w-3" />
                         {notification.time}
@@ -176,25 +181,66 @@ export function Header({ children }: HeaderProps) {
           <Settings className="h-5 w-5" />
         </Button>
 
+        {/* Profile & Company Switcher */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-              <Avatar className="h-9 w-9 transition duration-300 hover:opacity-80">
+              <Avatar className="h-9 w-9">
                 <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback>{user?.name?.charAt(0) ?? ''}</AvatarFallback>
-                {/* const firstLetter = user?.name?.charAt(0) ?? ''; */}
-
+                <AvatarFallback>{getFallbackLetter(user.name)}</AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56 max-h-[80vh] overflow-y-auto">
-            <DropdownMenuLabel>
-              <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">{user.name}</p>
-                <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+          <DropdownMenuContent align="end" className="w-80">
+            {/* Current Active Company */}
+            <div className="flex items-center gap-3 p-4 border-b">
+              <Avatar className="h-10 w-10">
+                <AvatarFallback className="bg-primary text-white text-sm">
+                  {activeCompanyLetter}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <p className="text-sm font-semibold">
+                  {activePair?.company_name || 'No company selected'}
+                </p>
+                <p className="text-xs text-muted-foreground">{user.name} • {user.email}</p>
               </div>
+              {activePair && <CheckCircle className="h-5 w-5 text-green-600" />}
+            </div>
+
+            {/* Switch Company */}
+            <DropdownMenuLabel className="text-xs font-medium text-muted-foreground px-4 pt-4">
+              Switch monitoring company
             </DropdownMenuLabel>
+
+            {monitoringPairs.length > 0 ? (
+              monitoringPairs.map((pair) => (
+                <DropdownMenuItem
+                  key={pair.pair_id}
+                  onClick={() => setActivePair(pair)}
+                  className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-accent"
+                >
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="text-xs">
+                      {getFallbackLetter(pair.company_name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{pair.company_name}</p>
+                  </div>
+                  {activePair?.pair_id === pair.pair_id && (
+                    <CheckCircle className="h-4 w-4 text-primary" />
+                  )}
+                </DropdownMenuItem>
+              ))
+            ) : (
+              <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+                No monitoring companies assigned
+              </div>
+            )}
+
             <DropdownMenuSeparator />
+
             <DropdownMenuItem>
               <User className="mr-2 h-4 w-4" />
               <span>Profile</span>
@@ -203,8 +249,10 @@ export function Header({ children }: HeaderProps) {
               <Settings className="mr-2 h-4 w-4" />
               <span>Settings</span>
             </DropdownMenuItem>
+
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={logout}>
+
+            <DropdownMenuItem onClick={logout} className="text-red-600 focus:text-red-600">
               <LogOut className="mr-2 h-4 w-4" />
               <span>Log out</span>
             </DropdownMenuItem>
