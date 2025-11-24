@@ -1,10 +1,21 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { apiService, QueryParams } from '@/services/apiService';
 
-// Completely rewritten API data fetching hook to prevent infinite loops
+// Generic type for paginated responses
+type PaginatedResponse<T> = {
+  data: T[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+};
+
+// Completely rewritten & robust API data fetching hook
 export function useApiData<T>(
-  apiCall: () => Promise<{ data: T }>,
-  dependencies: string[] = [],
+  apiCall: () => Promise<any>, // We accept any response shape
+  dependencies: any[] = [],
   _options: {
     enableAutoRefresh?: boolean;
     refreshInterval?: number;
@@ -15,100 +26,104 @@ export function useApiData<T>(
   const [error, setError] = useState<string | null>(null);
   const [lastFetch, setLastFetch] = useState<number>(0);
 
-  // Store the API call in a ref to prevent it from causing re-renders
   const apiCallRef = useRef(apiCall);
   apiCallRef.current = apiCall;
 
-  // Create a stable reference to dependencies to prevent infinite loops
-  const depsRef = useRef<string[]>([]);
+  const depsRef = useRef<any[]>([]);
   const mountedRef = useRef(false);
 
-  // Check if dependencies have actually changed
   const depsChanged = useMemo(() => {
     if (!mountedRef.current) {
       mountedRef.current = true;
       depsRef.current = [...dependencies];
-      return true; // First mount
+      return true;
     }
 
-    const changed = !depsRef.current.every((dep, index) => dep === dependencies[index]) ||
-                   depsRef.current.length !== dependencies.length;
-    if (changed) {
-      depsRef.current = [...dependencies];
-    }
+    const changed =
+      depsRef.current.length !== dependencies.length ||
+      depsRef.current.some((dep, i) => dep !== dependencies[i]);
+
+    if (changed) depsRef.current = [...dependencies];
     return changed;
   }, [dependencies]);
 
-  // Manual fetch function that doesn't depend on changing references
-  const fetchData = useCallback(async (force = false) => {
-    try {
-      // Prevent rapid successive calls
-      const now = Date.now();
-      if (!force && now - lastFetch < 3000) { // Minimum 3 seconds between calls
-        return;
-      }
+  const fetchData = useCallback(
+    async (force = false) => {
+      try {
+        const now = Date.now();
+        if (!force && now - lastFetch < 3000) return;
 
-      setLoading(true);
-      setError(null);
+        setLoading(true);
+        setError(null);
 
-      const response = await apiCallRef.current();
+        const response = await apiCallRef.current();
 
-      // Handle response data safely
-      const responseData = response?.data;
-      if (responseData && typeof responseData === 'object') {
-        // Handle backend response structure: { data: [...], message: "..." }
-        if ('data' in responseData && responseData.data !== undefined) {
-          setData(responseData.data as T);
-        } else if ('success' in responseData && (responseData as any).data !== undefined) {
-          // Handle wrapped response: { success: true, data: [...], message: "..." }
-          setData((responseData as any).data as T);
-        } else {
-          // Fallback: treat the entire response as data
-          setData(responseData as T);
+        // ──────── ROBUST RESPONSE NORMALIZATION ────────
+        let payload = response;
+
+        // Step 1: Handle double-wrapped responses
+        // { success: true, data: { data: [...], pagination: {...} } }
+        if (payload?.data && payload.data.data !== undefined) {
+          payload = payload.data;
         }
-      } else {
-        setData(responseData as T);
+
+        // Step 2: Normalize to consistent shape
+        let normalized: T;
+
+        if (payload && typeof payload === 'object') {
+          if (Array.isArray(payload.data)) {
+            // Paginated list → { data: [...], pagination: {...} }
+            normalized = payload as T;
+          } else if (Array.isArray(payload)) {
+            // Rare: plain array without wrapper
+            normalized = { data: payload } as T;
+          } else {
+            // Single object or already correct shape
+            normalized = payload as T;
+          }
+        } else {
+          normalized = payload as T;
+        }
+
+        setData(normalized);
+        // ──────── END NORMALIZATION ────────
+
+        setLastFetch(now);
+      } catch (err) {
+        console.error('API fetch error:', err);
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setLoading(false);
       }
+    },
+    [lastFetch]
+  );
 
-      setLastFetch(now);
-    } catch (err) {
-      console.error('API fetch error:', err);
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
-    }
-  }, [lastFetch]); // Only depend on lastFetch for rate limiting
-
-  // Only fetch when dependencies actually change
   useEffect(() => {
     if (depsChanged) {
       fetchData(true);
     }
   }, [depsChanged, fetchData]);
 
-  // Manual refetch function
-  const refetch = useCallback(() => {
-    fetchData(true);
-  }, [fetchData]);
+  const refetch = useCallback(() => fetchData(true), [fetchData]);
 
   return {
     data,
     loading,
     error,
     refetch,
-    lastFetch: new Date(lastFetch)
+    lastFetch: new Date(lastFetch),
   };
 }
 
-// Authentication hooks
+// ────────────────────────────── AUTH ──────────────────────────────
 export function useAuth() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   const login = async (email: string, password: string) => {
     try {
       const response = await apiService.login(email, password);
-      // Handle wrapped response structure
       if (response.success && response.data?.user) {
         setUser(response.data.user);
       }
@@ -121,13 +136,9 @@ export function useAuth() {
   const logout = async () => {
     try {
       await apiService.logout();
-      setUser(null);
-      apiService.clearToken();
-    } catch (error) {
-      // Even if logout fails on server, clear local state
-      setUser(null);
-      apiService.clearToken();
-    }
+    } catch {}
+    setUser(null);
+    apiService.clearToken();
   };
 
   const getProfile = async () => {
@@ -152,42 +163,28 @@ export function useAuth() {
   useEffect(() => {
     const token = localStorage.getItem('token');
     const savedUser = localStorage.getItem('user');
-    if (token && savedUser) {
-      getProfile();
-    } else {
-      setLoading(false);
-    }
+    if (token && savedUser) getProfile();
+    else setLoading(false);
   }, []);
 
-  return {
-    user,
-    loading,
-    login,
-    logout,
-    getProfile,
-    isAuthenticated: !!user,
-  };
+  return { user, loading, login, logout, getProfile, isAuthenticated: !!user };
 }
 
-// Users hooks
-export function useUsers(params?: Record<string, any>, options?: { enableAutoRefresh?: boolean; refreshInterval?: number }) {
-  // Create stable dependency array
+
+
+export function useUsers(params?: Record<string, any>) {
   const deps = [
-    String(params?.page || 1),
-    String(params?.limit || 10),
-    String(params?.search || ''),
-    String(params?.role || ''),
-    String(params?.status || ''),
-    String(params?.isActive || '')
+    String(params?.page ?? 1),
+    String(params?.limit ?? 10),
+    String(params?.search ?? ''),
+    String(params?.role ?? ''),
+    String(params?.status ?? ''),
+    String(params?.isActive ?? ''),
   ];
 
-  return useApiData(
+  return useApiData<PaginatedResponse<any>>(
     () => apiService.getUsers(params),
-    deps,
-    {
-      enableAutoRefresh: options?.enableAutoRefresh || false,
-      refreshInterval: options?.refreshInterval || 900000 // 15 minutes default
-    }
+    deps
   );
 }
 
