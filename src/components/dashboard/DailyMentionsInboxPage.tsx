@@ -409,7 +409,7 @@ export function DailyMentionsInboxPage() {
             </Card>
           ) : (
             <Card className="border-0 shadow-lg">
-              <CardContent className="flex items-center justify-center h-64">
+              <CardContent className="flex items-center justify-center h-64"> 
                 <div className="text-center">
                   <Eye size={48} className="mx-auto text-gray-400 mb-4" />
                   <h3 className="text-lg font-semibold text-gray-800 mb-2">Select a mention</h3>

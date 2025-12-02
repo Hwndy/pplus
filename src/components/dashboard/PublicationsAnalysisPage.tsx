@@ -14,7 +14,6 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
-// Custom Tooltip Component
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
@@ -31,8 +30,11 @@ export function PublicationsAnalysisPage() {
   const { user, token, isAuthenticated, isLoading: authLoading } = useAuth();
   const [filterValues, setFilterValues] = useState<FilterValues>({});
   const [analysisData, setAnalysisData] = useState<any>(null);
-  const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
+
+  // Use company directly from authenticated user
+  const companyName = user?.company_name || user?.company || 'Your Company';
+
   const currentDate = new Date();
   const formattedDate = `${currentDate.getDate()} ${currentDate.toLocaleString('default', { month: 'short' })} ${currentDate.getFullYear()} ${currentDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZoneName: 'short', hour12: true })}`;
 
@@ -42,45 +44,6 @@ export function PublicationsAnalysisPage() {
       label: 'Date Range',
       type: 'daterange',
       placeholder: 'Select date range',
-    },
-    {
-      key: 'publicationType',
-      label: 'Publication Type',
-      type: 'select',
-      options: [
-        { value: 'print', label: 'Print Publications' },
-        { value: 'online', label: 'Online Publications' },
-      ],
-    },
-    {
-      key: 'publication',
-      label: 'Publication',
-      type: 'multiselect',
-      options: [
-        { value: 'BusinessDay', label: 'BusinessDay' },
-        { value: 'The Guardian', label: 'The Guardian' },
-        { value: 'Punch', label: 'Punch' },
-        { value: 'Vanguard', label: 'Vanguard' },
-        { value: 'ThisDay', label: 'ThisDay' },
-        { value: 'Premium Times', label: 'Premium Times' },
-      ],
-    },
-    {
-      key: 'reporter',
-      label: 'Reporter',
-      type: 'search',
-      placeholder: 'Search reporters...',
-    },
-    {
-      key: 'spokesperson',
-      label: 'Spokesperson',
-      type: 'multiselect',
-      options: [
-        { value: 'ceo', label: 'CEO' },
-        { value: 'cfo', label: 'CFO' },
-        { value: 'head_marketing', label: 'Head of Marketing' },
-        { value: 'spokesperson', label: 'Company Spokesperson' },
-      ],
     },
   ];
 
@@ -92,71 +55,39 @@ export function PublicationsAnalysisPage() {
     return `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}`;
   };
 
-  // Determine company from competitive-intelligence (same as other pages)
   useEffect(() => {
-    if (authLoading || !isAuthenticated || !user) return;
-
-    const determineCompany = async () => {
-      setDataLoading(true);
-      try {
-        const month = getMonthFromDateRange(filterValues.dateRange);
-        let url = 'https://pplus-07cr.onrender.com/api/report/competitive-intelligence';
-        if (month) url += `?month=${month}`;
-
-        const response = await fetch(url, {
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        });
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-
-        const result = await response.json();
-        if (result.success) {
-          const compInt = result.data.competitive_intelligence;
-          const subSectors = Object.keys(compInt);
-          if (subSectors.length > 0) {
-            const firstSub = subSectors[0];
-            const companies = compInt[firstSub].companies_in_category;
-            if (companies.length > 0) {
-              setSelectedCompany(companies[0]);
-              return;
-            }
-          }
-        }
-      } catch (err) {
-        console.error('Error determining company:', err);
-        toast.error('Error determining company');
-      } finally {
-        setDataLoading(false);
-      }
-    };
-
-    determineCompany();
-  }, [authLoading, isAuthenticated, user, token, filterValues]);
-
-  // Fetch analysis data using determined company
-  useEffect(() => {
-    if (!selectedCompany || authLoading || !isAuthenticated) return;
+    if (authLoading || !isAuthenticated || !token || !companyName) return;
 
     const fetchAnalysisData = async () => {
       setDataLoading(true);
       try {
-        let url = `https://pplus-07cr.onrender.com/api/report/publication-reporter-spokesperson-analysis?company=${encodeURIComponent(selectedCompany)}`;
         const month = getMonthFromDateRange(filterValues.dateRange);
-        if (month) url += `&month=${month}`;
+        const params = new URLSearchParams();
+        params.append('company', companyName);
+        if (month) params.append('month', month);
+
+        const url = `https://pplus-07cr.onrender.com/api/report/publication-reporter-spokesperson-analysis?${params.toString()}`;
 
         const response = await fetch(url, {
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
         });
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
         const result = await response.json();
-        if (result.success) {
+
+        if (result.success && result.data) {
           setAnalysisData(result.data);
         } else {
-          throw new Error(result.message || 'Failed to fetch analysis data');
+          setAnalysisData(null);
+          toast.info(result.message || 'No publication data available for this period');
         }
       } catch (err) {
-        console.error('Error fetching analysis data:', err);
-        toast.error('Error fetching analysis data');
+        console.error('Error fetching publication analysis:', err);
+        toast.error('Failed to load publication analysis');
         setAnalysisData(null);
       } finally {
         setDataLoading(false);
@@ -164,35 +95,31 @@ export function PublicationsAnalysisPage() {
     };
 
     fetchAnalysisData();
-  }, [selectedCompany, filterValues, token, authLoading, isAuthenticated]);
+  }, [authLoading, isAuthenticated, token, companyName, filterValues.dateRange]);
 
-  const printPublications = analysisData?.analysis?.print_publications_volume?.sources.map((s: any) => ({
+  const printPublications = analysisData?.analysis?.print_publications_volume?.sources?.map((s: any) => ({
     name: s.source,
     value: s.count,
-    percentage: parseFloat(s.percentage),
+    percentage: parseFloat(s.percentage) || 0,
   })) || [];
 
-  const onlinePublications = analysisData?.analysis?.online_publications_volume?.sources.map((s: any) => ({
+  const onlinePublications = analysisData?.analysis?.online_publications_volume?.sources?.map((s: any) => ({
     name: s.source,
     value: s.count,
-    percentage: parseFloat(s.percentage),
+    percentage: parseFloat(s.percentage) || 0,
   })) || [];
 
-  const printReporters = analysisData?.analysis?.print_reporters?.reporters.map((r: any) => ({
+  const printReporters = analysisData?.analysis?.print_reporters?.reporters?.map((r: any) => ({
     name: r.reporter,
-    publication: '',
     value: r.count,
-    percentage: parseFloat(r.percentage),
+    percentage: parseFloat(r.percentage) || 0,
   })) || [];
 
-  const onlineReporters = analysisData?.analysis?.online_reporters?.reporters.map((r: any) => ({
+  const onlineReporters = analysisData?.analysis?.online_reporters?.reporters?.map((r: any) => ({
     name: r.reporter,
-    publication: '',
     value: r.count,
-    percentage: parseFloat(r.percentage),
+    percentage: parseFloat(r.percentage) || 0,
   })) || [];
-
-  const spokespersons = []; // API doesn't provide spokesperson data yet
 
   if (authLoading || dataLoading) {
     return <div className="flex justify-center items-center h-screen">Loading...</div>;
@@ -249,40 +176,26 @@ export function PublicationsAnalysisPage() {
               </CardHeader>
               <CardContent>
                 <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={printPublications}
-                      layout="vertical"
-                      margin={{ top: 5, right: 30, left: 5, bottom: 5 }}
-                    >
-                      <XAxis
-                        type="number"
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fontSize: 12, fill: '#6B7280' }}
-                      />
-                      <YAxis
-                        dataKey="name"
-                        type="category"
-                        width={100}
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fontSize: 11, fill: '#374151' }}
-                      />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Bar
-                        dataKey="percentage"
-                        fill="url(#blueGradient)"
-                        radius={[0, 4, 4, 0]}
-                      />
-                      <defs>
-                        <linearGradient id="blueGradient" x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%" stopColor="#3B82F6" />
-                          <stop offset="100%" stopColor="#1D4ED8" />
-                        </linearGradient>
-                      </defs>
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {printPublications.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={printPublications} layout="vertical" margin={{ top: 5, right: 30, left: 5, bottom: 5 }}>
+                        <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6B7280' }} />
+                        <YAxis dataKey="name" type="category" width={100} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#374151' }} />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Bar dataKey="percentage" fill="url(#blueGradient)" radius={[0, 4, 4, 0]} />
+                        <defs>
+                          <linearGradient id="blueGradient" x1="0" y1="0" x2="1" y2="0">
+                            <stop offset="0%" stopColor="#3B82F6" />
+                            <stop offset="100%" stopColor="#1D4ED8" />
+                          </linearGradient>
+                        </defs>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-gray-400">
+                      <p>No print publication data</p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -300,40 +213,26 @@ export function PublicationsAnalysisPage() {
               </CardHeader>
               <CardContent>
                 <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={onlinePublications}
-                      layout="vertical"
-                      margin={{ top: 5, right: 30, left: 5, bottom: 5 }}
-                    >
-                      <XAxis
-                        type="number"
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fontSize: 12, fill: '#6B7280' }}
-                      />
-                      <YAxis
-                        dataKey="name"
-                        type="category"
-                        width={100}
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fontSize: 11, fill: '#374151' }}
-                      />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Bar
-                        dataKey="percentage"
-                        fill="url(#greenGradient)"
-                        radius={[0, 4, 4, 0]}
-                      />
-                      <defs>
-                        <linearGradient id="greenGradient" x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%" stopColor="#10B981" />
-                          <stop offset="100%" stopColor="#059669" />
-                        </linearGradient>
-                      </defs>
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {onlinePublications.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={onlinePublications} layout="vertical" margin={{ top: 5, right: 30, left: 5, bottom: 5 }}>
+                        <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6B7280' }} />
+                        <YAxis dataKey="name" type="category" width={100} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#374151' }} />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Bar dataKey="percentage" fill="url(#greenGradient)" radius={[0, 4, 4, 0]} />
+                        <defs>
+                          <linearGradient id="greenGradient" x1="0" y1="0" x2="1" y2="0">
+                            <stop offset="0%" stopColor="#10B981" />
+                            <stop offset="100%" stopColor="#059669" />
+                          </linearGradient>
+                        </defs>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-gray-400">
+                      <p>No online publication data</p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -354,40 +253,26 @@ export function PublicationsAnalysisPage() {
               </CardHeader>
               <CardContent>
                 <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={printReporters}
-                      layout="vertical"
-                      margin={{ top: 5, right: 30, left: 5, bottom: 5 }}
-                    >
-                      <XAxis
-                        type="number"
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fontSize: 12, fill: '#6B7280' }}
-                      />
-                      <YAxis
-                        dataKey="name"
-                        type="category"
-                        width={120}
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fontSize: 10, fill: '#374151' }}
-                      />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Bar
-                        dataKey="percentage"
-                        fill="url(#orangeGradient)"
-                        radius={[0, 4, 4, 0]}
-                      />
-                      <defs>
-                        <linearGradient id="orangeGradient" x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%" stopColor="#F59E0B" />
-                          <stop offset="100%" stopColor="#D97706" />
-                        </linearGradient>
-                      </defs>
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {printReporters.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={printReporters} layout="vertical" margin={{ top: 5, right: 30, left: 5, bottom: 5 }}>
+                        <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6B7280' }} />
+                        <YAxis dataKey="name" type="category" width={120} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#374151' }} />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Bar dataKey="percentage" fill="url(#orangeGradient)" radius={[0, 4, 4, 0]} />
+                        <defs>
+                          <linearGradient id="orangeGradient" x1="0" y1="0" x2="1" y2="0">
+                            <stop offset="0%" stopColor="#F59E0B" />
+                            <stop offset="100%" stopColor="#D97706" />
+                          </linearGradient>
+                        </defs>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-gray-400">
+                      <p>No print reporter data</p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -405,47 +290,33 @@ export function PublicationsAnalysisPage() {
               </CardHeader>
               <CardContent>
                 <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={onlineReporters}
-                      layout="vertical"
-                      margin={{ top: 5, right: 30, left: 5, bottom: 5 }}
-                    >
-                      <XAxis
-                        type="number"
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fontSize: 12, fill: '#6B7280' }}
-                      />
-                      <YAxis
-                        dataKey="name"
-                        type="category"
-                        width={120}
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fontSize: 10, fill: '#374151' }}
-                      />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Bar
-                        dataKey="percentage"
-                        fill="url(#purpleGradient)"
-                        radius={[0, 4, 4, 0]}
-                      />
-                      <defs>
-                        <linearGradient id="purpleGradient" x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%" stopColor="#8B5CF6" />
-                          <stop offset="100%" stopColor="#7C3AED" />
-                        </linearGradient>
-                      </defs>
-                    </BarChart>
-                  </ResponsiveContainer>
+                  {onlineReporters.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={onlineReporters} layout="vertical" margin={{ top: 5, right: 30, left: 5, bottom: 5 }}>
+                        <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6B7280' }} />
+                        <YAxis dataKey="name" type="category" width={120} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#374151' }} />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Bar dataKey="percentage" fill="url(#purpleGradient)" radius={[0, 4, 4, 0]} />
+                        <defs>
+                          <linearGradient id="purpleGradient" x1="0" y1="0" x2="1" y2="0">
+                            <stop offset="0%" stopColor="#8B5CF6" />
+                            <stop offset="100%" stopColor="#7C3AED" />
+                          </linearGradient>
+                        </defs>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-gray-400">
+                      <p>No online reporter data</p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
           </div>
         </div>
 
-        {/* Right side - Spokespersons (1 column) */}
+        {/* Right side - Spokespersons */}
         <div className="xl:col-span-1">
           <Card className="border-0 shadow-lg bg-gradient-to-br from-slate-50 to-gray-50 hover:shadow-xl transition-all duration-300 h-full">
             <CardHeader className="pb-4">
@@ -457,7 +328,7 @@ export function PublicationsAnalysisPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              {spokespersons.length === 0 && <p className="text-gray-500 text-center">No spokesperson data available</p>}
+              <p className="text-gray-500 text-center">Spokesperson data coming soon</p>
             </CardContent>
           </Card>
         </div>
