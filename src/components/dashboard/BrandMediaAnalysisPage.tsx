@@ -75,7 +75,7 @@ const DEFAULT_DATA: AnalysisData = {
 };
 
 export function BrandMediaAnalysisPage() {
-  const { token } = useAuth();
+  const { token, activePair } = useAuth(); // ← Now using activePair
   const [filterValues, setFilterValues] = useState<FilterValues>({});
   const [data, setData] = useState<AnalysisData>(DEFAULT_DATA);
   const [loading, setLoading] = useState(true);
@@ -84,8 +84,7 @@ export function BrandMediaAnalysisPage() {
   const API_URL = 'https://pplus-ipn6.onrender.com/api/report/brand-media-analysis';
 
   const fetchData = async () => {
-    if (!token) {
-      toast.error('Authentication required');
+    if (!token || !activePair) {
       setLoading(false);
       return;
     }
@@ -94,6 +93,11 @@ export function BrandMediaAnalysisPage() {
 
     try {
       const params = new URLSearchParams();
+
+      // Always send pair_id
+      params.append('pair_id', String(activePair.pair_id));
+
+      // Send month if selected
       if (filterValues.dateRange?.start) {
         const date = new Date(filterValues.dateRange.start);
         const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
@@ -101,6 +105,8 @@ export function BrandMediaAnalysisPage() {
       }
 
       const url = `${API_URL}?${params.toString()}`;
+      console.log('Fetching Brand Media Analysis →', url);
+
       const response = await fetch(url, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -116,28 +122,32 @@ export function BrandMediaAnalysisPage() {
       } else {
         setData({
           ...DEFAULT_DATA,
-          company: result.data?.company || 'Your Company',
+          company: activePair.company_name || 'Your Company',
           period: result.data?.period || { start: '', end: '' },
         });
         setHasData(false);
 
-        if (result.message?.includes('No editorials')) {
-          toast.info('No media mentions found for this month');
+        if (result.message?.includes('No editorials') || result.message?.includes('No data')) {
+          toast.info(`No media mentions found for ${activePair.company_name} this month`);
         }
       }
     } catch (err) {
       console.error('Fetch failed:', err);
-      toast.error('Failed to load media analysis');
-      setData(DEFAULT_DATA);
+      toast.error('Failed to load brand media analysis');
+      setData({
+        ...DEFAULT_DATA,
+        company: activePair?.company_name || 'Your Company',
+      });
       setHasData(false);
     } finally {
       setLoading(false);
     }
   };
 
+  // Re-fetch when pair or month changes
   useEffect(() => {
     fetchData();
-  }, [token, filterValues.dateRange]);
+  }, [token, activePair, filterValues.dateRange]);
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '';
@@ -181,7 +191,9 @@ export function BrandMediaAnalysisPage() {
     return (
       <div className="flex items-center justify-center h-96">
         <Loader2 className="w-10 h-10 animate-spin text-purple-600" />
-        <span className="ml-4 text-lg">Loading media analysis...</span>
+        <span className="ml-4 text-lg">
+          Loading media analysis for <strong>{activePair?.company_name || 'your company'}</strong>...
+        </span>
       </div>
     );
   }
@@ -198,7 +210,7 @@ export function BrandMediaAnalysisPage() {
           <div>
             <h1 className="text-3xl font-bold mb-2 tracking-tight">Brand Media Analysis</h1>
             <p className="text-purple-100 text-lg">
-              {data.company} • {data.period.start ? `${formatDate(data.period.start)} – ${formatDate(data.period.end)}` : 'Select a month'}
+              {activePair?.company_name || 'Your Company'} • {data.period.start ? `${formatDate(data.period.start)} – ${formatDate(data.period.end)}` : 'Select a month'}
             </p>
           </div>
           <div className="flex items-center gap-4">
@@ -220,7 +232,7 @@ export function BrandMediaAnalysisPage() {
       {/* No Data Alert */}
       {!hasData && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-amber-800">
-          No media mentions found for the selected month. Charts below show zero values.
+          No media mentions found for {activePair?.company_name || 'your company'} in the selected month. Charts below show zero values.
         </div>
       )}
 

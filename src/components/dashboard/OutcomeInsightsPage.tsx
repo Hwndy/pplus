@@ -186,15 +186,15 @@ const InsightListView: React.FC<{
 };
 
 const OutcomeInsightsPage: React.FC = () => {
-  const { user, token, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { token, isAuthenticated, isLoading: authLoading, activePair } = useAuth(); // ← Now using activePair
   const [filterValues, setFilterValues] = useState<{
     dateRange?: { start: string; end: string };
   }>({});
   const [insightData, setInsightData] = useState<any[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
 
-  // Get company directly from authenticated user
-  const companyName = user?.company_name || user?.company || 'Your Company';
+  // Use activePair company name — safe fallback
+  const companyName = activePair?.company_name || 'Your Company';
 
   const FilterComponent: React.FC<{
     onChange: (values: { dateRange?: { start: string; end: string } }) => void;
@@ -262,13 +262,13 @@ const OutcomeInsightsPage: React.FC = () => {
   };
 
   useEffect(() => {
-    if (authLoading || !isAuthenticated || !token || !companyName) return;
+    if (authLoading || !isAuthenticated || !token || !activePair) return;
 
     const fetchInsights = async () => {
       setDataLoading(true);
       try {
         const month = getMonthFromDateRange(filterValues.dateRange);
-        let url = `https://pplus-ipn6.onrender.com/api/report/outcome-insights?company=${encodeURIComponent(companyName)}`;
+        let url = `https://pplus-ipn6.onrender.com/api/report/outcome-insights?pair_id=${activePair.pair_id}`;
         if (month) url += `&month=${month}`;
 
         const response = await fetch(url, {
@@ -298,7 +298,7 @@ const OutcomeInsightsPage: React.FC = () => {
     };
 
     fetchInsights();
-  }, [authLoading, isAuthenticated, token, companyName, filterValues.dateRange]);
+  }, [authLoading, isAuthenticated, token, activePair, filterValues.dateRange]); // ← activePair in deps
 
   const insights = useMemo(
     () => convertOutcomeInsightsToEmailFormat(insightData),
@@ -308,7 +308,7 @@ const OutcomeInsightsPage: React.FC = () => {
   if (authLoading || dataLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
-        Loading...
+        <div>Loading outcome insights for <strong>{companyName}</strong>...</div>
       </div>
     );
   }
@@ -316,7 +316,7 @@ const OutcomeInsightsPage: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-blue-500 text-transparent bg-clip-text">
-        Outcome Insights
+        Outcome Insights - {companyName}
       </h2>
 
       <FilterComponent

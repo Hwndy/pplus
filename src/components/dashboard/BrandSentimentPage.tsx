@@ -29,7 +29,7 @@ const DEFAULT_ZERO_DATA: SentimentData = {
 };
 
 const BrandSentimentPage: React.FC = () => {
-  const { token } = useAuth();
+  const { token, activePair } = useAuth(); // ← Now using activePair
   const [filterValues, setFilterValues] = useState<FilterValues>({});
   const [data, setData] = useState<SentimentData>(DEFAULT_ZERO_DATA);
   const [companyName, setCompanyName] = useState<string>('Your Company');
@@ -43,8 +43,7 @@ const BrandSentimentPage: React.FC = () => {
   const API_URL = 'https://pplus-ipn6.onrender.com/api/report/brand-media-sentiment-index';
 
   const fetchData = async () => {
-    if (!token) {
-      toast.error('Please log in to view your report');
+    if (!token || !activePair) {
       setLoading(false);
       return;
     }
@@ -54,7 +53,10 @@ const BrandSentimentPage: React.FC = () => {
     try {
       const params = new URLSearchParams();
 
-      // Only send month in YYYY-MM format — same as Executive Summary
+      // Always send pair_id
+      params.append('pair_id', String(activePair.pair_id));
+
+      // Send month if selected
       if (filterValues.dateRange) {
         const [start] = filterValues.dateRange as [string, string];
         const date = new Date(start);
@@ -78,10 +80,10 @@ const BrandSentimentPage: React.FC = () => {
       if (response.ok && result.success && result.data) {
         const apiData = result.data;
 
-        setCompanyName(apiData.company || 'Your Company');
+        setCompanyName(activePair.company_name || 'Your Company');
         setPeriod({
-          start: apiData.period.start,
-          end: apiData.period.end,
+          start: apiData.period.start || '',
+          end: apiData.period.end || '',
         });
 
         setData({
@@ -94,25 +96,19 @@ const BrandSentimentPage: React.FC = () => {
 
         setHasData(true);
       } else {
-        // No data → show clean zeros
-        const fallbackCompany = result.data?.company || 'Your Company';
-        const fallbackPeriod = result.data?.period || { start: '', end: '' };
-
-        setCompanyName(fallbackCompany);
-        setPeriod({
-          start: fallbackPeriod.start || '',
-          end: fallbackPeriod.end || '',
-        });
+        setCompanyName(activePair.company_name || 'Your Company');
+        setPeriod({ start: '', end: '' });
         setData(DEFAULT_ZERO_DATA);
         setHasData(false);
 
-        if (result.message?.includes('No editorials')) {
-          toast.info('No media mentions found for this month');
+        if (result.message?.includes('No editorials') || result.message?.includes('No data')) {
+          toast.info(`No media mentions found for ${activePair.company_name} this month`);
         }
       }
     } catch (err) {
       console.error('Fetch error:', err);
-      toast.error('Failed to connect to server');
+      toast.error('Failed to load brand sentiment analysis');
+      setCompanyName(activePair?.company_name || 'Your Company');
       setData(DEFAULT_ZERO_DATA);
       setHasData(false);
     } finally {
@@ -120,9 +116,10 @@ const BrandSentimentPage: React.FC = () => {
     }
   };
 
+  // Re-fetch when pair or month changes
   useEffect(() => {
     fetchData();
-  }, [token, filterValues.dateRange]);
+  }, [token, activePair, filterValues.dateRange]);
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '';
@@ -152,7 +149,9 @@ const BrandSentimentPage: React.FC = () => {
     return (
       <div className="flex items-center justify-center h-96">
         <Loader2 className="w-10 h-10 animate-spin text-pink-600" />
-        <span className="ml-4 text-lg">Loading sentiment analysis...</span>
+        <span className="ml-4 text-lg">
+          Loading sentiment analysis for <strong>{activePair?.company_name || 'your company'}</strong>...
+        </span>
       </div>
     );
   }
@@ -190,7 +189,7 @@ const BrandSentimentPage: React.FC = () => {
       {/* No Data Banner */}
       {!hasData && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-amber-800 text-sm">
-          No media mentions found for the selected month. Showing zero values.
+          No media mentions found for {companyName} in the selected month. Showing zero values.
         </div>
       )}
 

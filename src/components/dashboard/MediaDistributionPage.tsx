@@ -16,13 +16,13 @@ import {
 } from 'recharts';
 
 export function MediaDistributionPage() {
-  const { user, token, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { token, isAuthenticated, isLoading: authLoading, activePair } = useAuth(); // Now using activePair
   const [filterValues, setFilterValues] = useState<FilterValues>({});
   const [thematicData, setThematicData] = useState<any>(null);
   const [dataLoading, setDataLoading] = useState(true);
 
-  // Use company directly from logged-in user
-  const companyName = user?.company_name || user?.company || 'Your Company';
+  // Use activePair company name
+  const companyName = activePair?.company_name || 'Your Company';
 
   const currentDate = new Date();
   const formattedDate = `${currentDate.getDate()} ${currentDate.toLocaleString('default', { month: 'short' })} ${currentDate.getFullYear()} ${currentDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZoneName: 'short', hour12: true })}`;
@@ -34,40 +34,6 @@ export function MediaDistributionPage() {
       type: 'daterange',
       placeholder: 'Select date range',
     },
-    // {
-    //   key: 'thematicArea',
-    //   label: 'Thematic Area',
-    //   type: 'multiselect',
-    //   options: [
-    //     { value: 'financial_services', label: 'Financial Services' },
-    //     { value: 'banking', label: 'Banking' },
-    //     { value: 'investment', label: 'Investment' },
-    //     { value: 'insurance', label: 'Insurance' },
-    //     { value: 'fintech', label: 'Fintech' },
-    //     { value: 'regulation', label: 'Regulation' },
-    //   ],
-    // },
-    // {
-    //   key: 'mediaType',
-    //   label: 'Media Type',
-    //   type: 'select',
-    //   options: [
-    //     { value: 'online', label: 'Online Media' },
-    //     { value: 'print', label: 'Print Media' },
-    //   ],
-    // },
-    // {
-    //   key: 'activityType',
-    //   label: 'Activity Type',
-    //   type: 'multiselect',
-    //   options: [
-    //     { value: 'news', label: 'News Coverage' },
-    //     { value: 'interview', label: 'Interviews' },
-    //     { value: 'press_release', label: 'Press Releases' },
-    //     { value: 'opinion', label: 'Opinion Pieces' },
-    //     { value: 'analysis', label: 'Analysis' },
-    //   ],
-    // },
   ];
 
   const resetFilters = () => setFilterValues({});
@@ -79,17 +45,17 @@ export function MediaDistributionPage() {
   };
 
   useEffect(() => {
-    if (authLoading || !isAuthenticated || !token || !companyName) return;
+    if (authLoading || !isAuthenticated || !token || !activePair) return;
 
     const fetchThematicData = async () => {
       setDataLoading(true);
       try {
         const month = getMonthFromDateRange(filterValues.dateRange);
         const params = new URLSearchParams();
-        params.append('company', companyName);
+        params.append('pair_id', String(activePair.pair_id));
         if (month) params.append('month', month);
 
-        // Optional: apply other filters if needed (backend must support them)
+        // Optional filters (backend must support them)
         if (filterValues.mediaType) params.append('media_type', filterValues.mediaType as string);
         if (filterValues.thematicArea) {
           (filterValues.thematicArea as string[]).forEach(t => params.append('thematic_area', t));
@@ -128,7 +94,7 @@ export function MediaDistributionPage() {
     };
 
     fetchThematicData();
-  }, [authLoading, isAuthenticated, token, companyName, filterValues]);
+  }, [authLoading, isAuthenticated, token, activePair, filterValues]); // activePair in deps
 
   const colors = [
     '#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8',
@@ -159,7 +125,11 @@ export function MediaDistributionPage() {
   };
 
   if (authLoading || dataLoading) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>;
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div>Loading media distribution for <strong>{companyName}</strong>...</div>
+      </div>
+    );
   }
 
   return (
@@ -174,6 +144,9 @@ export function MediaDistributionPage() {
           <div>
             <h1 className="text-3xl font-bold mb-2 tracking-tight">Distribution of Media Activities</h1>
             <p className="text-orange-100 text-lg">Thematic analysis and media activity breakdown</p>
+            {activePair && (
+              <p className="text-orange-200 text-sm mt-1">Currently viewing: <strong>{activePair.company_name}</strong></p>
+            )}
           </div>
           <div className="flex items-center gap-4">
             <div className="bg-white/20 backdrop-blur-sm rounded-full p-4">

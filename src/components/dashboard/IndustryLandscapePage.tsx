@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { EmailListView } from '@/components/dashboard/EmailListView';
 
-// Interface for EmailItem (make sure this matches your shared component)
+// Interface for EmailItem (shared with EmailListView)
 interface EmailItem {
   id: string;
   title?: string;
@@ -15,7 +15,7 @@ interface EmailItem {
   preview?: string;
 }
 
-// Convert industry landscape data to EmailItem format — NOW WITH localStorage!
+// Convert industry landscape data to EmailItem format — persistent read state
 const convertIndustryDataToEmailFormat = (overviews: any[]): EmailItem[] =>
   overviews.map((item) => ({
     id: item.id.toString(),
@@ -39,7 +39,7 @@ const convertIndustryDataToEmailFormat = (overviews: any[]): EmailItem[] =>
       <p><strong>Created at:</strong> ${format(new Date(item.created_at), 'MMM d, yyyy HH:mm')}</p>
       <p><strong>Updated at:</strong> ${format(new Date(item.updated_at), 'MMM d, yyyy HH:mm')}</p>
     `,
-    isRead: localStorage.getItem(`industry-read-${item.id}`) === 'true', // ← PERSISTENT NOW
+    isRead: localStorage.getItem(`industry-read-${item.id}`) === 'true',
     preview: item.analyst_note ? item.analyst_note.substring(0, 120) + '...' : 'Industry update details...',
   }));
 
@@ -103,13 +103,15 @@ const FilterComponent: React.FC<{
   );
 };
 
-// Main IndustryLandscapePage component
+// Main IndustryLandscapePage component — NOW FULLY PROFILE-AWARE
 const IndustryLandscapePage: React.FC = () => {
-  const { user, token, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { token, isAuthenticated, isLoading: authLoading, activePair } = useAuth();
   const [filterValues, setFilterValues] = useState<{ dateRange?: { start: string; end: string } }>({});
-  const [industryData, setIndustryData] = useState<any[]>([]);
-  const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
+  const [industryData, setSpecialData] = useState<any[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
+
+  // Use activePair — safe fallback
+  const companyName = activePair?.company_name || 'Your Company';
 
   // Get month from date range
   const getMonthFromDateRange = (dateRange: any): string | null => {
@@ -118,60 +120,15 @@ const IndustryLandscapePage: React.FC = () => {
     return `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}`;
   };
 
-  // Determine company
+  // Fetch industry landscape data — now uses activePair.pair_id
   useEffect(() => {
-    if (authLoading || !isAuthenticated || !user) return;
-
-    const determineCompany = async () => {
-      setDataLoading(true);
-      try {
-        const month = getMonthFromDateRange(filterValues.dateRange);
-        let url = 'https://pplus-ipn6.onrender.com/api/report/competitive-intelligence';
-        if (month) url += `?month=${month}`;
-
-        const response = await fetch(url, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-
-        const result = await response.json();
-        if (result.success) {
-          const compInt = result.data.competitive_intelligence;
-          const subSectors = Object.keys(compInt);
-          if (subSectors.length > 0) {
-            const firstSub = subSectors[0];
-            const companies = compInt[firstSub].companies_in_category;
-            if (companies.length > 0) {
-              setSelectedCompany(companies[0]);
-              return;
-            }
-          }
-        }
-      } catch (err) {
-        console.error('Error determining company:', err);
-        toast.error('Error determining company');
-      } finally {
-        setDataLoading(false);
-      }
-    };
-
-    determineCompany();
-  }, [authLoading, isAuthenticated, user, token, filterValues]);
-
-  // Fetch industry landscape data
-  useEffect(() => {
-    if (!selectedCompany || authLoading || !isAuthenticated) return;
+    if (authLoading || !isAuthenticated || !token || !activePair) return;
 
     const fetchIndustryData = async () => {
       setDataLoading(true);
       try {
         const month = getMonthFromDateRange(filterValues.dateRange);
-        let url = `https://pplus-ipn6.onrender.com/api/report/industry-landscape-overview?company=${encodeURIComponent(
-          selectedCompany
-        )}`;
+        let url = `https://pplus-ipn6.onrender.com/api/report/industry-landscape-overview?pair_id=${activePair.pair_id}`;
         if (month) url += `&month=${month}`;
 
         const response = await fetch(url, {
@@ -180,36 +137,43 @@ const IndustryLandscapePage: React.FC = () => {
             'Content-Type': 'application/json',
           },
         });
+
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
         const result = await response.json();
-        if (result.success) {
-          setIndustryData(result.data.overviews || []);
+
+        if (result.success && result.data?.overviews) {
+          setSpecialData(result.data.overviews);
         } else {
-          throw new Error(result.message || 'Failed to fetch industry landscape overviews');
+          setSpecialData([]);
+          if (result.message) toast.info(result.message);
         }
       } catch (err) {
-        console.error('Error fetching industry landscape data:', err);
-        toast.error('Error fetching industry landscape data');
-        setIndustryData([]);
+        console.error('Error fetching industry landscape:', err);
+        toast.error('Failed to load industry updates');
+        setSpecialData([]);
       } finally {
         setDataLoading(false);
       }
     };
 
     fetchIndustryData();
-  }, [selectedCompany, filterValues, token, authLoading, isAuthenticated]);
+  }, [authLoading, isAuthenticated, token, activePair, filterValues.dateRange]); // ← activePair in deps
 
   const emails = useMemo(() => convertIndustryDataToEmailFormat(industryData), [industryData]);
 
   if (authLoading || dataLoading) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>;
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div>Loading industry updates for <strong>{companyName}</strong>...</div>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6 animate-fade-in">
       <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-blue-500 text-transparent bg-clip-text">
-        Industry Updates
+        Industry Updates - {companyName}
       </h2>
 
       <FilterComponent
@@ -221,8 +185,8 @@ const IndustryLandscapePage: React.FC = () => {
       <EmailListView
         emails={emails}
         title="Industry Updates Inbox"
-        description={`Latest industry updates for ${selectedCompany || 'your business'}`}
-        storagePrefix="industry-read-" // ← THIS IS THE KEY!
+        description={`Latest industry updates for ${companyName}`}
+        storagePrefix="industry-read-" // ← Preserves read state per item
       />
     </div>
   );
