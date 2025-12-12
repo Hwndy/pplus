@@ -4,12 +4,10 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Mail, MailOpen, Clock } from 'lucide-react';
 
-// Utility function for className concatenation
 function cn(...classes: (string | undefined | null | false)[]): string {
   return classes.filter(Boolean).join(' ');
 }
 
-// Interface for EmailItem
 interface EmailItem {
   id: string;
   title?: string;
@@ -23,7 +21,6 @@ interface EmailItem {
   preview?: string;
 }
 
-// Convert SWOT data to EmailItem format
 function convertSwotDataToEmailFormat(analyses: any[]): EmailItem[] {
   return analyses.map((item) => ({
     id: item.id.toString(),
@@ -49,24 +46,23 @@ function convertSwotDataToEmailFormat(analyses: any[]): EmailItem[] {
       <p><strong>Created at:</strong> ${format(new Date(item.created_at), 'MMM d, yyyy HH:mm')}</p>
       <p><strong>Updated at:</strong> ${format(new Date(item.updated_at), 'MMM d, yyyy HH:mm')}</p>
     `,
-    isRead: localStorage.getItem(`swot-read-${item.id}`) === 'true', // Check localStorage
+    isRead: localStorage.getItem(`swot-read-${item.id}`) === 'true',
     preview: item.analyst_note ? item.analyst_note.substring(0, 120) + '...' : 'SWOT analysis details...',
   }));
 }
 
-// Embedded EmailListView component
 function EmailListView({ emails, title, description }: { emails: EmailItem[], title: string, description: string }) {
   const [selectedEmail, setSelectedEmail] = useState<EmailItem | null>(null);
   const [emailsState, setEmailsState] = useState<EmailItem[]>(emails);
 
   useEffect(() => {
     setEmailsState(emails);
-    setSelectedEmail(null); // Reset selection when emails change
+    setSelectedEmail(null);
   }, [emails]);
 
   const handleEmailClick = (email: EmailItem) => {
     if (!email.isRead) {
-      localStorage.setItem(`swot-read-${email.id}`, 'true'); // Save to localStorage
+      localStorage.setItem(`swot-read-${email.id}`, 'true');
       const updatedEmails = emailsState.map(e =>
         e.id === email.id ? { ...e, isRead: true } : e
       );
@@ -82,7 +78,6 @@ function EmailListView({ emails, title, description }: { emails: EmailItem[], ti
         <p className="text-sm text-gray-500">{description}</p>
       </div>
       <div className="flex flex-col md:flex-row h-[600px]">
-        {/* Email List */}
         <div className="w-full md:w-2/5 border-r overflow-y-auto">
           {emailsState.length === 0 ? (
             <div className="p-4 text-center text-gray-500">No SWOT analyses available</div>
@@ -136,7 +131,6 @@ function EmailListView({ emails, title, description }: { emails: EmailItem[], ti
             ))
           )}
         </div>
-        {/* Email Content */}
         <div className="w-full md:w-3/5 p-6 overflow-y-auto bg-white">
           {selectedEmail ? (
             <div className="animate-fade-in">
@@ -174,13 +168,14 @@ function EmailListView({ emails, title, description }: { emails: EmailItem[], ti
 }
 
 const SwotAnalysisPage: React.FC = () => {
-  const { user, token, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { token, isAuthenticated, isLoading: authLoading, activePair } = useAuth(); // ← Now using activePair
   const [filterValues, setFilterValues] = useState<{ dateRange?: { start: string; end: string } }>({});
   const [swotData, setSwotData] = useState<any[]>([]);
-  const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
 
-  // Simplified filter component embedded in the file
+  // Use activePair company name — falls back safely
+  const companyName = activePair?.company_name || 'Your Company';
+
   const FilterComponent: React.FC<{
     onChange: (values: { dateRange?: { start: string; end: string } }) => void;
     onReset: () => void;
@@ -240,69 +235,22 @@ const SwotAnalysisPage: React.FC = () => {
     );
   };
 
-  // Function to get month from date range
   const getMonthFromDateRange = (dateRange: any): string | null => {
     if (!dateRange?.start) return null;
     const start = new Date(dateRange.start);
     return `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}`;
   };
 
-  // Determine company based on user role
   useEffect(() => {
-    if (authLoading || !isAuthenticated || !user) return;
-
-    const determineCompany = async () => {
-      setDataLoading(true);
-      try {
-        console.log('Determining company...');
-        const month = getMonthFromDateRange(filterValues.dateRange);
-        let url = 'https://pplus-07cr.onrender.com/api/report/competitive-intelligence';
-        if (month) url += `?month=${month}`;
-
-        const response = await fetch(url, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        console.log('Competitive Intelligence Response:', await response.clone().json());
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-
-        const result = await response.json();
-        if (result.success) {
-          const compInt = result.data.competitive_intelligence;
-          const subSectors = Object.keys(compInt);
-          if (subSectors.length > 0) {
-            const firstSub = subSectors[0];
-            const companies = compInt[firstSub].companies_in_category;
-            if (companies.length > 0) {
-              setSelectedCompany(companies[0]);
-              return;
-            }
-          }
-        }
-      } catch (err) {
-        console.error('Error determining company:', err);
-        toast.error('Error determining company');
-      } finally {
-        setDataLoading(false);
-      }
-    };
-
-    determineCompany();
-  }, [authLoading, isAuthenticated, user, token, filterValues]);
-
-  // Fetch SWOT data once company is determined
-  useEffect(() => {
-    if (!selectedCompany || authLoading || !isAuthenticated) return;
+    if (authLoading || !isAuthenticated || !token || !activePair) {
+      return;
+    }
 
     const fetchSwot = async () => {
       setDataLoading(true);
       try {
-        console.log('Fetching SWOT data for company:', selectedCompany);
         const month = getMonthFromDateRange(filterValues.dateRange);
-        let url = 'https://pplus-07cr.onrender.com/api/report/swot-analysis';
-        url += `?company=${encodeURIComponent(selectedCompany)}`;
+        let url = `https://pplus-ipn6.onrender.com/api/report/swot-analysis?pair_id=${activePair.pair_id}`;
         if (month) url += `&month=${month}`;
 
         const response = await fetch(url, {
@@ -311,18 +259,20 @@ const SwotAnalysisPage: React.FC = () => {
             'Content-Type': 'application/json',
           },
         });
-        console.log('SWOT Analysis Response:', await response.clone().json());
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
         const result = await response.json();
-        if (result.success) {
-          setSwotData(result.data.analyses || []);
+
+        if (result.success && result.data?.analyses) {
+          setSwotData(result.data.analyses);
         } else {
-          throw new Error(result.message || 'Failed to fetch SWOT analyses');
+          setSwotData([]);
+          if (result.message) toast.info(result.message);
         }
       } catch (err) {
-        console.error('Error fetching SWOT data:', err);
-        toast.error('Error fetching SWOT data');
+        console.error('Error fetching SWOT:', err);
+        toast.error('Failed to load SWOT analyses');
         setSwotData([]);
       } finally {
         setDataLoading(false);
@@ -330,17 +280,23 @@ const SwotAnalysisPage: React.FC = () => {
     };
 
     fetchSwot();
-  }, [selectedCompany, filterValues, token, authLoading, isAuthenticated]);
+  }, [authLoading, isAuthenticated, token, activePair, filterValues.dateRange]); // ← activePair in deps
 
   const emails = useMemo(() => convertSwotDataToEmailFormat(swotData), [swotData]);
 
   if (authLoading || dataLoading) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>;
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div>Loading SWOT analyses for <strong>{companyName}</strong>...</div>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-blue-500 text-transparent bg-clip-text">SWOT Analysis</h2>
+      <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-blue-500 text-transparent bg-clip-text">
+        SWOT Analysis - {companyName}
+      </h2>
 
       <FilterComponent
         values={filterValues}
@@ -351,7 +307,7 @@ const SwotAnalysisPage: React.FC = () => {
       <EmailListView
         emails={emails}
         title="SWOT Analyses Inbox"
-        description={`Latest SWOT analyses for ${selectedCompany || 'your business'}`}
+        description={`Latest SWOT analyses for ${companyName}`}
       />
     </div>
   );
