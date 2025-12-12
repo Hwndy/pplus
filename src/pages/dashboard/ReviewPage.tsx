@@ -22,7 +22,7 @@
 // import { Stat } from '@/components/ui/Stat';
 // import { useNavigate } from 'react-router-dom';
 
-// const API_BASE = "https://backend-55pc.onrender.com/api";
+// const API_BASE = "https://pplus-ipn6.onrender.com/api";
 
 // // Status badge component
 // function StatusBadge({ status }: { status: string }) {

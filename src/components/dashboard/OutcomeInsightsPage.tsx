@@ -268,7 +268,7 @@ const OutcomeInsightsPage: React.FC = () => {
       setDataLoading(true);
       try {
         const month = getMonthFromDateRange(filterValues.dateRange);
-        let url = `https://backend-55pc.onrender.com/api/report/outcome-insights?company=${encodeURIComponent(companyName)}`;
+        let url = `https://pplus-ipn6.onrender.com/api/report/outcome-insights?company=${encodeURIComponent(companyName)}`;
         if (month) url += `&month=${month}`;
 
         const response = await fetch(url, {

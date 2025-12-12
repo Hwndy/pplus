@@ -70,17 +70,16 @@ const DEFAULT_ZERO_DATA: SummaryData = {
 };
 
 export function ExecutiveSummaryPage() {
-  const { token } = useAuth();
+  const { token, activePair } = useAuth(); // ← Now using activePair
   const [filterValues, setFilterValues] = useState<FilterValues>({});
   const [data, setData] = useState<SummaryData>(DEFAULT_ZERO_DATA);
   const [loading, setLoading] = useState(true);
   const [hasData, setHasData] = useState(false);
 
-  const API_URL = 'https://backend-55pc.onrender.com/api/report/executive-summary';
+  const API_URL = 'https://pplus-ipn6.onrender.com/api/report/executive-summary';
 
   const fetchData = useCallback(async () => {
-    if (!token) {
-      toast.error('Please log in to view your report');
+    if (!token || !activePair) {
       setLoading(false);
       return;
     }
@@ -90,7 +89,10 @@ export function ExecutiveSummaryPage() {
     try {
       const params = new URLSearchParams();
 
-      // ONLY SEND 'month' in YYYY-MM format — this is what backend expects
+      // Always send the active pair_id
+      params.append('pair_id', String(activePair.pair_id));
+
+      // Send month if selected
       if (filterValues.dateRange) {
         const [start] = filterValues.dateRange as [string, string];
         const date = new Date(start);
@@ -99,11 +101,8 @@ export function ExecutiveSummaryPage() {
         params.append('month', `${year}-${month}`);
       }
 
-      // All other filters are IGNORED — backend doesn't support them for this endpoint
-      // But we keep them in UI for future use
-
       const url = `${API_URL}?${params.toString()}`;
-      console.log('Fetching Executive Summary →', url); // Debug in console
+      console.log('Fetching Executive Summary →', url);
 
       const response = await fetch(url, {
         headers: {
@@ -118,8 +117,7 @@ export function ExecutiveSummaryPage() {
         setData(result.data);
         setHasData(true);
       } else {
-        // No data → show clean zeros
-        const companyName = result.data?.company || 'Your Company';
+        const companyName = activePair.company_name || 'Your Company';
         const period = result.data?.period || DEFAULT_ZERO_DATA.period;
 
         setData({
@@ -133,20 +131,24 @@ export function ExecutiveSummaryPage() {
         });
         setHasData(false);
 
-        if (result.message?.includes('No editorials')) {
-          toast.info('No media mentions found for this month');
+        if (result.message?.includes('No editorials') || result.message?.includes('No data')) {
+          toast.info(`No media mentions found for ${companyName} this month`);
         }
       }
     } catch (err) {
       console.error('Fetch error:', err);
-      toast.error('Failed to connect to server');
-      setData(DEFAULT_ZERO_DATA);
+      toast.error('Failed to load executive summary');
+      setData({
+        ...DEFAULT_ZERO_DATA,
+        company: activePair?.company_name || 'Your Company',
+      });
       setHasData(false);
     } finally {
       setLoading(false);
     }
-  }, [token, filterValues.dateRange]); // Only re-fetch when date changes
+  }, [token, activePair, filterValues.dateRange]);
 
+  // Re-fetch when pair switches OR month changes
   useEffect(() => {
     fetchData();
   }, [fetchData]);
@@ -190,60 +192,20 @@ export function ExecutiveSummaryPage() {
     return `${d.getDate()} ${d.toLocaleString('default', { month: 'short' })} ${d.getFullYear()}`;
   };
 
-  // Keep all filters in UI (for future), but only dateRange works now
   const filterOptions = [
     { 
       key: 'dateRange', 
       label: 'Select Month', 
       type: 'daterange', 
       placeholder: 'Pick a month',
-      // Optional: restrict to month picker only
-      // You can enhance UniversalFilter to support mode="month" if needed
     },
-    // {
-    //   key: 'mediaType',
-    //   label: 'Media Type',
-    //   type: 'multiselect',
-    //   options: [
-    //     { value: 'online', label: 'Online Media' },
-    //     { value: 'print', label: 'Print Media' },
-    //   ],
-    // },
-    // {
-    //   key: 'language',
-    //   label: 'Language',
-    //   type: 'multiselect',
-    //   options: [
-    //     { value: 'english', label: 'English' },
-    //     { value: 'other', label: 'Other Languages' },
-    //   ],
-    // },
-    // {
-    //   key: 'sentiment',
-    //   label: 'Sentiment',
-    //   type: 'multiselect',
-    //   options: [
-    //     { value: 'positive', label: 'Positive' },
-    //     { value: 'neutral', label: 'Neutral' },
-    //     { value: 'negative', label: 'Negative' },
-    //   ],
-    // },
-    // {
-    //   key: 'region',
-    //   label: 'Region',
-    //   type: 'select',
-    //   options: [
-    //     { value: 'local', label: 'Local Media' },
-    //     { value: 'international', label: 'International Media' },
-    //   ],
-    // },
   ];
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
         <Loader2 className="w-10 h-10 animate-spin text-indigo-600" />
-        <span className="ml-4 text-lg">Loading your executive summary...</span>
+        <span className="ml-4 text-lg">Loading executive summary for {activePair?.company_name || 'your company'}...</span>
       </div>
     );
   }
@@ -268,7 +230,7 @@ export function ExecutiveSummaryPage() {
 
       {!hasData && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-amber-800 text-sm">
-          No media mentions found for the selected month. Showing zero values.
+          No media mentions found for {data.company} in the selected month. Showing zero values.
         </div>
       )}
 

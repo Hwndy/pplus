@@ -98,7 +98,7 @@ export function MediaDistributionPage() {
           (filterValues.activityType as string[]).forEach(t => params.append('activity_type', t));
         }
 
-        const url = `https://backend-55pc.onrender.com/api/report/top-thematic-distribution-breakdown?${params.toString()}`;
+        const url = `https://pplus-ipn6.onrender.com/api/report/top-thematic-distribution-breakdown?${params.toString()}`;
 
         const response = await fetch(url, {
           headers: {

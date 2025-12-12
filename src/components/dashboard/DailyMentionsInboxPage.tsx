@@ -74,7 +74,7 @@ export function DailyMentionsInboxPage() {
 
     try {
       const response = await axios.get(
-        `https://backend-55pc.onrender.com/api/report/daily-mentions?pair_id=5&startDate=${startDate}&endDate=${endDate}`
+        `https://pplus-ipn6.onrender.com/api/report/daily-mentions?pair_id=5&startDate=${startDate}&endDate=${endDate}`
       );
 
       if (!response.data.success || !response.data.data?.daily_mentions) {
