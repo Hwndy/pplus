@@ -6,6 +6,7 @@ import { UniversalFilter, FilterValues } from '@/components/ui/UniversalFilter';
 import { Inbox, Mail, MailOpen, User, Building, Eye, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import axios from 'axios';
+import { useAuth } from '@/components/auth/AuthContext';
 
 interface MentionItem {
   id: string;
@@ -27,6 +28,7 @@ interface MentionItem {
 const STORAGE_KEY = 'daily-mentions-read-status';
 
 export function DailyMentionsInboxPage() {
+  const { token, activePair } = useAuth(); // ← Added activePair
   const [filterValues, setFilterValues] = useState<FilterValues>({
     date: ['', ''],
   });
@@ -63,7 +65,7 @@ export function DailyMentionsInboxPage() {
   }, [readStatus]);
 
   const fetchDailyMentions = useCallback(async () => {
-    if (!hasValidDateRange) {
+    if (!token || !activePair || !hasValidDateRange) {
       setMentions([]);
       setLoading(false);
       return;
@@ -74,7 +76,17 @@ export function DailyMentionsInboxPage() {
 
     try {
       const response = await axios.get(
-        `https://pplus-ipn6.onrender.com/api/report/daily-mentions?pair_id=5&startDate=${startDate}&endDate=${endDate}`
+        `https://pplus-ipn6.onrender.com/api/report/daily-mentions`,
+        {
+          params: {
+            pair_id: activePair.pair_id,
+            startDate,
+            endDate,
+          },
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
 
       if (!response.data.success || !response.data.data?.daily_mentions) {
@@ -123,8 +135,9 @@ export function DailyMentionsInboxPage() {
     } finally {
       setLoading(false);
     }
-  }, [hasValidDateRange, startDate, endDate, readStatus]);
+  }, [token, activePair, hasValidDateRange, startDate, endDate, readStatus]);
 
+  // Re-fetch when activePair or date range changes
   useEffect(() => {
     fetchDailyMentions();
   }, [fetchDailyMentions]);
@@ -142,7 +155,6 @@ export function DailyMentionsInboxPage() {
     });
   }, [mentions, filterValues.date, hasValidDateRange]);
 
-  // Mark mention as read when clicked
   const handleMentionClick = (mention: MentionItem) => {
     setSelectedMention(mention);
 
@@ -192,7 +204,9 @@ export function DailyMentionsInboxPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="text-lg text-gray-600">Loading daily mentions...</div>
+        <div className="text-lg text-gray-600">
+          Loading daily mentions for {activePair?.company_name || 'your company'}...
+        </div>
       </div>
     );
   }
@@ -217,6 +231,9 @@ export function DailyMentionsInboxPage() {
           <div>
             <h1 className="text-3xl font-bold mb-2 tracking-tight">Daily Mentions Inbox</h1>
             <p className="text-blue-100 text-lg">Review and manage daily media mentions</p>
+            {activePair && (
+              <p className="text-blue-200 text-sm mt-1">Currently viewing: <strong>{activePair.company_name}</strong></p>
+            )}
           </div>
           <div className="flex items-center gap-4">
             <div className="bg-white/20 backdrop-blur-sm rounded-full p-4">
@@ -353,7 +370,6 @@ export function DailyMentionsInboxPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                {/* Same detailed view as before */}
                 <div>
                   <div className="flex items-start justify-between mb-3">
                     <h3 className="font-semibold text-gray-900 text-lg leading-tight pr-4">
