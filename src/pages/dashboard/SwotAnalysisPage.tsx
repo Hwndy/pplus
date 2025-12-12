@@ -250,7 +250,7 @@ const SwotAnalysisPage: React.FC = () => {
       setDataLoading(true);
       try {
         const month = getMonthFromDateRange(filterValues.dateRange);
-        let url = `https://pplus-07cr.onrender.com/api/report/swot-analysis?company=${encodeURIComponent(companyName)}`;
+        let url = `https://backend-55pc.onrender.com/api/report/swot-analysis?company=${encodeURIComponent(companyName)}`;
         if (month) url += `&month=${month}`;
 
         const response = await fetch(url, {

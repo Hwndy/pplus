@@ -49,7 +49,7 @@ interface Editorial {
   status?: string;
 }
 
-const API_BASE = "https://pplus-07cr.onrender.com/api";
+const API_BASE = "https://backend-55pc.onrender.com/api";
 
 const EditorialPage = () => {
   const navigate = useNavigate();

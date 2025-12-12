@@ -130,7 +130,7 @@ function PaginationControls({
 
 
 // API Base
-const API_BASE = 'https://pplus-07cr.onrender.com/api';
+const API_BASE = 'https://backend-55pc.onrender.com/api';
 const PAGE_SIZE = 10;
 
 // Generic Entry Interface (unchanged)

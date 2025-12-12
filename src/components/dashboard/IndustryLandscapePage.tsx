@@ -126,7 +126,7 @@ const IndustryLandscapePage: React.FC = () => {
       setDataLoading(true);
       try {
         const month = getMonthFromDateRange(filterValues.dateRange);
-        let url = 'https://pplus-07cr.onrender.com/api/report/competitive-intelligence';
+        let url = 'https://backend-55pc.onrender.com/api/report/competitive-intelligence';
         if (month) url += `?month=${month}`;
 
         const response = await fetch(url, {
@@ -169,7 +169,7 @@ const IndustryLandscapePage: React.FC = () => {
       setDataLoading(true);
       try {
         const month = getMonthFromDateRange(filterValues.dateRange);
-        let url = `https://pplus-07cr.onrender.com/api/report/industry-landscape-overview?company=${encodeURIComponent(
+        let url = `https://backend-55pc.onrender.com/api/report/industry-landscape-overview?company=${encodeURIComponent(
           selectedCompany
         )}`;
         if (month) url += `&month=${month}`;

@@ -106,7 +106,7 @@ export function CoverageRegionPage() {
         params.append('company', companyName);
         if (month) params.append('month', month);
 
-        const url = `https://pplus-07cr.onrender.com/api/report/social-stats-online-coverage?${params.toString()}`;
+        const url = `https://backend-55pc.onrender.com/api/report/social-stats-online-coverage?${params.toString()}`;
 
         const response = await fetch(url, {
           headers: {
