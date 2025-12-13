@@ -48,6 +48,15 @@ const BrandSentimentPage: React.FC = () => {
       return;
     }
 
+    if (filterValues.dateRange) {
+      const [startDate, endDate] = filterValues.dateRange as [string | null, string | null];
+      if (!startDate || !endDate) {
+        console.log('Waiting for both dates to be selected...');
+        setLoading(false);
+        return; // Exit early if both dates aren't selected
+      }
+    }
+
     setLoading(true);
 
     try {
@@ -58,11 +67,9 @@ const BrandSentimentPage: React.FC = () => {
 
       // Send month if selected
       if (filterValues.dateRange) {
-        const [start] = filterValues.dateRange as [string, string];
-        const date = new Date(start);
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        params.append('month', `${year}-${month}`);
+        const [startDate, endDate] = filterValues.dateRange as [string, string];
+        params.append('startDate', startDate);
+        params.append('endDate', endDate);
       }
 
       const url = `${API_URL}?${params.toString()}`;

@@ -84,6 +84,15 @@ export function ExecutiveSummaryPage() {
       return;
     }
 
+    if (filterValues.dateRange) {
+      const [startDate, endDate] = filterValues.dateRange as [string | null, string | null];
+      if (!startDate || !endDate) {
+        console.log('Waiting for both dates to be selected...');
+        setLoading(false);
+        return; // Exit early if both dates aren't selected
+      }
+    }
+
     setLoading(true);
 
     try {
@@ -92,13 +101,10 @@ export function ExecutiveSummaryPage() {
       // Always send the active pair_id
       params.append('pair_id', String(activePair.pair_id));
 
-      // Send month if selected
       if (filterValues.dateRange) {
-        const [start] = filterValues.dateRange as [string, string];
-        const date = new Date(start);
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        params.append('month', `${year}-${month}`);
+        const [startDate, endDate] = filterValues.dateRange as [string, string];
+        params.append('startDate', startDate);
+        params.append('endDate', endDate);
       }
 
       const url = `${API_URL}?${params.toString()}`;
@@ -210,6 +216,25 @@ export function ExecutiveSummaryPage() {
     );
   }
 
+  const getDisplayDates = () => {
+    if (filterValues.dateRange) {
+      const [start, end] = filterValues.dateRange as [string | null, string | null];
+      if (start && end) return { start, end };
+    }
+    
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    
+    return {
+      start: `${year}-${month}-01`, 
+      end: `${year}-${month}-${day}`
+    };
+  };
+
+  const displayDates = getDisplayDates();
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex justify-between items-center">
@@ -217,7 +242,7 @@ export function ExecutiveSummaryPage() {
           Executive Summary - {data.company}
         </h2>
         <div className="text-sm text-gray-500">
-          {formatDate(data.period.start)} – {formatDate(data.period.end)}
+          {formatDate(displayDates.start)} – {formatDate(displayDates.end)}
         </div>
       </div>
 

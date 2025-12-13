@@ -59,6 +59,14 @@ export function UniversalFilter({
     }).length;
   };
 
+  const formatDateToYYYYMMDD = (date: Date | null) => {
+    if (!date) return null;
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const renderFilterInput = (filter: FilterOption) => {
     const value = values[filter.key];
 
@@ -145,7 +153,7 @@ export function UniversalFilter({
               <Calendar
                 mode="single"
                 selected={value ? new Date(value) : undefined}
-                onSelect={(date) => updateFilter(filter.key, date?.toISOString().split('T')[0])}
+                onSelect={(date) => updateFilter(filter.key, formatDateToYYYYMMDD(date))}
                 initialFocus
               />
             </PopoverContent>
@@ -153,7 +161,9 @@ export function UniversalFilter({
         );
 
       case 'daterange':
-        const [startDate, endDate] = value || [null, null];
+        const dateRangeValue = value as [string | null, string | null] | undefined;
+        const [startDate, endDate] = dateRangeValue || [null, null];
+        
         return (
           <div className="grid grid-cols-2 gap-2">
             <Popover>
@@ -167,7 +177,10 @@ export function UniversalFilter({
                 <Calendar
                   mode="single"
                   selected={startDate ? new Date(startDate) : undefined}
-                  onSelect={(date) => updateFilter(filter.key, [date?.toISOString().split('T')[0], endDate])}
+                  onSelect={(date) => {
+                    const formattedDate = formatDateToYYYYMMDD(date);
+                    updateFilter(filter.key, [formattedDate, endDate]);
+                  }}
                   initialFocus
                 />
               </PopoverContent>
@@ -183,7 +196,10 @@ export function UniversalFilter({
                 <Calendar
                   mode="single"
                   selected={endDate ? new Date(endDate) : undefined}
-                  onSelect={(date) => updateFilter(filter.key, [startDate, date?.toISOString().split('T')[0]])}
+                  onSelect={(date) => {
+                    const formattedDate = formatDateToYYYYMMDD(date);
+                    updateFilter(filter.key, [startDate, formattedDate]); 
+                  }}
                   initialFocus
                 />
               </PopoverContent>

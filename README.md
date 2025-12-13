@@ -133,17 +133,6 @@ chmod +x setup.sh
 - **Backend API**: http://localhost:3001
 - **API Documentation**: http://localhost:3001/api-docs
 
-## 👥 Default User Accounts
-
-After seeding the database, you can use these accounts:
-
-| Role | Email | Password | Access Level |
-|------|-------|----------|--------------|
-| Admin | admin@mediamonitor.com | admin123 | Full system access |
-| Supervisor | supervisor@mediamonitor.com | supervisor123 | Manage users, approve content |
-| Analyst | analyst@mediamonitor.com | analyst123 | Create and edit content |
-| Client | client@mediamonitor.com | client123 | Read-only access |
-
 ## 📊 Dashboard Features
 
 ### Executive Summary

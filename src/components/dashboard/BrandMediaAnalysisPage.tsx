@@ -89,6 +89,17 @@ export function BrandMediaAnalysisPage() {
       return;
     }
 
+    if (filterValues.dateRange) {
+      const [startDate, endDate] = filterValues.dateRange as [string | null, string | null];
+      if (!startDate || !endDate) {
+        setLoading(false);
+        return; // Exit early if both dates aren't selected
+      }
+      } else {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -97,11 +108,10 @@ export function BrandMediaAnalysisPage() {
       // Always send pair_id
       params.append('pair_id', String(activePair.pair_id));
 
-      // Send month if selected
-      if (filterValues.dateRange?.start) {
-        const date = new Date(filterValues.dateRange.start);
-        const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-        params.append('month', month);
+      if (filterValues.dateRange) {
+        const [startDate, endDate] = filterValues.dateRange as [string, string];
+        params.append('startDate', startDate);
+        params.append('endDate', endDate);
       }
 
       const url = `${API_URL}?${params.toString()}`;

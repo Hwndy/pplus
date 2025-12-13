@@ -1,195 +1,414 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { UniversalFilter, FilterValues } from '@/components/ui/UniversalFilter';
+import { Mail, MailOpen, Eye, TrendingUp, Loader2 } from 'lucide-react';
+import { format } from 'date-fns';
 import { useAuth } from '@/components/auth/AuthContext';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
-import { EmailListView } from '@/components/dashboard/EmailListView';
 
-// Interface for EmailItem (shared with EmailListView)
-interface EmailItem {
+interface IndustryOverview {
   id: string;
-  title?: string;
-  sender?: { name: string; email: string };
-  date?: string;
-  content: string;
+  title: string;
+  date: string;
+  sector: string;
+  highlights: string[];
+  totalHighlights: number;
   isRead: boolean;
-  preview?: string;
 }
 
-// Convert industry landscape data to EmailItem format — persistent read state
-const convertIndustryDataToEmailFormat = (overviews: any[]): EmailItem[] =>
-  overviews.map((item) => ({
-    id: item.id.toString(),
-    title: item.analyst_note || `Industry Update - ${format(new Date(item.date), 'MMM d, yyyy')}`,
-    sender: {
-      name: item.created_by?.username || 'Unknown Analyst',
-      email: item.created_by?.email || 'N/A',
-    },
-    date: item.date,
-    content: `
-      <h3>Status: ${item.status}</h3>
-      <h3>Sector: ${item.sector}</h3>
-      <h3>Highlights:</h3>
-      <ul>${item.highlights.map((h: string) => `<li>${h}</li>`).join('')}</ul>
-      <p><strong>Total Highlights:</strong> ${item.total_highlights}</p>
-      <p><strong>Analyst Note:</strong> ${item.analyst_note || 'N/A'}</p>
-      <p><strong>Supervisor Note:</strong> ${item.supervisor_note || 'N/A'}</p>
-      ${item.approved_by
-        ? `<p><strong>Approved by:</strong> ${item.approved_by.username} (${item.approved_by.email})</p>`
-        : '<p><strong>Approved by:</strong> Not yet approved</p>'}
-      <p><strong>Created at:</strong> ${format(new Date(item.created_at), 'MMM d, yyyy HH:mm')}</p>
-      <p><strong>Updated at:</strong> ${format(new Date(item.updated_at), 'MMM d, yyyy HH:mm')}</p>
-    `,
-    isRead: localStorage.getItem(`industry-read-${item.id}`) === 'true',
-    preview: item.analyst_note ? item.analyst_note.substring(0, 120) + '...' : 'Industry update details...',
-  }));
+const STORAGE_KEY = 'industry-landscape-read-status';
 
-// Filter component
-const FilterComponent: React.FC<{
-  onChange: (values: { dateRange?: { start: string; end: string } }) => void;
-  onReset: () => void;
-  values: { dateRange?: { start: string; end: string } };
-}> = ({ onChange, onReset, values }) => {
-  const [startDate, setStartDate] = useState(values.dateRange?.start || '');
-  const [endDate, setEndDate] = useState(values.dateRange?.end || '');
+function cn(...classes: (string | undefined | null | false)[]): string {
+  return classes.filter(Boolean).join(' ');
+}
 
-  const handleApply = () => {
-    if (startDate && endDate) {
-      onChange({ dateRange: { start: startDate, end: endDate } });
-    } else {
-      toast.error('Please select both start and end dates');
+export default function IndustryLandscapePage() {
+  const { token, activePair } = useAuth();
+  const [filterValues, setFilterValues] = useState<FilterValues>({});
+  const [selectedOverview, setSelectedOverview] = useState<IndustryOverview | null>(null);
+  const [overviews, setOverviews] = useState<IndustryOverview[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [readStatus, setReadStatus] = useState<Record<string, boolean>>({});
+
+  const hasValidDateRange = filterValues.dateRange && Array.isArray(filterValues.dateRange) && filterValues.dateRange[0] && filterValues.dateRange[1];
+  const startDate = (hasValidDateRange ? filterValues.dateRange[0] : '') as string;
+  const endDate = (hasValidDateRange ? filterValues.dateRange[1] : '') as string;
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        setReadStatus(JSON.parse(saved));
+      }
+    } catch (e) {
+      console.warn('Failed to load read status from localStorage');
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(readStatus));
+    } catch (e) {
+      console.warn('Failed to save read status');
+    }
+  }, [readStatus]);
+
+  const fetchIndustryOverviews = useCallback(async () => {
+    if (!token || !activePair) {
+      setOverviews([]);
+      setLoading(false);
+      return;
+    }
+
+    if (filterValues.dateRange) {
+      const [start, end] = filterValues.dateRange as [string | null, string | null];
+      if (!start || !end) {
+        console.log('Waiting for both dates to be selected...');
+        setLoading(false);
+        return;
+      }
+    }
+
+    setLoading(true);
+
+    try {
+      const params = new URLSearchParams();
+      params.append('pair_id', String(activePair.pair_id));
+
+      if (hasValidDateRange) {
+        params.append('startDate', startDate);
+        params.append('endDate', endDate);
+      }
+
+      const url = `https://pplus-ipn6.onrender.com/api/report/industry-landscape-overview?${params.toString()}`;
+      console.log('Fetching Industry Landscape →', url);
+
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success && result.data?.overviews) {
+        const items: IndustryOverview[] = result.data.overviews.map((item: any) => ({
+          id: item.id.toString(),
+          title: item.analyst_note || `Industry Update - ${format(new Date(item.date), 'MMM d, yyyy')}`,
+          date: item.date,
+          sector: item.sector,
+          highlights: item.highlights || [],
+          totalHighlights: item.total_highlights || 0,
+          isRead: readStatus[item.id] || false,
+        }));
+        setOverviews(items);
+      } else {
+        setOverviews([]);
+        if (result.message && !result.message.includes('No industry landscape')) {
+          toast.info(result.message);
+        }
+      }
+    } catch (err: any) {
+      console.error('Error fetching industry landscape:', err);
+      if (err.response?.status === 404 || err.message?.includes('No industry landscape')) {
+        setOverviews([]);
+      } else {
+        toast.error('Failed to load industry updates');
+        setOverviews([]);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [token, activePair, filterValues.dateRange, hasValidDateRange, startDate, endDate, readStatus]);
+
+  useEffect(() => {
+    fetchIndustryOverviews();
+  }, [fetchIndustryOverviews]);
+
+  const handleOverviewClick = (overview: IndustryOverview) => {
+    setSelectedOverview(overview);
+
+    if (!overview.isRead) {
+      setReadStatus(prev => ({ ...prev, [overview.id]: true }));
+      setOverviews(prev =>
+        prev.map(o => o.id === overview.id ? { ...o, isRead: true } : o)
+      );
     }
   };
 
-  const handleReset = () => {
-    setStartDate('');
-    setEndDate('');
-    onReset();
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'approved': return 'bg-green-100 text-green-800';
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'draft': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
   };
 
+  const unreadCount = overviews.filter(o => !o.isRead).length;
+  const totalCount = overviews.length;
+
+  const filterOptions = [
+    { key: 'dateRange', label: 'Select Date Range', type: 'daterange', placeholder: 'Pick date range' },
+  ];
+
+  const formatDate = (date: string) => {
+    const [year, month, day] = date.split('-');
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${parseInt(day)} ${monthNames[parseInt(month) - 1]} ${year}`;
+  };
+
+  const getDisplayDates = () => {
+    if (filterValues.dateRange) {
+      const [start, end] = filterValues.dateRange as [string | null, string | null];
+      if (start && end) return { start, end };
+    }
+    
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    
+    return {
+      start: `${year}-${month}-01`,
+      end: `${year}-${month}-${day}`
+    };
+  };
+
+  const displayDates = getDisplayDates();
+
   return (
-    <div className="flex flex-col sm:flex-row gap-4 p-4 bg-gray-50 rounded-lg">
-      <div className="flex flex-col">
-        <label className="text-sm font-medium text-gray-700">Date Range</label>
-        <div className="flex gap-2">
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="border rounded px-2 py-1 text-sm"
-          />
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="border rounded px-2 py-1 text-sm"
-          />
+    <div className="space-y-8 animate-fade-in relative">
+      {loading && (
+        <div className="fixed inset-0 bg-white/60 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 flex flex-col items-center space-y-4 border border-gray-100">
+            <Loader2 className="w-12 h-12 animate-spin text-teal-600" />
+            <div className="text-center">
+              <p className="text-lg font-semibold text-gray-800">
+                Loading industry updates for {activePair?.company_name || 'your company'}
+              </p>
+              <p className="text-sm text-gray-500 mt-1">
+                {formatDate(displayDates.start)} – {formatDate(displayDates.end)}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="bg-gradient-to-r from-teal-600 via-emerald-600 to-green-600 rounded-2xl p-8 text-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-black/10"></div>
+        <div className="relative z-10 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold mb-2 tracking-tight">Industry Landscape</h1>
+            <p className="text-teal-100 text-lg">Sector updates and market insights</p>
+            {activePair && (
+              <p className="text-teal-200 text-sm mt-1">Currently viewing: <strong>{activePair.company_name}</strong></p>
+            )}
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="bg-white/20 backdrop-blur-sm rounded-full p-4">
+              <TrendingUp size={32} className="text-white" />
+            </div>
+            <div className="text-right">
+              <div className="text-sm text-teal-100">Total Updates</div>
+              <div className="text-2xl font-bold text-white">{totalCount}</div>
+              <div className="text-sm text-teal-200">{unreadCount} unread</div>
+            </div>
+          </div>
         </div>
       </div>
-      <div className="flex items-end gap-2">
-        <button
-          onClick={handleApply}
-          className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
-        >
-          Apply
-        </button>
-        <button
-          onClick={handleReset}
-          className="border border-gray-300 px-4 py-2 rounded hover:bg-gray-100"
-        >
-          Reset
-        </button>
-      </div>
-    </div>
-  );
-};
 
-// Main IndustryLandscapePage component — NOW FULLY PROFILE-AWARE
-const IndustryLandscapePage: React.FC = () => {
-  const { token, isAuthenticated, isLoading: authLoading, activePair } = useAuth();
-  const [filterValues, setFilterValues] = useState<{ dateRange?: { start: string; end: string } }>({});
-  const [industryData, setSpecialData] = useState<any[]>([]);
-  const [dataLoading, setDataLoading] = useState(true);
-
-  // Use activePair — safe fallback
-  const companyName = activePair?.company_name || 'Your Company';
-
-  // Get month from date range
-  const getMonthFromDateRange = (dateRange: any): string | null => {
-    if (!dateRange?.start) return null;
-    const start = new Date(dateRange.start);
-    return `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}`;
-  };
-
-  // Fetch industry landscape data — now uses activePair.pair_id
-  useEffect(() => {
-    if (authLoading || !isAuthenticated || !token || !activePair) return;
-
-    const fetchIndustryData = async () => {
-      setDataLoading(true);
-      try {
-        const month = getMonthFromDateRange(filterValues.dateRange);
-        let url = `https://pplus-ipn6.onrender.com/api/report/industry-landscape-overview?pair_id=${activePair.pair_id}`;
-        if (month) url += `&month=${month}`;
-
-        const response = await fetch(url, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-
-        const result = await response.json();
-
-        if (result.success && result.data?.overviews) {
-          setSpecialData(result.data.overviews);
-        } else {
-          setSpecialData([]);
-          if (result.message) toast.info(result.message);
-        }
-      } catch (err) {
-        console.error('Error fetching industry landscape:', err);
-        toast.error('Failed to load industry updates');
-        setSpecialData([]);
-      } finally {
-        setDataLoading(false);
-      }
-    };
-
-    fetchIndustryData();
-  }, [authLoading, isAuthenticated, token, activePair, filterValues.dateRange]); // ← activePair in deps
-
-  const emails = useMemo(() => convertIndustryDataToEmailFormat(industryData), [industryData]);
-
-  if (authLoading || dataLoading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div>Loading industry updates for <strong>{companyName}</strong>...</div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6 animate-fade-in">
-      <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-blue-500 text-transparent bg-clip-text">
-        Industry Updates - {companyName}
-      </h2>
-
-      <FilterComponent
+      <UniversalFilter
+        filters={filterOptions}
         values={filterValues}
         onChange={setFilterValues}
         onReset={() => setFilterValues({})}
       />
 
-      <EmailListView
-        emails={emails}
-        title="Industry Updates Inbox"
-        description={`Latest industry updates for ${companyName}`}
-        storagePrefix="industry-read-" // ← Preserves read state per item
-      />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* List */}
+        <div className="lg:col-span-2 space-y-4">
+          {overviews.length === 0 ? (
+            <Card className="border-0 shadow-lg">
+              <CardContent className="flex flex-col items-center justify-center h-96 text-center">
+                <TrendingUp size={64} className="text-gray-400 mb-6" />
+                <h3 className="text-xl font-semibold text-gray-800 mb-3">
+                  {hasValidDateRange
+                    ? 'No industry updates found for the selected period'
+                    : 'Select a date range to load industry updates'}
+                </h3>
+                <p className="text-gray-500 max-w-md">
+                  {hasValidDateRange
+                    ? `No updates found for ${activePair?.company_name || 'this company'} in the selected period.`
+                    : 'Use the date picker above to fetch industry landscape updates.'}
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            overviews.map((overview) => (
+              <Card
+                key={overview.id}
+                className={cn(
+                  "border-0 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer border-l-4",
+                  !overview.isRead
+                    ? 'bg-white border-l-teal-500 font-medium'
+                    : 'bg-gray-50/70 border-l-gray-300 text-gray-600',
+                  selectedOverview?.id === overview.id ? 'ring-2 ring-teal-500' : ''
+                )}
+                onClick={() => handleOverviewClick(overview)}
+              >
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      {overview.isRead ? (
+                        <MailOpen size={16} className="text-gray-400" />
+                      ) : (
+                        <Mail size={16} className="text-teal-600" />
+                      )}
+                      <span className={cn("text-sm font-medium", overview.isRead ? 'text-gray-500' : 'text-gray-900')}>
+                        {format(new Date(overview.date), 'MMM dd, yyyy')}
+                      </span>
+                    </div>
+                    {/* <Badge className={getStatusColor(overview.status)}>
+                      {overview.status}
+                    </Badge> */}
+                  </div>
+
+                  <div className="mb-3">
+                    <Badge variant="secondary" className="bg-teal-100 text-teal-800 mb-2">
+                      {overview.sector}
+                    </Badge>
+                  </div>
+
+                  <h3 className={cn("text-lg leading-tight mb-2", overview.isRead ? 'text-gray-700' : 'font-semibold text-gray-900')}>
+                    {overview.title}
+                  </h3>
+
+                  {/* <p className={cn("text-sm mb-4 line-clamp-2 leading-relaxed", overview.isRead ? 'text-gray-500' : 'text-gray-700')}>
+                    {overview.analystNote}
+                  </p> */}
+
+                  <div className="flex items-center gap-2 mb-3">
+                    <Badge variant="secondary" className="text-xs">
+                      {overview.totalHighlights} highlights
+                    </Badge>
+                  </div>
+
+                  {/* <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                    <span className={cn("text-xs", overview.isRead ? 'text-gray-400' : 'text-gray-600 font-medium')}>
+                      {overview.analystName}
+                    </span>
+                    <span className="text-xs text-gray-400">
+                      {format(new Date(overview.createdAt), 'MMM dd, HH:mm')}
+                    </span>
+                  </div> */}
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
+
+        {/* Detail Panel */}
+        <div className="lg:col-span-1">
+          {selectedOverview ? (
+            <Card className="border-0 shadow-lg sticky top-4">
+              <CardHeader>
+                <CardTitle className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                  <Eye size={20} className="text-teal-600" />
+                  Overview Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div>
+                  <div className="flex items-start justify-between mb-3">
+                    <h3 className="font-semibold text-gray-900 text-lg leading-tight pr-4">
+                      {selectedOverview.title}
+                    </h3>
+                    {/* <Badge className={getStatusColor(selectedOverview.status)}>
+                      {selectedOverview.status}
+                    </Badge> */}
+                  </div>
+                  <Badge variant="secondary" className="bg-teal-100 text-teal-800 mb-2">
+                    {selectedOverview.sector}
+                  </Badge>
+                  <p className="text-sm text-gray-600 mt-2">{format(new Date(selectedOverview.date), 'PPPP')}</p>
+                </div>
+
+                {/* <div className="bg-teal-50 rounded-lg p-4">
+                  <h4 className="text-sm font-semibold text-teal-800 mb-2">
+                    Analyst Note
+                  </h4>
+                  <p className="text-sm text-teal-900">{selectedOverview.analystNote}</p>
+                </div> */}
+
+                {/* Highlights */}
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium text-gray-700 border-b border-gray-200 pb-1">
+                    Key Highlights ({selectedOverview.totalHighlights})
+                  </h4>
+                  <ul className="space-y-2">
+                    {selectedOverview.highlights.map((highlight, i) => (
+                      <li key={i} className="text-sm text-gray-700 leading-relaxed flex items-start gap-2">
+                        <span className="text-teal-600 mt-1">•</span>
+                        <span>{highlight}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Notes */}
+                {/* <div className="space-y-3">
+                  <h4 className="text-sm font-medium text-gray-700 border-b border-gray-200 pb-1">Notes</h4>
+                  <div className="text-sm space-y-2">
+                    <div>
+                      <span className="text-gray-500">Supervisor Note:</span>
+                      <p className="font-medium mt-1">{selectedOverview.supervisorNote}</p>
+                    </div>
+                  </div>
+                </div> */}
+
+                {/* Metadata */}
+                {/* <div className="space-y-3">
+                  <h4 className="text-sm font-medium text-gray-700 border-b border-gray-200 pb-1">Details</h4>
+                  <div className="text-sm space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Analyst:</span>
+                      <span className="font-medium text-right">{selectedOverview.analystName}</span>
+                    </div>
+                    {selectedOverview.approvedBy && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Approved by:</span>
+                        <span className="font-medium text-right">{selectedOverview.approvedBy.username}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Created:</span>
+                      <span className="font-medium text-right">{format(new Date(selectedOverview.createdAt), 'PPp')}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Updated:</span>
+                      <span className="font-medium text-right">{format(new Date(selectedOverview.updatedAt), 'PPp')}</span>
+                    </div>
+                  </div>
+                </div> */}
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="border-0 shadow-lg">
+              <CardContent className="flex items-center justify-center h-64">
+                <div className="text-center">
+                  <Eye size={48} className="mx-auto text-gray-400 mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-800 mb-2">Select an update</h3>
+                  <p className="text-gray-500">Click on an industry update to view details.</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
     </div>
   );
-};
-
-export default IndustryLandscapePage;
+}

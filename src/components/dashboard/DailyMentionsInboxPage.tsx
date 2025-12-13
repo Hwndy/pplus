@@ -21,14 +21,12 @@ interface MentionItem {
   category: string;
   company: string;
   isRead: boolean;
-  submittedAt: string;
-  analystName: string;
 }
 
 const STORAGE_KEY = 'daily-mentions-read-status';
 
 export function DailyMentionsInboxPage() {
-  const { token, activePair } = useAuth(); // ← Added activePair
+  const { token, activePair } = useAuth();
   const [filterValues, setFilterValues] = useState<FilterValues>({
     date: ['', ''],
   });
@@ -43,7 +41,6 @@ export function DailyMentionsInboxPage() {
   const startDate = filterValues.date?.[0] || '';
   const endDate = filterValues.date?.[1] || '';
 
-  // Load read status from localStorage on mount
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -55,7 +52,6 @@ export function DailyMentionsInboxPage() {
     }
   }, []);
 
-  // Save to localStorage whenever readStatus changes
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(readStatus));
@@ -90,7 +86,10 @@ export function DailyMentionsInboxPage() {
       );
 
       if (!response.data.success || !response.data.data?.daily_mentions) {
-        throw new Error(response.data.message || 'Failed to fetch mentions');
+        // Handle success: false gracefully - treat as no data
+        setMentions([]);
+        setLoading(false);
+        return;
       }
 
       const rawMentions = response.data.data.daily_mentions;
@@ -99,8 +98,6 @@ export function DailyMentionsInboxPage() {
       rawMentions.forEach((daily: any) => {
         const baseDate = daily.date.split('T')[0];
         const companyName = daily.company.company_name;
-        const analystName = daily.created_by?.username || 'Unknown Analyst';
-        const submittedAt = daily.created_at;
 
         Object.entries(daily.categories).forEach(([category, items]: [string, any[]]) => {
           if (!Array.isArray(items) || items.length === 0) return;
@@ -120,8 +117,6 @@ export function DailyMentionsInboxPage() {
               category: category.toUpperCase(),
               company: companyName,
               isRead: readStatus[id] || false,
-              submittedAt,
-              analystName,
             });
           });
         });
@@ -129,15 +124,20 @@ export function DailyMentionsInboxPage() {
 
       setMentions(flattened);
     } catch (err: any) {
-      setError(err.message || 'Failed to load daily mentions');
-      setMentions([]);
+      // Handle 404 or "no mentions found" gracefully
+      if (err.response?.status === 404 || err.response?.data?.message?.includes('No daily mentions')) {
+        setMentions([]);
+        setError(null); // Don't show error for "no data found"
+      } else {
+        setError(err.response?.data?.message || err.message || 'Failed to load daily mentions');
+        setMentions([]);
+      }
       console.error('API Error:', err);
     } finally {
       setLoading(false);
     }
   }, [token, activePair, hasValidDateRange, startDate, endDate, readStatus]);
 
-  // Re-fetch when activePair or date range changes
   useEffect(() => {
     fetchDailyMentions();
   }, [fetchDailyMentions]);
@@ -270,12 +270,12 @@ export function DailyMentionsInboxPage() {
                 <Inbox size={64} className="text-gray-400 mb-6" />
                 <h3 className="text-xl font-semibold text-gray-800 mb-3">
                   {hasValidDateRange
-                    ? 'No mentions found for the selected period'
+                    ? 'No daily mentions found for the selected period'
                     : 'Select a date range to load mentions'}
                 </h3>
                 <p className="text-gray-500 max-w-md">
                   {hasValidDateRange
-                    ? 'Try choosing a different date range.'
+                    ? `No mentions were submitted for ${activePair?.company_name || 'this company'} between ${format(new Date(startDate), 'MMM dd, yyyy')} and ${format(new Date(endDate), 'MMM dd, yyyy')}.`
                     : 'Use the date picker above to fetch daily media mentions.'}
                 </p>
               </CardContent>
@@ -344,15 +344,6 @@ export function DailyMentionsInboxPage() {
                       <span className={mention.isRead ? 'text-gray-500' : 'text-gray-700'}>{mention.company}</span>
                     </div>
                   </div>
-
-                  <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                    <span className={`text-xs ${mention.isRead ? 'text-gray-400' : 'text-gray-600 font-medium'}`}>
-                      {mention.analystName}
-                    </span>
-                    <span className="text-xs text-gray-400">
-                      {format(new Date(mention.submittedAt), 'MMM dd, HH:mm')}
-                    </span>
-                  </div>
                 </CardContent>
               </Card>
             ))
@@ -397,14 +388,6 @@ export function DailyMentionsInboxPage() {
                     {selectedMention.reporter && <div className="flex justify-between"><span className="text-gray-500">Reporter:</span><span className="font-medium text-right">{selectedMention.reporter}</span></div>}
                     <div className="flex justify-between"><span className="text-gray-500">Date:</span><span className="font-medium text-right">{format(new Date(selectedMention.publicationDate), 'PPP')}</span></div>
                     {selectedMention.page && <div className="flex justify-between"><span className="text-gray-500">Page:</span><span className="font-medium text-right">{selectedMention.page}</span></div>}
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <h4 className="text-sm font-medium text-gray-700 border-b border-gray-200 pb-1">Analyst</h4>
-                  <div className="text-sm">
-                    <div className="flex justify-between"><span className="text-gray-500">Submitted by:</span><span className="font-medium text-right">{selectedMention.analystName}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-500">Submitted at:</span><span className="font-medium text-right">{format(new Date(selectedMention.submittedAt), 'PPp')}</span></div>
                   </div>
                 </div>
 
