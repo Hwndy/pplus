@@ -27,6 +27,8 @@ import {
   Eye,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from '@/components/auth/AuthContext';
+ // Adjust path if needed
 
 // -------------------- Types --------------------
 type CategoryValue = {
@@ -36,7 +38,6 @@ type CategoryValue = {
   createdAt?: string;
   updatedAt?: string;
 };
-
 type CategoryRaw = {
   id: number | string;
   name: string;
@@ -46,7 +47,6 @@ type CategoryRaw = {
   updatedAt?: string;
   values?: CategoryValue[];
 };
-
 export type Parameter = {
   _id: string;
   name: string;
@@ -61,13 +61,18 @@ export type Parameter = {
 // -------------------- Config --------------------
 const API_BASE = "https://pplus-ipn6.onrender.com/api";
 
-// -------------------- jsonFetch helper --------------------
-async function jsonFetch<T = any>(path: string, options: RequestInit = {}): Promise<T> {
+// -------------------- jsonFetch helper with Auth --------------------
+async function jsonFetch<T = any>(path: string, options: RequestInit = {}, token?: string | null): Promise<T> {
   const url = path.startsWith("http") ? path : `${API_BASE}${path}`;
   const headers: HeadersInit = {
     "Content-Type": "application/json",
     ...(options.headers || {}),
   };
+
+  // Add Authorization header if token exists
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
 
   const res = await fetch(url, { ...options, headers });
   const isJson = res.headers.get?.("content-type")?.includes("application/json");
@@ -111,7 +116,6 @@ function formatDate(d?: string) {
 // -------------------- ViewCategoryDetails Component --------------------
 const ViewCategoryDetails: React.FC<{ category: Parameter; onCancel: () => void }> = ({ category, onCancel }) => {
   if (!category) return null;
-
   return (
     <div className="space-y-6">
       <div className="grid gap-4">
@@ -179,9 +183,10 @@ const ViewCategoryDetails: React.FC<{ category: Parameter; onCancel: () => void 
   );
 };
 
-// -------------------- Component --------------------
+// -------------------- Main Component --------------------
 const ParametersPage: React.FC = () => {
   const { toast } = useToast();
+  const { token } = useAuth(); // Get token from AuthContext
 
   // table & query state
   const [data, setData] = useState<Parameter[]>([]);
@@ -216,9 +221,14 @@ const ParametersPage: React.FC = () => {
   // -------------------- Fetch categories --------------------
   const fetchParameters = useCallback(
     async (opts?: { resetPage?: boolean }) => {
+      if (!token) {
+        toast({ title: "Not authenticated", description: "Please log in again.", variant: "destructive" });
+        return;
+      }
+
       setLoading(true);
       try {
-        const resp: any = await jsonFetch(`/data-parameters`);
+        const resp: any = await jsonFetch(`/data-parameters`, {}, token);
         const categories: CategoryRaw[] = resp?.data?.data?.[0]?.categories ?? [];
 
         const filtered = categories.filter((c) =>
@@ -237,13 +247,10 @@ const ParametersPage: React.FC = () => {
         }));
 
         setTotal(mapped.length);
-
         const currentPage = opts?.resetPage ? 1 : page;
         if (opts?.resetPage) setPage(1);
-
         const start = (currentPage - 1) * pageSize;
         const paginated = mapped.slice(start, start + pageSize);
-
         setData(paginated);
       } catch (err: any) {
         toast({ title: "Failed to load parameters", description: err?.message || "Please try again", variant: "destructive" });
@@ -251,7 +258,7 @@ const ParametersPage: React.FC = () => {
         setLoading(false);
       }
     },
-    [debouncedSearch, page, pageSize, toast]
+    [debouncedSearch, page, pageSize, token, toast]
   );
 
   useEffect(() => {
@@ -286,6 +293,8 @@ const ParametersPage: React.FC = () => {
   }, []);
 
   const saveCategory = useCallback(async () => {
+    if (!token) return;
+
     const name = String(categoryForm.name || "").trim();
     const description = categoryForm.description?.trim() || undefined;
     const trimmedValues = (categoryForm.values || []).map((v) => v.trim()).filter(Boolean);
@@ -303,19 +312,14 @@ const ParametersPage: React.FC = () => {
         if (typeof categoryForm.active !== 'undefined') {
           payload.is_deleted = !categoryForm.active;
         }
-
         await jsonFetch(`/data-parameters-category/update/${editingCategory._id}`, {
           method: "PUT",
           body: JSON.stringify(payload),
-        });
-
+        }, token);
         toast({ title: "Category updated" });
       } else {
         try {
-          await jsonFetch(`/data-parameters/create`, {
-            method: "POST",
-            body: JSON.stringify({}),
-          });
+          await jsonFetch(`/data-parameters/create`, { method: "POST", body: JSON.stringify({}) }, token);
         } catch (err) {
           // Ignore "Only one DataParameter can exist" error
         }
@@ -323,7 +327,7 @@ const ParametersPage: React.FC = () => {
         const newCategory = await jsonFetch(`/data-parameters-category/create`, {
           method: "POST",
           body: JSON.stringify({ name, description }),
-        });
+        }, token);
 
         toast({ title: "Category created" });
 
@@ -334,7 +338,7 @@ const ParametersPage: React.FC = () => {
               dataParametersCategoryId: newCategory.data.id,
               value: trimmedValues,
             }),
-          });
+          }, token);
         }
       }
 
@@ -347,31 +351,30 @@ const ParametersPage: React.FC = () => {
     } finally {
       setSaving(false);
     }
-  }, [categoryForm, editingCategory, fetchParameters, toast]);
+  }, [categoryForm, editingCategory, fetchParameters, token, toast]);
 
   const deleteCategory = useCallback(
     async (cat: Parameter) => {
+      if (!token) return;
       try {
-        await jsonFetch(`/data-parameters-category/delete/${cat._id}`, {
-          method: "PUT",
-        });
+        await jsonFetch(`/data-parameters-category/delete/${cat._id}`, { method: "PUT" }, token);
         toast({ title: "Category deleted" });
         await fetchParameters();
       } catch (err: any) {
         toast({ title: "Delete failed", description: err?.message || "Try again", variant: "destructive" });
       }
     },
-    [fetchParameters, toast]
+    [fetchParameters, token, toast]
   );
 
   // -------------------- Value-level CRUD --------------------
   const createValue = useCallback(async (categoryId: number | string, valueText: string) => {
+    if (!token) return;
     const trimmed = valueText.trim();
     if (!trimmed) {
       toast({ title: "Value required", variant: "destructive" });
       return;
     }
-
     try {
       await jsonFetch(`/data-parameters-category-value/create`, {
         method: "POST",
@@ -379,16 +382,17 @@ const ParametersPage: React.FC = () => {
           dataParametersCategoryId: Number(categoryId),
           value: [trimmed],
         }),
-      });
+      }, token);
       toast({ title: "Value created" });
       await fetchParameters();
     } catch (err: any) {
       toast({ title: "Create value failed", description: err.message || "Try again", variant: "destructive" });
     }
-  }, [fetchParameters, toast]);
+  }, [fetchParameters, token, toast]);
 
   const updateValue = useCallback(
     async (valueId: number | string, newValue: string) => {
+      if (!token) return;
       if (!String(newValue).trim()) {
         toast({ title: "Value required", variant: "destructive" });
         return;
@@ -397,7 +401,7 @@ const ParametersPage: React.FC = () => {
         await jsonFetch(`/data-parameters-category-value/update/${valueId}`, {
           method: "PUT",
           body: JSON.stringify({ value: String(newValue).trim() }),
-        });
+        }, token);
         toast({ title: "Value updated" });
         setIsValueDialogOpen(false);
         setEditingValue(null);
@@ -406,22 +410,21 @@ const ParametersPage: React.FC = () => {
         toast({ title: "Update failed", description: err?.message || "Try again", variant: "destructive" });
       }
     },
-    [fetchParameters, toast]
+    [fetchParameters, token, toast]
   );
 
   const deleteValue = useCallback(
     async (value: CategoryValue) => {
+      if (!token) return;
       try {
-        await jsonFetch(`/data-parameters-category-value/delete/${value.id}`, {
-          method: "PUT",
-        });
+        await jsonFetch(`/data-parameters-category-value/delete/${value.id}`, { method: "PUT" }, token);
         toast({ title: "Value deleted" });
         await fetchParameters();
       } catch (err: any) {
         toast({ title: "Delete failed", description: err?.message || "Try again", variant: "destructive" });
       }
     },
-    [fetchParameters, toast]
+    [fetchParameters, token, toast]
   );
 
   // -------------------- Table columns --------------------
@@ -478,10 +481,7 @@ const ParametersPage: React.FC = () => {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => {
-                    setEditingCategory(orig);
-                    setIsCategoryDialogOpen(true);
-                  }}
+                  onClick={() => openEditCategory(orig)}
                 >
                   Manage values
                 </Button>
@@ -543,7 +543,7 @@ const ParametersPage: React.FC = () => {
         ),
       },
     ],
-    [openEditCategory, openViewCategory, deleteCategory]
+    [page, pageSize, openEditCategory, openViewCategory, deleteCategory]
   );
 
   const table = useReactTable({ data, columns, getCoreRowModel: getCoreRowModel() });
@@ -611,7 +611,6 @@ const ParametersPage: React.FC = () => {
         </div>
       );
     }
-
     return (
       <div className="space-y-2">
         {categoryForm.values.map((v, i) => (
@@ -648,13 +647,12 @@ const ParametersPage: React.FC = () => {
 
   // -------------------- Value dialog submit --------------------
   const handleValueDialogSave = useCallback(async () => {
-    if (!editingValue) return;
+    if (!editingValue || !token) return;
     const trimmedValue = editingValue.value.trim();
     if (!trimmedValue) {
       toast({ title: "Value required", variant: "destructive" });
       return;
     }
-
     try {
       if (!editingValue.id) {
         if (!editingCategory) {
@@ -667,23 +665,22 @@ const ParametersPage: React.FC = () => {
             dataParametersCategoryId: editingCategory._id,
             value: [trimmedValue],
           }),
-        });
+        }, token);
         toast({ title: "Value created" });
       } else {
         await jsonFetch(`/data-parameters-category-value/update/${editingValue.id}`, {
           method: "PUT",
           body: JSON.stringify({ value: trimmedValue }),
-        });
+        }, token);
         toast({ title: "Value updated" });
       }
-
       setIsValueDialogOpen(false);
       setEditingValue(null);
       await fetchParameters();
     } catch (err: any) {
       toast({ title: "Value save failed", description: err.message || "Try again", variant: "destructive" });
     }
-  }, [editingValue, editingCategory, fetchParameters, toast]);
+  }, [editingValue, editingCategory, fetchParameters, token, toast]);
 
   // -------------------- Render --------------------
   return (
@@ -716,9 +713,10 @@ const ParametersPage: React.FC = () => {
             className="pl-8"
           />
         </div>
+
         <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-indigo-950">
+            <Button onClick={openCreateCategory} className="bg-indigo-950">
               <PlusCircle className="mr-2 h-4 w-4" /> Create Category
             </Button>
           </DialogTrigger>
@@ -852,7 +850,6 @@ const ParametersPage: React.FC = () => {
                 onChange={(e) => {
                   setPageSize(Number(e.target.value));
                   setPage(1);
-                  fetchParameters({ resetPage: true });
                 }}
                 className="border rounded px-2 py-1 text-sm text-gray-700"
               >
@@ -867,7 +864,7 @@ const ParametersPage: React.FC = () => {
         </div>
       )}
 
-      {/* View Category Dialog */}
+      {/* View Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>

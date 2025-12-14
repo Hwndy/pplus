@@ -27,10 +27,12 @@ import {
 import { Pencil, Trash2, Search, Loader2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { CreatePublicationForm } from '@/components/admin/CreatePublicationForm';
+import { useAuth } from '@/components/auth/AuthContext';
 
 interface Publication {
   id: number;
   name: string;
+  value: string;
   type?: string;
   website?: string;
   description?: string;
@@ -38,6 +40,7 @@ interface Publication {
 }
 
 const PublicationsPage: React.FC = () => {
+  const { token } = useAuth();
   const [publications, setPublications] = useState<Publication[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,23 +54,51 @@ const PublicationsPage: React.FC = () => {
   const pageSize = 10;
 
   const fetchPublications = async (page = 1, search = '') => {
+    if (!token) {
+      setError('No token provided');
+      toast.error('Authentication required');
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
+
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      };
+
       const response = await fetch(
-        `https://pplus-ipn6.onrender.com/api/publications?page=${page}&limit=${pageSize}&search=${search}`
+        `https://pplus-ipn6.onrender.com/api/data-parameters/category/Publications?page=${page}&limit=${pageSize}&search=${encodeURIComponent(search)}`,
+        { headers }
       );
+
       const result = await response.json();
 
       if (result.success) {
-        setPublications(result.data.publication || []);
-        setTotalPages(result.data.meta?.totalPage || 1);
+        const mediaMetrics = result.data.find((item: any) => item.name === 'Media Metrics');
+        const publicationsCategory = mediaMetrics?.categories?.find((cat: any) => cat.name === 'Publications');
+        const pubsArray = publicationsCategory?.values || [];
+
+        const formattedPublications: Publication[] = pubsArray.map((pub: any) => ({
+          id: pub.id,
+          name: pub.value,
+          value: pub.value,
+          createdAt: pub.createdAt,
+        }));
+
+        setPublications(formattedPublications);
+
+        const totalItems = pubsArray.length;
+        setTotalPages(Math.ceil(totalItems / pageSize) || 1);
       } else {
         throw new Error(result.message || 'Failed to load publications');
       }
     } catch (err: any) {
       console.error('Error fetching publications:', err);
       setError(err.message || 'Something went wrong');
+      setPublications([]);
     } finally {
       setLoading(false);
     }
@@ -75,7 +106,7 @@ const PublicationsPage: React.FC = () => {
 
   useEffect(() => {
     fetchPublications(currentPage, searchTerm);
-  }, [currentPage, searchTerm]);
+  }, [currentPage, searchTerm, token]);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
@@ -83,10 +114,19 @@ const PublicationsPage: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
+    if (!token) {
+      toast.error('Authentication required');
+      return;
+    }
+
     try {
       setDeletingId(id);
-      const response = await fetch(`https://pplus-ipn6.onrender.com/api/publications/delete/${id}`, {
+      const response = await fetch(`https://pplus-ipn6.onrender.com/api/data-parameters/value/delete/${id}`, {
         method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
       });
       const result = await response.json();
       if (result.success) {
@@ -103,29 +143,63 @@ const PublicationsPage: React.FC = () => {
     }
   };
 
-  const handleSavePublication = async (publicationData: Publication) => {
+  const handleSavePublication = async (publicationData: Partial<Publication>) => {
+    if (!token) {
+      toast.error('Authentication required');
+      return;
+    }
+
     try {
       setLoading(true);
-      const url = editingPublication
-        ? `https://pplus-ipn6.onrender.com/api/publications/update/${editingPublication.id}`
-        : `https://pplus-ipn6.onrender.com/api/publications/create`;
 
-      const response = await fetch(url, {
-        method: editingPublication ? 'PUT' : 'POST',
+      const response = await fetch('https://pplus-ipn6.onrender.com/api/data-parameters', {
         headers: {
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(publicationData),
       });
 
       const result = await response.json();
-      if (result.success) {
+
+      if (!result.success || !Array.isArray(result.data)) {
+        throw new Error('Failed to load data parameters');
+      }
+
+      const mediaMetrics = result.data.find((item: any) => item.name === 'Media Metrics');
+      if (!mediaMetrics) throw new Error('Media Metrics parameter not found');
+
+      const publicationsCategory = mediaMetrics.categories?.find((cat: any) => cat.name === 'Publications');
+      if (!publicationsCategory) throw new Error('Publications category not found');
+
+      const url = editingPublication
+        ? `https://pplus-ipn6.onrender.com/api/data-parameters/value/update/${editingPublication.id}`
+        : `https://pplus-ipn6.onrender.com/api/data-parameters/value/create`;
+
+      const payload = editingPublication
+        ? { value: publicationData.name }
+        : {
+            dataParametersCategoryId: publicationsCategory.id,
+            value: publicationData.name,
+          };
+
+      const saveResponse = await fetch(url, {
+        method: editingPublication ? 'PUT' : 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const saveResult = await saveResponse.json();
+
+      if (saveResult.success) {
         toast.success(editingPublication ? 'Publication updated successfully' : 'Publication created successfully');
         setIsDialogOpen(false);
         setEditingPublication(null);
         fetchPublications(1, searchTerm);
       } else {
-        throw new Error(result.message || 'Failed to save publication');
+        throw new Error(saveResult.message || 'Failed to save publication');
       }
     } catch (err: any) {
       console.error('Error saving publication:', err);
@@ -165,7 +239,9 @@ const PublicationsPage: React.FC = () => {
 
         <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) setEditingPublication(null); }}>
           <DialogTrigger asChild>
-            <Button className="bg-indigo-950">{editingPublication ? 'Edit Publication' : 'Create Publication'}</Button>
+            <Button className="bg-indigo-950">
+              {editingPublication ? 'Edit Publication' : 'Create Publication'}
+            </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
@@ -212,16 +288,8 @@ const PublicationsPage: React.FC = () => {
                 <TableRow key={publication.id}>
                   <TableCell>{(currentPage - 1) * pageSize + index + 1}</TableCell>
                   <TableCell className="font-medium">{publication.name}</TableCell>
-                  <TableCell>{publication.type || 'N/A'}</TableCell>
-                  <TableCell>
-                    {publication.website ? (
-                      <a href={publication.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                        {publication.website}
-                      </a>
-                    ) : (
-                      'N/A'
-                    )}
-                  </TableCell>
+                  <TableCell>N/A</TableCell>
+                  <TableCell>N/A</TableCell>
                   <TableCell>{publication.createdAt ? new Date(publication.createdAt).toLocaleDateString() : 'N/A'}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
@@ -229,7 +297,10 @@ const PublicationsPage: React.FC = () => {
                         variant="ghost"
                         size="icon"
                         title="Edit"
-                        onClick={() => { setEditingPublication(publication); setIsDialogOpen(true); }}
+                        onClick={() => {
+                          setEditingPublication(publication);
+                          setIsDialogOpen(true);
+                        }}
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>

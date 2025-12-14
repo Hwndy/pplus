@@ -33,7 +33,6 @@ export const CreatePublicationForm: React.FC<CreatePublicationFormProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Prefill form when editing
   useEffect(() => {
     if (initialData) {
       setFormData({
@@ -63,7 +62,6 @@ export const CreatePublicationForm: React.FC<CreatePublicationFormProps> = ({
     setIsSubmitting(true);
     try {
       await onSave(formData);
-      // reset only if creating
       if (!initialData) {
         setFormData({ name: '', publication_type: 'print', website: '', description: '' });
       }
@@ -82,7 +80,6 @@ export const CreatePublicationForm: React.FC<CreatePublicationFormProps> = ({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Name */}
       <div>
         <Label htmlFor="name">Publication Name *</Label>
         <Input
@@ -95,7 +92,6 @@ export const CreatePublicationForm: React.FC<CreatePublicationFormProps> = ({
         {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
       </div>
 
-      {/* Publication Type */}
       <div>
         <Label htmlFor="publication_type">Publication Type *</Label>
         <Select
@@ -117,7 +113,6 @@ export const CreatePublicationForm: React.FC<CreatePublicationFormProps> = ({
         {errors.publication_type && <p className="text-red-500 text-sm mt-1">{errors.publication_type}</p>}
       </div>
 
-      {/* Website */}
       <div>
         <Label htmlFor="website">Website</Label>
         <Input
@@ -131,7 +126,6 @@ export const CreatePublicationForm: React.FC<CreatePublicationFormProps> = ({
         {errors.website && <p className="text-red-500 text-sm mt-1">{errors.website}</p>}
       </div>
 
-      {/* Description */}
       <div>
         <Label htmlFor="description">Description</Label>
         <Textarea
@@ -143,7 +137,6 @@ export const CreatePublicationForm: React.FC<CreatePublicationFormProps> = ({
         />
       </div>
 
-      {/* Actions */}
       <div className="flex justify-end gap-2 pt-4">
         <Button
           type="button"
