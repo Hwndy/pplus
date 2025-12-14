@@ -81,7 +81,7 @@ export function BrandMediaAnalysisPage() {
   const [loading, setLoading] = useState(true);
   const [hasData, setHasData] = useState(false);
 
-  const API_URL = 'https://pplus-ipn6.onrender.com/api/report/brand-media-analysis';
+  const API_URL = 'https://pplus-5kdv.onrender.com/api/report/brand-media-analysis';
 
   const fetchData = async () => {
     if (!token || !activePair) {

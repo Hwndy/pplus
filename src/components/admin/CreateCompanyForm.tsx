@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
 import {
   Form,
   FormLabel,
@@ -18,6 +17,8 @@ import { X, Copy, Loader2, Plus, Minus } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import axios from 'axios';
+import { useAuth } from '@/components/auth/AuthContext';
+// Adjust path if needed
 
 interface Company {
   id: number;
@@ -63,6 +64,8 @@ export default function CreateCompanyForm({
   initialValues = null,
   isViewMode = false,
 }: CreateCompanyFormProps) {
+  const { token } = useAuth();
+
   const [companyForms, setCompanyForms] = useState<CompanyFormData[]>([
     initialValues || {
       company_name: '',
@@ -86,26 +89,63 @@ export default function CreateCompanyForm({
   ]);
 
   const [apiCompanies, setApiCompanies] = useState<Company[]>([]);
+  const [subIndustries, setSubIndustries] = useState<string[]>([]);
+  const [ceos, setCeos] = useState<string[]>([]);
+  const [loadingOptions, setLoadingOptions] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const form = useForm<CompanyFormData>();
-
+  // Fetch parameters (Sub-Industry, CEO) and companies for subsidiaries
   useEffect(() => {
-    const fetchCompanies = async () => {
+    const fetchData = async () => {
+      if (!token) {
+        toast.error('Authentication required. Please log in again.');
+        return;
+      }
+
+      setLoadingOptions(true);
       try {
-        const res = await axios.get('https://pplus-ipn6.onrender.com/api/companies/?limit=1000');
-        const companies = res.data?.data?.data || [];
-        const validCompanies = companies.filter((company: Company) => company.id && company.id.toString().length > 0);
-        setApiCompanies(validCompanies);
-      } catch (error) {
-        console.error('Failed to fetch companies for subsidiaries:', error);
-        toast.error('Failed to load companies for subsidiaries');
-        setApiCompanies([]);
+        // Fetch data-parameters
+        const paramsRes = await axios.get('https://pplus-5kdv.onrender.com/api/data-parameters', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const categories = paramsRes.data?.data?.data?.[0]?.categories || [];
+
+        // Extract Sub-Industry values
+        const subIndustryCategory = categories.find((cat: any) =>
+          cat.name.toLowerCase().includes('sub') && cat.name.toLowerCase().includes('industry')
+        );
+        if (subIndustryCategory?.values) {
+          setSubIndustries(subIndustryCategory.values.map((v: any) => v.value));
+        }
+
+        // Extract CEO values
+        const ceoCategory = categories.find((cat: any) =>
+          cat.name.toLowerCase() === 'ceo' || cat.name.toLowerCase().includes('ceo')
+        );
+        if (ceoCategory?.values) {
+          setCeos(ceoCategory.values.map((v: any) => v.value));
+        }
+
+        // Fetch companies for subsidiary dropdown
+        const compRes = await axios.get('https://pplus-5kdv.onrender.com/api/companies/?limit=1000', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const companies = compRes.data?.data?.data || [];
+        setApiCompanies(companies.filter((c: any) => c.id && c.company_name));
+
+      } catch (error: any) {
+        console.error('Failed to load form options:', error);
+        toast.error(error.response?.data?.message || 'Failed to load dropdown options');
+      } finally {
+        setLoadingOptions(false);
       }
     };
-    fetchCompanies();
-  }, []);
 
+    fetchData();
+  }, [token]);
+
+  // Populate form when editing
   useEffect(() => {
     if (initialValues) {
       setCompanyForms([{
@@ -114,7 +154,7 @@ export default function CreateCompanyForm({
         email: initialValues.email || '',
         industry: initialValues.industry || '',
         sub_industry: initialValues.sub_industry || '',
-        subsidiaries: initialValues.subsidiaries.map(sub => ({
+        subsidiaries: initialValues.subsidiaries?.map(sub => ({
           id: sub.id,
           subsidiary_id: sub.subsidiary_id || 0,
         })) || [],
@@ -162,31 +202,31 @@ export default function CreateCompanyForm({
   };
 
   const handleRemoveCompanyForm = (index: number) => {
-    setCompanyForms(companyForms.filter((_, i) => i !== index));
+    setCompanyForms(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubsidiaryChange = (formIndex: number, subIndex: number, field: keyof Subsidiary, value: string | number) => {
-    setCompanyForms(prev => prev.map((form, i) => 
+  const handleSubsidiaryChange = (formIndex: number, subIndex: number, value: string) => {
+    setCompanyForms(prev => prev.map((form, i) =>
       i === formIndex ? {
         ...form,
-        subsidiaries: form.subsidiaries.map((sub, j) => 
-          j === subIndex ? { ...sub, [field]: field === 'subsidiary_company_id' ? parseInt(value as string) : value } : sub
+        subsidiaries: form.subsidiaries.map((sub, j) =>
+          j === subIndex ? { ...sub, subsidiary_id: parseInt(value) } : sub
         )
       } : form
     ));
   };
 
   const handleAddSubsidiary = (formIndex: number) => {
-    setCompanyForms(prev => prev.map((form, i) => 
+    setCompanyForms(prev => prev.map((form, i) =>
       i === formIndex ? {
         ...form,
-        subsidiaries: [...form.subsidiaries, { subsidiary_company_id: 0}]
+        subsidiaries: [...form.subsidiaries, { subsidiary_id: 0 }]
       } : form
     ));
   };
 
   const handleRemoveSubsidiary = (formIndex: number, subIndex: number) => {
-    setCompanyForms(prev => prev.map((form, i) => 
+    setCompanyForms(prev => prev.map((form, i) =>
       i === formIndex ? {
         ...form,
         subsidiaries: form.subsidiaries.filter((_, j) => j !== subIndex)
@@ -195,74 +235,67 @@ export default function CreateCompanyForm({
   };
 
   const updateCompanyForm = (index: number, field: keyof CompanyFormData, value: string) => {
-    setCompanyForms(prev => prev.map((form, i) => 
+    setCompanyForms(prev => prev.map((form, i) =>
       i === index ? { ...form, [field]: value } : form
     ));
   };
 
   const onSubmit = async () => {
-    if (isViewMode) return;
+    if (isViewMode || isSubmitting || !token) return;
 
-    if (isSubmitting) return;
     setIsSubmitting(true);
-
     try {
       const results = [];
-      for (const form of companyForms) {
-        const companyData = {
-          company_name: form.company_name,
-          email: form.email,
+      for (const [index, form] of companyForms.entries()) {
+        const payload: any = {
+          company_name: form.company_name.trim(),
+          email: form.email.trim(),
           industry: form.industry,
           sub_industry: form.sub_industry,
-          office_address: form.office_address,
-          office_state: form.office_state,
-          office_country: form.office_country,
-          contact_person: form.contact_person,
+          office_address: form.office_address.trim(),
+          office_state: form.office_state.trim(),
+          office_country: form.office_country.trim(),
+          contact_person: form.contact_person.trim(),
           ceo: form.ceo,
-          phone_no: form.phone_no,
-          website: form.website,
-          facebook_link: form.facebook_link || 'https://facebook.com',
-          instagram_link: form.instagram_link || 'https://instagram.com',
-          twitter_link: form.twitter_link || 'https://twitter.com',
-          linkedin_link: form.linkedin_link || 'https://linkedin.com',
-          youtube_link: form.youtube_link || 'https://youtube.com',
+          phone_no: form.phone_no.trim(),
+          website: form.website.trim(),
+          facebook_link: form.facebook_link?.trim() || null,
+          instagram_link: form.instagram_link?.trim() || null,
+          twitter_link: form.twitter_link?.trim() || null,
+          linkedin_link: form.linkedin_link?.trim() || null,
+          youtube_link: form.youtube_link?.trim() || null,
         };
 
-        const subsidiaryData = form.subsidiaries
-          .filter(sub => sub.subsidiary_id > 0)
-          .map(sub => ({
-            subsidiary_id: sub.subsidiary_id,
-          }));
+        const subsidiaries = form.subsidiaries
+          .filter(s => s.subsidiary_id > 0)
+          .map(s => ({ subsidiary_id: s.subsidiary_id }));
 
-        const payload = { ...companyData };
-        if (subsidiaryData.length > 0) {
-          payload.subsidiaries = subsidiaryData;
+        if (subsidiaries.length > 0) {
+          payload.subsidiaries = subsidiaries;
         }
 
         let res;
-        if (initialValues && initialValues.id && index === 0) {
+        if (initialValues?.id && index === 0) {
           res = await axios.put(
-            `https://pplus-ipn6.onrender.com/api/companies/update/${initialValues.id}`,
-            payload
+            `https://pplus-5kdv.onrender.com/api/companies/update/${initialValues.id}`,
+            payload,
+            { headers: { Authorization: `Bearer ${token}` } }
           );
         } else {
           res = await axios.post(
-            'https://pplus-ipn6.onrender.com/api/companies/create',
-            payload
+            'https://pplus-5kdv.onrender.com/api/companies/create',
+            payload,
+            { headers: { Authorization: `Bearer ${token}` } }
           );
         }
         results.push(res.data);
       }
 
       onSave(results.length === 1 ? results[0] : results);
-      toast.success(
-        initialValues ? 'Company updated successfully' : `${results.length} company(ies) created successfully`
-      );
+      toast.success(initialValues ? 'Company updated successfully' : `${results.length} company(ies) created successfully`);
     } catch (error: any) {
-      console.error('Error saving company:', error.response?.data || error);
-      toast.error(
-        `Failed to ${initialValues ? 'update' : 'create'} company: ${error.response?.data?.message || error.message}`
-      );
+      console.error('Error saving company:', error);
+      toast.error(error.response?.data?.message || 'Failed to save company');
     } finally {
       setIsSubmitting(false);
     }
@@ -279,332 +312,327 @@ export default function CreateCompanyForm({
     'Other',
   ];
 
-  const isDisabled = isViewMode;
+  if (loadingOptions) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-10 w-10 animate-spin text-indigo-600 mr-3" />
+        <p>Loading form options...</p>
+      </div>
+    );
+  }
 
   return (
-    <ScrollArea className="h-[calc(100vh-300px)]">
-      <div className="p-1">
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit as any)} className="space-y-8">
-            {companyForms.map((companyForm, formIndex) => (
-              <div
-                key={formIndex}
-                className="border p-4 rounded-md relative mb-6"
-              >
-                {formIndex > 0 && !isViewMode && (
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="absolute top-2 right-2 text-red-500 hover:text-red-700"
-                    onClick={() => handleRemoveCompanyForm(formIndex)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                )}
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <FormLabel>Company Name *</FormLabel>
-                    <Input
-                      value={companyForm.company_name}
-                      onChange={(e) => updateCompanyForm(formIndex, 'company_name', e.target.value)}
-                      placeholder="Company Name"
-                      disabled={isDisabled}
-                    />
-                  </div>
-
-                  <div>
-                    <FormLabel>Industry</FormLabel>
-                    <Select
-                      value={companyForm.industry}
-                      onValueChange={(val) => updateCompanyForm(formIndex, 'industry', val)}
-                      disabled={isDisabled}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select industry" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {industryOptions.map((opt) => (
-                          <SelectItem key={opt} value={opt}>
-                            {opt}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <FormLabel>Sub-Industry *</FormLabel>
-                    <Input
-                      value={companyForm.sub_industry}
-                      onChange={(e) => updateCompanyForm(formIndex, 'sub_industry', e.target.value)}
-                      placeholder="Sub-Industry"
-                      disabled={isDisabled}
-                    />
-                  </div>
-
-                  {/* Removed prefix from second row */}
-                  {/* {formIndex === 0 && (
-                    <div>
-                      <FormLabel>Prefix</FormLabel>
-                      <Input
-                        value={companyForm.prefix}
-                        onChange={(e) => updateCompanyForm(formIndex, 'prefix', e.target.value)}
-                        placeholder="Prefix"
-                        disabled={isDisabled}
-                      />
-                    </div>
-                  )} */}
-
-                  <div className="col-span-2">
-                    <FormLabel>Office Address *</FormLabel>
-                    <Textarea
-                      value={companyForm.office_address}
-                      onChange={(e) => updateCompanyForm(formIndex, 'office_address', e.target.value)}
-                      placeholder="Office Address"
-                      disabled={isDisabled}
-                    />
-                  </div>
-
-                  <div>
-                    <FormLabel>Office State *</FormLabel>
-                    <Input
-                      value={companyForm.office_state}
-                      onChange={(e) => updateCompanyForm(formIndex, 'office_state', e.target.value)}
-                      placeholder="Office State"
-                      disabled={isDisabled}
-                    />
-                  </div>
-
-                  <div>
-                    <FormLabel>Office Country *</FormLabel>
-                    <Input
-                      value={companyForm.office_country}
-                      onChange={(e) => updateCompanyForm(formIndex, 'office_country', e.target.value)}
-                      placeholder="Office Country"
-                      disabled={isDisabled}
-                    />
-                  </div>
-
-                  <div>
-                    <FormLabel>Email *</FormLabel>
-                    <Input
-                      value={companyForm.email}
-                      onChange={(e) => updateCompanyForm(formIndex, 'email', e.target.value)}
-                      placeholder="Email"
-                      type="email"
-                      disabled={isDisabled}
-                    />
-                  </div>
-
-                  <div>
-                    <FormLabel>Contact Person *</FormLabel>
-                    <Input
-                      value={companyForm.contact_person}
-                      onChange={(e) => updateCompanyForm(formIndex, 'contact_person', e.target.value)}
-                      placeholder="Contact Person"
-                      disabled={isDisabled}
-                    />
-                  </div>
-
-                  <div>
-                    <FormLabel>CEO *</FormLabel>
-                    <Input
-                      value={companyForm.ceo}
-                      onChange={(e) => updateCompanyForm(formIndex, 'ceo', e.target.value)}
-                      placeholder="CEO"
-                      disabled={isDisabled}
-                    />
-                  </div>
-
-                  <div>
-                    <FormLabel>Phone *</FormLabel>
-                    <Input
-                      value={companyForm.phone_no}
-                      onChange={(e) => updateCompanyForm(formIndex, 'phone_no', e.target.value)}
-                      placeholder="Phone"
-                      type="tel"
-                      disabled={isDisabled}
-                    />
-                  </div>
-
-                  <div className="col-span-2">
-                    <FormLabel>Website *</FormLabel>
-                    <Input
-                      value={companyForm.website}
-                      onChange={(e) => updateCompanyForm(formIndex, 'website', e.target.value)}
-                      placeholder="Website"
-                      disabled={isDisabled}
-                    />
-                  </div>
-
-                  <div>
-                    <FormLabel>Facebook Link</FormLabel>
-                    <Input
-                      value={companyForm.facebook_link}
-                      onChange={(e) => updateCompanyForm(formIndex, 'facebook_link', e.target.value)}
-                      placeholder="https://facebook.com"
-                      disabled={isDisabled}
-                    />
-                  </div>
-
-                  <div>
-                    <FormLabel>Instagram Link</FormLabel>
-                    <Input
-                      value={companyForm.instagram_link}
-                      onChange={(e) => updateCompanyForm(formIndex, 'instagram_link', e.target.value)}
-                      placeholder="https://instagram.com"
-                      disabled={isDisabled}
-                    />
-                  </div>
-
-                  <div>
-                    <FormLabel>Twitter Link</FormLabel>
-                    <Input
-                      value={companyForm.twitter_link}
-                      onChange={(e) => updateCompanyForm(formIndex, 'twitter_link', e.target.value)}
-                      placeholder="https://twitter.com"
-                      disabled={isDisabled}
-                    />
-                  </div>
-
-                  <div>
-                    <FormLabel>LinkedIn Link</FormLabel>
-                    <Input
-                      value={companyForm.linkedin_link}
-                      onChange={(e) => updateCompanyForm(formIndex, 'linkedin_link', e.target.value)}
-                      placeholder="https://linkedin.com"
-                      disabled={isDisabled}
-                    />
-                  </div>
-
-                  <div>
-                    <FormLabel>YouTube Link</FormLabel>
-                    <Input
-                      value={companyForm.youtube_link}
-                      onChange={(e) => updateCompanyForm(formIndex, 'youtube_link', e.target.value)}
-                      placeholder="https://youtube.com"
-                      disabled={isDisabled}
-                    />
-                  </div>
-                </div>
-
-                <div className="border-t pt-4 mt-4">
-                  <div className="flex justify-between items-center mb-4">
-                    <FormLabel>Subsidiaries</FormLabel>
-                    {!isViewMode && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleAddSubsidiary(formIndex)}
-                      >
-                        <Plus className="h-4 w-4 mr-1" />
-                        Add Subsidiary
-                      </Button>
-                    )}
-                  </div>
-                  {companyForm.subsidiaries.length === 0 ? (
-                    <p className="text-gray-500 text-sm">No subsidiaries added.</p>
-                  ) : (
-                    companyForm.subsidiaries.map((sub, subIndex) => (
-                      <div key={subIndex} className="flex gap-4 items-end mb-4 p-3 border rounded-md">
-                        <div className="flex-1">
-                          <FormLabel>Subsidiary Company</FormLabel>
-                          <Select
-                            value={sub.subsidiary_id ? sub.subsidiary_id.toString() : ''}
-                            onValueChange={(val) => handleSubsidiaryChange(formIndex, subIndex, 'subsidiary_id', val)}
-                            disabled={isDisabled}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Search for a company" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {apiCompanies.map((company) => (
-                                <SelectItem key={company.id} value={company.id.toString()}>
-                                  {company.company_name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        {/*<div className="flex-1">
-                          <FormLabel>Prefix</FormLabel>
-                          <Input
-                            value={sub.prefix || ''}
-                            onChange={(e) => handleSubsidiaryChange(formIndex, subIndex, 'prefix', e.target.value)}
-                            placeholder="Prefix (optional)"
-                            disabled={isDisabled}
-                          />
-                        </div>*/}
-                        {!isViewMode && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRemoveSubsidiary(formIndex, subIndex)}
-                            className="text-red-500"
-                          >
-                            <Minus className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            ))}
-
-            {!initialValues && !isViewMode && (
-              <div className="flex justify-center">
+    <ScrollArea className="h-[calc(100vh-300px)] pr-4">
+      <div className="p-4">
+        <form onSubmit={(e) => { e.preventDefault(); onSubmit(); }} className="space-y-8">
+          {companyForms.map((companyForm, formIndex) => (
+            <div key={formIndex} className="border rounded-lg p-6 relative bg-white">
+              {formIndex > 0 && !isViewMode && (
                 <Button
                   type="button"
-                  onClick={handleAddCompanyForm}
-                  className="bg-blue-500 hover:bg-blue-600"
-                  disabled={companyForms.length >= 2}
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-4 right-4 text-red-600 hover:bg-red-50"
+                  onClick={() => handleRemoveCompanyForm(formIndex)}
                 >
-                  <Copy className="mr-2 h-4 w-4" />
-                  Clone Company Form
+                  <X className="h-5 w-5" />
                 </Button>
-              </div>
-            )}
-
-            <div className="border-t pt-4 mt-4"></div>
-
-            <div className="flex justify-end space-x-2 pt-4">
-              {isViewMode ? (
-                <Button type="button" onClick={onCancel} disabled={isSubmitting}>
-                  Close
-                </Button>
-              ) : (
-                <>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={onCancel}
-                    className="bg-gray-50 hover:bg-gray-100 text-gray-800"
-                    disabled={isSubmitting}
-                  >
-                    Discard
-                  </Button>
-                  <Button type="submit" className="bg-indigo-950" disabled={isSubmitting}>
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        {initialValues ? 'Updating...' : 'Creating...'}
-                      </>
-                    ) : initialValues ? (
-                      'Update'
-                    ) : (
-                      'Save'
-                    )}
-                  </Button>
-                </>
               )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <FormLabel>Company Name *</FormLabel>
+                  <Input
+                    value={companyForm.company_name}
+                    onChange={(e) => updateCompanyForm(formIndex, 'company_name', e.target.value)}
+                    placeholder="Company Name"
+                    disabled={isViewMode}
+                  />
+                </div>
+
+                <div>
+                  <FormLabel>Industry</FormLabel>
+                  <Select
+                    value={companyForm.industry}
+                    onValueChange={(val) => updateCompanyForm(formIndex, 'industry', val)}
+                    disabled={isViewMode}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select industry" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {industryOptions.map((opt) => (
+                        <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <FormLabel>Sub-Industry *</FormLabel>
+                  <Select
+                    value={companyForm.sub_industry}
+                    onValueChange={(val) => updateCompanyForm(formIndex, 'sub_industry', val)}
+                    disabled={isViewMode}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={subIndustries.length === 0 ? "No options" : "Select sub-industry"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {subIndustries.map((item) => (
+                        <SelectItem key={item} value={item}>{item}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <FormLabel>CEO *</FormLabel>
+                  <Select
+                    value={companyForm.ceo}
+                    onValueChange={(val) => updateCompanyForm(formIndex, 'ceo', val)}
+                    disabled={isViewMode}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={ceos.length === 0 ? "No CEOs available" : "Select CEO"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ceos.map((ceo) => (
+                        <SelectItem key={ceo} value={ceo}>{ceo}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="col-span-2">
+                  <FormLabel>Office Address *</FormLabel>
+                  <Textarea
+                    value={companyForm.office_address}
+                    onChange={(e) => updateCompanyForm(formIndex, 'office_address', e.target.value)}
+                    placeholder="Office Address"
+                    disabled={isViewMode}
+                    rows={3}
+                  />
+                </div>
+
+                <div>
+                  <FormLabel>Office State *</FormLabel>
+                  <Input
+                    value={companyForm.office_state}
+                    onChange={(e) => updateCompanyForm(formIndex, 'office_state', e.target.value)}
+                    placeholder="Office State"
+                    disabled={isViewMode}
+                  />
+                </div>
+
+                <div>
+                  <FormLabel>Office Country *</FormLabel>
+                  <Input
+                    value={companyForm.office_country}
+                    onChange={(e) => updateCompanyForm(formIndex, 'office_country', e.target.value)}
+                    placeholder="Office Country"
+                    disabled={isViewMode}
+                  />
+                </div>
+
+                <div>
+                  <FormLabel>Email *</FormLabel>
+                  <Input
+                    type="email"
+                    value={companyForm.email}
+                    onChange={(e) => updateCompanyForm(formIndex, 'email', e.target.value)}
+                    placeholder="Email"
+                    disabled={isViewMode}
+                  />
+                </div>
+
+                <div>
+                  <FormLabel>Contact Person *</FormLabel>
+                  <Input
+                    value={companyForm.contact_person}
+                    onChange={(e) => updateCompanyForm(formIndex, 'contact_person', e.target.value)}
+                    placeholder="Contact Person"
+                    disabled={isViewMode}
+                  />
+                </div>
+
+                <div>
+                  <FormLabel>Phone *</FormLabel>
+                  <Input
+                    value={companyForm.phone_no}
+                    onChange={(e) => updateCompanyForm(formIndex, 'phone_no', e.target.value)}
+                    placeholder="Phone"
+                    type="tel"
+                    disabled={isViewMode}
+                  />
+                </div>
+
+                <div>
+                  <FormLabel>Website *</FormLabel>
+                  <Input
+                    value={companyForm.website}
+                    onChange={(e) => updateCompanyForm(formIndex, 'website', e.target.value)}
+                    placeholder="https://"
+                    disabled={isViewMode}
+                  />
+                </div>
+
+                <div>
+                  <FormLabel>Facebook Link</FormLabel>
+                  <Input
+                    value={companyForm.facebook_link}
+                    onChange={(e) => updateCompanyForm(formIndex, 'facebook_link', e.target.value)}
+                    placeholder="https://facebook.com"
+                    disabled={isViewMode}
+                  />
+                </div>
+
+                <div>
+                  <FormLabel>Instagram Link</FormLabel>
+                  <Input
+                    value={companyForm.instagram_link}
+                    onChange={(e) => updateCompanyForm(formIndex, 'instagram_link', e.target.value)}
+                    placeholder="https://instagram.com"
+                    disabled={isViewMode}
+                  />
+                </div>
+
+                <div>
+                  <FormLabel>Twitter Link</FormLabel>
+                  <Input
+                    value={companyForm.twitter_link}
+                    onChange={(e) => updateCompanyForm(formIndex, 'twitter_link', e.target.value)}
+                    placeholder="https://twitter.com"
+                    disabled={isViewMode}
+                  />
+                </div>
+
+                <div>
+                  <FormLabel>LinkedIn Link</FormLabel>
+                  <Input
+                    value={companyForm.linkedin_link}
+                    onChange={(e) => updateCompanyForm(formIndex, 'linkedin_link', e.target.value)}
+                    placeholder="https://linkedin.com"
+                    disabled={isViewMode}
+                  />
+                </div>
+
+                <div>
+                  <FormLabel>YouTube Link</FormLabel>
+                  <Input
+                    value={companyForm.youtube_link}
+                    onChange={(e) => updateCompanyForm(formIndex, 'youtube_link', e.target.value)}
+                    placeholder="https://youtube.com"
+                    disabled={isViewMode}
+                  />
+                </div>
+              </div>
+
+              {/* Subsidiaries Section */}
+              <div className="border-t pt-6 mt-8">
+                <div className="flex justify-between items-center mb-4">
+                  <FormLabel className="text-lg font-semibold">Subsidiaries</FormLabel>
+                  {!isViewMode && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleAddSubsidiary(formIndex)}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Subsidiary
+                    </Button>
+                  )}
+                </div>
+
+                {companyForm.subsidiaries.length === 0 ? (
+                  <p className="text-sm text-gray-500 italic">No subsidiaries added.</p>
+                ) : (
+                  companyForm.subsidiaries.map((sub, subIndex) => (
+                    <div key={subIndex} className="flex gap-4 items-end mb-4 p-4 border rounded-lg bg-gray-50">
+                      <div className="flex-1">
+                        <FormLabel>Subsidiary Company</FormLabel>
+                        <Select
+                          value={sub.subsidiary_id?.toString() || ''}
+                          onValueChange={(val) => handleSubsidiaryChange(formIndex, subIndex, val)}
+                          disabled={isViewMode}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a company" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {apiCompanies.map((company) => (
+                              <SelectItem key={company.id} value={company.id.toString()}>
+                                {company.company_name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {!isViewMode && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleRemoveSubsidiary(formIndex, subIndex)}
+                          className="text-red-600"
+                        >
+                          <Minus className="h-5 w-5" />
+                        </Button>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
-          </form>
-        </Form>
+          ))}
+
+          {/* Clone Form Button */}
+          {!initialValues && !isViewMode && (
+            <div className="flex justify-center py-6">
+              <Button
+                type="button"
+                onClick={handleAddCompanyForm}
+                disabled={companyForms.length >= 2}
+                variant="outline"
+                className="border-blue-600 text-blue-600 hover:bg-blue-50"
+              >
+                <Copy className="h-4 w-4 mr-2" />
+                Add Another Company Form
+              </Button>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-4 pt-6 border-t">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCancel}
+              disabled={isSubmitting}
+            >
+              {isViewMode ? 'Close' : 'Discard'}
+            </Button>
+
+            {!isViewMode && (
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="bg-indigo-950 hover:bg-indigo-800"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {initialValues ? 'Updating...' : 'Creating...'}
+                  </>
+                ) : (
+                  initialValues ? 'Update Company' : 'Create Company'
+                )}
+              </Button>
+            )}
+          </div>
+        </form>
       </div>
     </ScrollArea>
   );

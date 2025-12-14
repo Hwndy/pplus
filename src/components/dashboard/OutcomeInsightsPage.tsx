@@ -84,7 +84,7 @@ export default function OutcomeInsightsPage() {
         params.append('month', month);
       }
 
-      const url = `https://pplus-ipn6.onrender.com/api/report/outcome-insights?${params.toString()}`;
+      const url = `https://pplus-5kdv.onrender.com/api/report/outcome-insights?${params.toString()}`;
       console.log('Fetching Outcome Insights →', url);
 
       const response = await fetch(url, {

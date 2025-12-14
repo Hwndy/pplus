@@ -141,7 +141,7 @@
 //         params.append('endDate', endDate);
 //       }
 
-//       const url = `https://pplus-ipn6.onrender.com/api/report/social-stats-online-coverage?${params.toString()}`;
+//       const url = `https://pplus-5kdv.onrender.com/api/report/social-stats-online-coverage?${params.toString()}`;
 //       console.log('Fetching Coverage Region →', url);
 
 //       const response = await fetch(url, {
@@ -444,7 +444,7 @@ export function CoverageRegionPage() {
         params.append('endDate', endDate);
       }
 
-      const url = `https://pplus-ipn6.onrender.com/api/report/social-stats-online-coverage?${params.toString()}`;
+      const url = `https://pplus-5kdv.onrender.com/api/report/social-stats-online-coverage?${params.toString()}`;
       console.log('Fetching Coverage Region →', url);
 
       const response = await fetch(url, {

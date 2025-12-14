@@ -90,7 +90,7 @@ export function MediaDistributionPage() {
         params.append('endDate', endDate);
       }
 
-      const url = `https://pplus-ipn6.onrender.com/api/report/top-thematic-distribution-breakdown?${params.toString()}`;
+      const url = `https://pplus-5kdv.onrender.com/api/report/top-thematic-distribution-breakdown?${params.toString()}`;
       console.log('Fetching Media Distribution →', url);
 
       const response = await fetch(url, {

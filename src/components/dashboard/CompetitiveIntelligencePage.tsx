@@ -31,7 +31,7 @@
 //     const fetchData = async () => {
 //       setLoading(true);
 //       try {
-//         const response = await fetch('https://pplus-ipn6.onrender.com/api/report/competitive-intelligence', {
+//         const response = await fetch('https://pplus-5kdv.onrender.com/api/report/competitive-intelligence', {
 //           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
 //         });
 //         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -248,7 +248,7 @@ export function CompetitiveIntelligencePage() {
   const [loading, setLoading] = useState(true);
   const [hasData, setHasData] = useState(false);
 
-  const API_URL = 'https://pplus-ipn6.onrender.com/api/report/competitive-intelligence';
+  const API_URL = 'https://pplus-5kdv.onrender.com/api/report/competitive-intelligence';
 
   const fetchData = useCallback(async () => {
     if (!token || !activePair) {
