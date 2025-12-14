@@ -652,21 +652,6 @@ export function useOutcomeInsightById(id: string) {
   return useApiData(() => apiService.getOutcomeInsightById(id), [id]);
 }
 
-// Data Entry mutation hooks
-export function useCreateDataEntry() {
-  return useApiMutation((entryData: any) => apiService.createDataEntry(entryData));
-}
-
-export function useUpdateDataEntry() {
-  return useApiMutation(({ id, data }: { id: string; data: any }) =>
-    apiService.updateDataEntry(id, data)
-  );
-}
-
-export function useDeleteDataEntry() {
-  return useApiMutation((id: string) => apiService.deleteDataEntry(id));
-}
-
 export function useFileUpload() {
   return useApiMutation((file: File) => {
     const formData = new FormData();

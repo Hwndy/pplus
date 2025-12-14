@@ -67,6 +67,16 @@ const userColumns: ColumnDef<any>[] = [
   },
 ];
 
+interface AuditLogStats {
+  total_users?: number;
+  total_supervisors?: number;
+  total_analysts?: number;
+  total_clients?: number;
+  content_pending?: number;
+  content_approved?: number;
+  content_rejected?: number;
+}
+
 export function AdminDashboard() {
   const [selectedSection, setSelectedSection] = useState<'overview' | 'users' | 'parameters' | 'content-review' | 'data-entry' | 'export' | 'audit'>('overview');
 
@@ -77,7 +87,8 @@ export function AdminDashboard() {
   const { data: companiesData, loading: companiesLoading } = useCompanies();
   const { data: editorialsData, loading: editorialsLoading } = useEditorials();
   const { data: dataEntriesData, loading: dataEntriesLoading } = useDataEntries();
-  const { data: auditStats } = useAuditLogStats();
+  const { data: response, loading: auditStatsLoading } = useAuditLogStats();
+  const auditStats = (response as any)?.data as AuditLogStats | undefined;
 
   const handleSearchResult = (result: any) => {
     toast.success(`Selected: ${result.title}`);
@@ -177,34 +188,37 @@ export function AdminDashboard() {
 
       {selectedSection === 'overview' && (
         <div className="space-y-6">
+          <h2 className="text-xl font-semibold mt-8">User Breakdown</h2>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
             <DataCard title="Total Users" variant="glass" icon={<Users size={24} />}>
               <Stat
-                label="System Users"
-                value={usersLoading ? 'Loading...' : usersData?.length || 0}
-                subtitle="Active users in the system"
+                label="All Registered Users"
+                value={auditStatsLoading ? 'Loading...' : auditStats?.total_users ?? 0}
+                subtitle="Across all roles"
               />
             </DataCard>
-            <DataCard title="Data Parameters" variant="glass" icon={<Settings size={24} />}>
+
+            <DataCard title="Supervisors" variant="glass" icon={<CheckCircle size={24} />}>
               <Stat
-                label="Active Parameters"
-                value={parametersLoading ? 'Loading...' : parametersData?.length || 0}
-                subtitle="Media monitoring parameters"
+                label="Supervisors"
+                value={auditStatsLoading ? 'Loading...' : auditStats?.total_supervisors ?? 0}
+                subtitle="Content reviewers & managers"
               />
             </DataCard>
-            <DataCard title="Total Clients" variant="glass" icon={<Users size={24} />}>
+
+            <DataCard title="Analysts" variant="glass" icon={<FileText size={24} />}>
               <Stat
-                label="Active Clients"
-                value={companiesLoading ? 'Loading...' : companiesData?.length || 0}
-                subtitle="Organizations being monitored"
+                label="Analysts"
+                value={auditStatsLoading ? 'Loading...' : auditStats?.total_analysts ?? 0}
+                subtitle="Data entry & monitoring staff"
               />
             </DataCard>
-            <DataCard title="System Status" variant="glass" icon={<AlertTriangle size={24} />}>
+
+            <DataCard title="Clients" variant="glass" icon={<Target size={24} />}>
               <Stat
-                label="System Load"
-                value="Normal"
-                subtitle="All systems operational"
-                trend={0}
+                label="Client Organizations"
+                value={auditStatsLoading ? 'Loading...' : auditStats?.total_clients ?? 0}
+                subtitle="Monitored entities"
               />
             </DataCard>
           </div>
@@ -214,21 +228,23 @@ export function AdminDashboard() {
             <DataCard title="Pending Review" variant="glass" icon={<AlertCircle size={24} />}>
               <Stat
                 label="Content Pending Review"
-                value={dataEntriesLoading ? 'Loading...' : (Array.isArray(dataEntriesData) ? dataEntriesData.filter((e: any) => e.status === 'pending').length : 0)}
+                value={auditStatsLoading ? 'Loading...' : auditStats?.content_pending ?? 0}
                 subtitle="Awaiting approval"
               />
             </DataCard>
+
             <DataCard title="Approved Content" variant="glass" icon={<CheckCircle size={24} />}>
               <Stat
                 label="Content Approved"
-                value={dataEntriesLoading ? 'Loading...' : (Array.isArray(dataEntriesData) ? dataEntriesData.filter((e: any) => e.status === 'approved').length : 0)}
+                value={auditStatsLoading ? 'Loading...' : auditStats?.content_approved ?? 0}
                 subtitle="Successfully processed"
               />
             </DataCard>
+
             <DataCard title="Rejected Content" variant="glass" icon={<XCircle size={24} />}>
               <Stat
                 label="Content Rejected"
-                value={dataEntriesLoading ? 'Loading...' : (Array.isArray(dataEntriesData) ? dataEntriesData.filter((e: any) => e.status === 'rejected').length : 0)}
+                value={auditStatsLoading ? 'Loading...' : auditStats?.content_rejected ?? 0}
                 subtitle="Require attention"
               />
             </DataCard>
