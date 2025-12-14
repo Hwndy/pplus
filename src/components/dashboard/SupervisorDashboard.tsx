@@ -318,6 +318,19 @@ export function SupervisorDashboard() {
 
   // Transform API data to GenericEntry (unchanged)
   const transformToGenericEntry = (type: ContentTypeKey, rawEntry: any): GenericEntry => {
+    const getCompanyName = () => {
+      // Try multiple possible paths (covers all your current backend responses)
+      return (
+        rawEntry.company?.company_name ||
+        rawEntry.company?.name ||
+        rawEntry.company_data?.company_name ||
+        rawEntry.company_data?.name ||
+        rawEntry.companyName ||
+        'Unknown'
+      );
+    };
+
+    const companyName = getCompanyName();
     if (type === 'editorials') {
       return {
         id: rawEntry.id.toString(),
@@ -327,7 +340,7 @@ export function SupervisorDashboard() {
         createdAt: rawEntry.date || rawEntry.createdAt || new Date().toISOString(),
         updatedAt: rawEntry.updatedAt,
         authorName: rawEntry.created_by?.username || rawEntry.creator_data?.username || 'Unknown',
-        companyName: rawEntry.company?.company_name || rawEntry.company?.name || 'Unknown',
+        companyName,
         comments: rawEntry.supervisor_note || rawEntry.admin_note || '',
         reviewedBy: rawEntry.approved_by?.username || rawEntry.approver_data?.username || 'Unknown',
         reviewedAt: rawEntry.updatedAt,
@@ -542,9 +555,57 @@ export function SupervisorDashboard() {
 
       if (json.success) {
         if (isSupervisor) {
-          entries = json.data?.recent_editorials ?? [];
-          const s = json.data?.stats || {};
-          const total = s[`total_${type}`] ?? 0;
+          // === DYNAMIC KEY MAPPING ===
+          const keyMap: Record<ContentTypeKey, {
+            recentKey: string;
+            totalKey: string;
+            pendingKey: string;
+            approvedKey: string;
+            rejectedKey: string;
+          }> = {
+            editorials: {
+              recentKey: 'recent_editorials',
+              totalKey: 'total_editorials',
+              pendingKey: 'pending_editorials',
+              approvedKey: 'approved_editorials',
+              rejectedKey: 'rejected_editorials',
+            },
+            dailyMentions: {
+              recentKey: 'recent_mentions',
+              totalKey: 'total_mentions',
+              pendingKey: 'pending_mentions',
+              approvedKey: 'approved_mentions',
+              rejectedKey: 'rejected_mentions',
+            },
+            swotAnalysis: {
+              recentKey: 'recent_analyses',
+              totalKey: 'total_analyses',
+              pendingKey: 'pending_analyses',
+              approvedKey: 'approved_analyses',
+              rejectedKey: 'rejected_analyses',
+            },
+            outcomeInsights: {
+              recentKey: 'recent_insights',
+              totalKey: 'total_insights',
+              pendingKey: 'pending_insights',
+              approvedKey: 'approved_insights',
+              rejectedKey: 'rejected_insights',
+            },
+            socialMediaMentions: {
+              recentKey: 'recent_mentions',
+              totalKey: 'total_mentions',
+              pendingKey: 'pending_mentions',
+              approvedKey: 'approved_mentions',
+              rejectedKey: 'rejected_mentions',
+            },
+          };
+
+          const keys = keyMap[type];
+          const stats = json.data?.stats || {};
+
+          entries = json.data?.[keys.recentKey] ?? [];
+          const total = stats[keys.totalKey] ?? 0;
+
           paginationData = {
             currentPage: page,
             totalPages: Math.ceil(total / PAGE_SIZE),
@@ -552,21 +613,22 @@ export function SupervisorDashboard() {
             pageSize: PAGE_SIZE,
           };
 
-          // Update stats from this response
+          // Update stats correctly for this type
           setStats(prev => ({
-            pending: s.pending_editorials ?? prev.pending,
-            approved: s.approved_editorials ?? prev.approved,
-            rejected: s.rejected_editorials ?? prev.rejected,
-            total: s.total_editorials ?? prev.total,
-            approvedToday: s.approved_today ?? 0,
-            rejectedToday: s.rejected_today ?? 0,
+            ...prev,
+            pending: stats[keys.pendingKey] ?? prev.pending,
+            approved: stats[keys.approvedKey] ?? prev.approved,
+            rejected: stats[keys.rejectedKey] ?? prev.rejected,
+            total: stats[keys.totalKey] ?? prev.total,
+            approvedToday: stats.approved_today ?? prev.approvedToday,
+            rejectedToday: stats.rejected_today ?? prev.rejectedToday,
             byType: {
               ...prev.byType,
               [type]: {
-                pending: s.pending_editorials ?? 0,
-                approved: s.approved_editorials ?? 0,
-                rejected: s.rejected_editorials ?? 0,
-                total: s.total_editorials ?? 0,
+                pending: stats[keys.pendingKey] ?? 0,
+                approved: stats[keys.approvedKey] ?? 0,
+                rejected: stats[keys.rejectedKey] ?? 0,
+                total: stats[keys.totalKey] ?? 0,
                 displayName: contentTypes[type].displayName,
               },
             },

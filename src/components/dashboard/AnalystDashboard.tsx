@@ -197,16 +197,57 @@ export function AnalystDashboard() {
             }
             const data = await res.json();
             // Normalize and validate data
-            const normalizedData = (Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : []).filter(item => item && typeof item === 'object').map((item: any) => ({
-              id: item.id?.toString() || `temp-${Math.random().toString(36).substring(2)}`,
-              type,
-              title: item.title || item.mentionTitle || item.insight || item.name || 'Untitled',
-              content: item.content || item.description || item.mentionContent || item.insight || item.details || 'No content',
-              createdAt: item.createdAt || item.date || new Date().toISOString(),
-              status: typeof item.status === 'string' && item.status.trim() !== '' ? item.status : 'pending',
-              comments: item.comments || undefined,
-              author: item.author || item.username || undefined,
-            }));
+
+            const normalizedData = (Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : [])
+              .filter(item => item && typeof item === 'object')
+              .map((item: any) => {
+                let title = 'Untitled';
+
+                // Type-specific title extraction
+                if (type === 'Editorial') {
+                  title = item.title || 'Untitled Editorial';
+                } else if (type === 'Daily Mention') {
+                  title = item.industry?.[0]?.headline ||
+                          item.competitors?.[0]?.headline ||
+                          item.subsidiaries?.[0]?.headline ||
+                          item.passive?.[0]?.headline ||
+                          item.advert?.[0]?.headline ||
+                          item.publication ||
+                          'Untitled Daily Mention';
+                } else if (type === 'SWOT Analysis') {
+                  title = item.strengths?.[0]?.analysis ||
+                          item.weaknesses?.[0]?.analysis ||
+                          item.opportunities?.[0]?.analysis ||
+                          item.threats?.[0]?.analysis ||
+                          item.analyst_note?.slice(0, 60) ||
+                          'Untitled SWOT Analysis';
+                } else if (type === 'Social Media Mention') {
+                  title = `${item.social_media_type || 'Social'} Mention - ${new Date(item.date || item.createdAt).toLocaleDateString()}`;
+                } else if (type === 'Outcome Insight') {
+                  title = item.insights?.[0]?.analysis ||
+                          item.insights?.[0]?.category ||
+                          item.analyst_note?.slice(0, 60) ||
+                          'Untitled Outcome Insight';
+                }
+
+                return {
+                  id: item.id?.toString() || `temp-${Math.random().toString(36).substring(2)}`,
+                  type,
+                  title,
+                  content: item.analyst_note ||
+                          item.content ||
+                          item.description ||
+                          item.supervisor_note ||
+                          item.insights?.map((i: any) => i.analysis).join('; ') ||
+                          item.strengths?.map((s: any) => s.analysis).join('; ') ||
+                          'No content',
+                  createdAt: item.createdAt || item.date || new Date().toISOString(),
+                  status: typeof item.status === 'string' && item.status.trim() !== '' ? item.status : 'pending',
+                  comments: item.supervisor_note || item.comments || undefined,
+                  author: item.creator_data?.username || item.author || item.username || undefined,
+                };
+              });
+
             if (normalizedData.length === 0) {
               console.warn(`No valid data returned for ${name}`);
             }
