@@ -121,7 +121,7 @@ const DailyMentionsTablePage: React.FC = () => {
     return pattern.test(url);
   };
 
-  // === Fetch Daily Mentions (ALL ROLES FIXED) ===
+  // === Fetch Daily Mentions ===
   const fetchDailyMentions = useCallback(async () => {
     if (!token || !user) {
       toast({ title: 'Error', description: 'Please login', variant: 'destructive' });
@@ -132,9 +132,9 @@ const DailyMentionsTablePage: React.FC = () => {
     setLoading(true);
     try {
       const endpoint =
-        user.role.name === 'Supervisor'
+        user.role?.name === 'Supervisor'
           ? `${BASE_URL}/daily-mentions/supervisor-mentions`
-          : user.role.name === 'Analyst'
+          : user.role?.name === 'Analyst'
           ? `${BASE_URL}/daily-mentions/my-mentions`
           : `${BASE_URL}/daily-mentions/`;
 
@@ -142,7 +142,6 @@ const DailyMentionsTablePage: React.FC = () => {
         params: { page: currentPage, limit: ITEMS_PER_PAGE },
       });
 
-      // Normalize response
       let mentions: DailyMention[] = [];
       let pagination = { total: 0, totalPages: 1 };
 
@@ -210,18 +209,26 @@ const DailyMentionsTablePage: React.FC = () => {
     fetchDailyMentions();
   }, [fetchDailyMentions]);
 
-  // === Fetch Dropdowns ===
+  // === Fetch Companies & Publications (FIXED) ===
   useEffect(() => {
     const fetchData = async () => {
       try {
         const [compRes, pubRes] = await Promise.all([
           axios.get(`${BASE_URL}/companies`),
-          axios.get(`${BASE_URL}/publications`).catch(() => axios.get(`${BASE_URL}/publications`)),
+          axios.get(`${BASE_URL}/publications`),
         ]);
-        setCompanies(compRes.data?.data?.data || []);
-        setPublications(pubRes.data?.data?.data || []);
-      } catch {
-        toast({ title: 'Warning', description: 'Using fallback data', variant: 'default' });
+
+        // Companies - support both data.data.data and data.data
+        const compData = compRes.data?.data?.data || compRes.data?.data || [];
+        setCompanies(Array.isArray(compData) ? compData : []);
+
+        // Publications - API returns data.publication array
+        const pubArray = pubRes.data?.data?.publication || pubRes.data?.data || [];
+        setPublications(Array.isArray(pubArray) ? pubArray : []);
+      } catch (err) {
+        toast({ title: 'Warning', description: 'Failed to load companies/publications', variant: 'default' });
+        setCompanies([]);
+        setPublications([]);
       }
     };
     fetchData();
@@ -417,10 +424,10 @@ const DailyMentionsTablePage: React.FC = () => {
 
       if (isEdit && selectedMention) {
         await axios.put(`${BASE_URL}/daily-mentions/update/${selectedMention.id}`, payload);
-        toast({ title: 'Success', description: 'Updated' });
+        toast({ title: 'Success', description: 'Updated successfully' });
       } else {
         await axios.post(`${BASE_URL}/daily-mentions/create`, payload);
-        toast({ title: 'Success', description: 'Created' });
+        toast({ title: 'Success', description: 'Created successfully' });
       }
       setCreateModalOpen(false);
       setEditModalOpen(false);
@@ -455,7 +462,6 @@ const DailyMentionsTablePage: React.FC = () => {
       )},
   ], []);
 
-  // === Render ===
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -484,8 +490,56 @@ const DailyMentionsTablePage: React.FC = () => {
             <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
               <DialogHeader><DialogTitle>Create Daily Mention</DialogTitle></DialogHeader>
               <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
-                {/* Form fields - same as edit */}
-                {/* ... (copy from edit modal below) */}
+                <div>
+                  <Label>Company *</Label>
+                  <Select value={formData.company_id?.toString()} onValueChange={(v) => setFormData({ ...formData, company_id: parseInt(v) })}>
+                    <SelectTrigger><SelectValue placeholder="Select company" /></SelectTrigger>
+                    <SelectContent>{companies.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.company_name}</SelectItem>)}</SelectContent>
+                  </Select>
+                  {formErrors.company_id && <p className="text-red-500 text-sm">{formErrors.company_id}</p>}
+                </div>
+
+                <div>
+                  <Label>Publication *</Label>
+                  <Select value={formData.publication as string} onValueChange={(v) => setFormData({ ...formData, publication: v })}>
+                    <SelectTrigger><SelectValue placeholder="Select publication" /></SelectTrigger>
+                    <SelectContent>
+                      {publications.map(p => (
+                        <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {formErrors.publication && <p className="text-red-500 text-sm">{formErrors.publication}</p>}
+                </div>
+
+                <div>
+                  <Label>Date *</Label>
+                  <Input type="date" value={formData.date?.slice(0,10) || ''} onChange={(e) => setFormData({ ...formData, date: e.target.value })} />
+                  {formErrors.date && <p className="text-red-500 text-sm">{formErrors.date}</p>}
+                </div>
+
+                <div>
+                  <Label>Status</Label>
+                  <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v as any })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="approved">Approved</SelectItem>
+                      <SelectItem value="rejected">Rejected</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {renderCategorySection('industry', 'Industry')}
+                {renderCategorySection('competitors', 'Competitors')}
+                {renderCategorySection('subsidiaries', 'Subsidiaries')}
+                {renderCategorySection('passive', 'Passive')}
+                {renderCategorySection('advert', 'Advert')}
+
+                {formErrors.urls && <p className="text-red-500 text-sm">{formErrors.urls}</p>}
+                {formErrors.industry && <p className="text-red-500 text-sm">{formErrors.industry}</p>}
+
+                <Button type="submit">Create Mention</Button>
               </form>
             </DialogContent>
           </Dialog>
@@ -572,7 +626,11 @@ const DailyMentionsTablePage: React.FC = () => {
               <Label>Publication *</Label>
               <Select value={formData.publication as string} onValueChange={(v) => setFormData({ ...formData, publication: v })}>
                 <SelectTrigger><SelectValue placeholder="Select publication" /></SelectTrigger>
-                <SelectContent>{publications.map(p => <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>)}</SelectContent>
+                <SelectContent>
+                  {publications.map(p => (
+                    <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
               {formErrors.publication && <p className="text-red-500 text-sm">{formErrors.publication}</p>}
             </div>

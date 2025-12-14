@@ -23,10 +23,16 @@ import { DailyMentionsInboxPage } from '@/components/dashboard/DailyMentionsInbo
 import { Spinner } from '@/components/ui/spinner';
 import { Route, Routes, Navigate, useLocation } from 'react-router-dom';
 
-// Helper function to check user roles (case-insensitive)
-const hasRole = (userRole: string, allowedRoles: string | string[]): boolean => {
+// Helper function to check user roles (case-insensitive and safe)
+const hasRole = (user: any, allowedRoles: string | string[]): boolean => {
+  if (!user || !user.role || !user.role.name) {
+    return false; // No user, no role object, or no role name → deny access
+  }
+
+  const userRoleName = user.role.name.toLowerCase();
   const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
-  return roles.some(role => userRole.toLowerCase() === role.toLowerCase());
+
+  return roles.some((role) => userRoleName === role.toLowerCase());
 };
 
 // Import all page components
@@ -59,7 +65,8 @@ const Dashboard = () => {
   const { user, isLoading } = useAuth();
   const location = useLocation();
 
-  if (isLoading) {
+  // Show spinner while auth is loading OR while we wait for role data
+  if (isLoading || !user || !user.role || !user.role.name) {
     return (
       <div className="flex h-full items-center justify-center">
         <Spinner size="lg" />
@@ -75,10 +82,10 @@ const Dashboard = () => {
   if (location.pathname === '/dashboard') {
     return (
       <div className="h-full">
-        {hasRole(user.role.name, 'admin') && <AdminDashboard />}
-        {hasRole(user.role.name, 'supervisor') && <SupervisorDashboard />}
-        {hasRole(user.role.name, 'analyst') && <AnalystDashboard />}
-        {hasRole(user.role.name, 'client') && <ExecutiveSummaryPage />}
+        {hasRole(user, 'admin') && <AdminDashboard />}
+        {hasRole(user, 'supervisor') && <SupervisorDashboard />}
+        {hasRole(user, 'analyst') && <AnalystDashboard />}
+        {hasRole(user, 'client') && <ExecutiveSummaryPage />}
       </div>
     );
   }
@@ -91,69 +98,69 @@ const Dashboard = () => {
         <Route path="swot" element={<SwotAnalysisPage />} />
         <Route
           path="swot/create"
-          element={hasRole(user.role.name, ['admin', 'analyst']) ? <SwotAnalysisEntryPage /> : <Navigate to="/dashboard" replace />}
+          element={hasRole(user, ['admin', 'analyst']) ? <SwotAnalysisEntryPage /> : <Navigate to="/dashboard" replace />}
         />
 
         {/* ADMIN */}
-        <Route path="users" element={hasRole(user.role.name, 'admin') ? <UsersPage /> : <Navigate to="/dashboard" replace />} />
-        <Route path="parameters" element={hasRole(user.role.name, 'admin') ? <ParametersPage /> : <Navigate to="/dashboard" replace />} />
-        <Route path="reports" element={hasRole(user.role.name, 'admin') ? <ReportsPage /> : <Navigate to="/dashboard" replace />} />
-        <Route path="analytics" element={hasRole(user.role.name, 'admin') ? <AnalyticsPage /> : <Navigate to="/dashboard" replace />} />
-        <Route path="audit" element={hasRole(user.role.name, 'admin') ? <AuditPage /> : <Navigate to="/dashboard" replace />} />
-        <Route path="companies" element={hasRole(user.role.name, 'admin') ? <CompaniesPage /> : <Navigate to="/dashboard" replace />} />
-        <Route path="publications-management" element={hasRole(user.role.name, 'admin') ? <PublicationsPage /> : <Navigate to="/dashboard" replace />} />
-        <Route path="placement" element={hasRole(user.role.name, 'admin') ? <PlacementPage /> : <Navigate to="/dashboard" replace />} />
+        <Route path="users" element={hasRole(user, 'admin') ? <UsersPage /> : <Navigate to="/dashboard" replace />} />
+        <Route path="parameters" element={hasRole(user, 'admin') ? <ParametersPage /> : <Navigate to="/dashboard" replace />} />
+        <Route path="reports" element={hasRole(user, 'admin') ? <ReportsPage /> : <Navigate to="/dashboard" replace />} />
+        <Route path="analytics" element={hasRole(user, 'admin') ? <AnalyticsPage /> : <Navigate to="/dashboard" replace />} />
+        <Route path="audit" element={hasRole(user, 'admin') ? <AuditPage /> : <Navigate to="/dashboard" replace />} />
+        <Route path="companies" element={hasRole(user, 'admin') ? <CompaniesPage /> : <Navigate to="/dashboard" replace />} />
+        <Route path="publications-management" element={hasRole(user, 'admin') ? <PublicationsPage /> : <Navigate to="/dashboard" replace />} />
+        <Route path="placement" element={hasRole(user, 'admin') ? <PlacementPage /> : <Navigate to="/dashboard" replace />} />
 
         {/* EDITORIAL (Admin, Analyst, Supervisor) */}
-        <Route path="editorial" element={hasRole(user.role.name, ['admin', 'analyst', 'supervisor']) ? <EditorialPage /> : <Navigate to="/dashboard" replace />} />
-        <Route path="editorial/create" element={hasRole(user.role.name, ['admin', 'analyst', 'supervisor']) ? <CreateEditorialPage /> : <Navigate to="/dashboard" replace />} />
-        <Route path="editorial/batch-upload" element={hasRole(user.role.name, ['admin', 'analyst', 'supervisor']) ? <EditorialBatchUploadPage /> : <Navigate to="/dashboard" replace />} />
+        <Route path="editorial" element={hasRole(user, ['admin', 'analyst', 'supervisor']) ? <EditorialPage /> : <Navigate to="/dashboard" replace />} />
+        <Route path="editorial/create" element={hasRole(user, ['admin', 'analyst', 'supervisor']) ? <CreateEditorialPage /> : <Navigate to="/dashboard" replace />} />
+        <Route path="editorial/batch-upload" element={hasRole(user, ['admin', 'analyst', 'supervisor']) ? <EditorialBatchUploadPage /> : <Navigate to="/dashboard" replace />} />
 
         {/* DAILY MENTIONS (Admin, Analyst, Supervisor) */}
-        <Route path="daily-mentions" element={hasRole(user.role.name, ['admin', 'analyst', 'supervisor']) ? <DailyMentionsTablePage /> : <Navigate to="/dashboard" replace />} />
-        <Route path="daily-mentions/create" element={hasRole(user.role.name, ['admin', 'analyst', 'supervisor']) ? <DailyMentionsPage /> : <Navigate to="/dashboard" replace />} />
-        <Route path="daily-mentions/view/:id" element={hasRole(user.role.name, ['admin', 'analyst', 'supervisor']) ? <DailyMentionsViewPage /> : <Navigate to="/dashboard" replace />} />
+        <Route path="daily-mentions" element={hasRole(user, ['admin', 'analyst', 'supervisor']) ? <DailyMentionsTablePage /> : <Navigate to="/dashboard" replace />} />
+        <Route path="daily-mentions/create" element={hasRole(user, ['admin', 'analyst', 'supervisor']) ? <DailyMentionsPage /> : <Navigate to="/dashboard" replace />} />
+        <Route path="daily-mentions/view/:id" element={hasRole(user, ['admin', 'analyst', 'supervisor']) ? <DailyMentionsViewPage /> : <Navigate to="/dashboard" replace />} />
 
         {/* SWOT & SOCIAL (Admin, Analyst, Supervisor) */}
-        <Route path="swot-mentions" element={hasRole(user.role.name, ['admin', 'analyst', 'supervisor']) ? <SwotMentionsPage /> : <Navigate to="/dashboard" replace />} />
-        <Route path="social-media-mentions" element={hasRole(user.role.name, ['admin', 'analyst', 'supervisor']) ? <SocialMediaMentionsPage /> : <Navigate to="/dashboard" replace />} />
+        <Route path="swot-mentions" element={hasRole(user, ['admin', 'analyst', 'supervisor']) ? <SwotMentionsPage /> : <Navigate to="/dashboard" replace />} />
+        <Route path="social-media-mentions" element={hasRole(user, ['admin', 'analyst', 'supervisor']) ? <SocialMediaMentionsPage /> : <Navigate to="/dashboard" replace />} />
 
         {/* OUTCOME INSIGHTS (Admin, Analyst, Supervisor) */}
-        <Route path="outcome-insights" element={hasRole(user.role.name, ['admin', 'analyst', 'supervisor']) ? <OutcomeInsightsPage /> : <Navigate to="/dashboard" replace />} />
+        <Route path="outcome-insights" element={hasRole(user, ['admin', 'analyst', 'supervisor']) ? <OutcomeInsightsPage /> : <Navigate to="/dashboard" replace />} />
 
         {/* INDUSTRY LANDSCAPE OVERVIEW (Admin, Analyst, Supervisor) - FULL CRUD */}
         <Route
           path="industry-landscape"
           element={
-            hasRole(user.role.name, ['admin', 'analyst', 'supervisor'])
+            hasRole(user, ['admin', 'analyst', 'supervisor'])
               ? <IndustryLandscapeOverviewPage />
               : <Navigate to="/dashboard" replace />
           }
         />
 
         {/* SUPERVISOR */}
-        <Route path="supervisordashboard" element={hasRole(user.role.name, ['admin', 'supervisor']) ? <SupervisorDashboard /> : <Navigate to="/dashboard" replace />} />
-        <Route path="review" element={hasRole(user.role.name, ['admin', 'supervisor']) ? <SupervisorDashboard /> : <Navigate to="/dashboard" replace />} />
+        <Route path="supervisordashboard" element={hasRole(user, ['admin', 'supervisor']) ? <SupervisorDashboard /> : <Navigate to="/dashboard" replace />} />
+        <Route path="review" element={hasRole(user, ['admin', 'supervisor']) ? <SupervisorDashboard /> : <Navigate to="/dashboard" replace />} />
 
         {/* CLIENT ROUTES */}
-        <Route path="media-reports" element={hasRole(user.role.name, 'client') ? <MediaReportsPage /> : <Navigate to="/dashboard" replace />} />
-        <Route path="performance" element={hasRole(user.role.name, 'client') ? <PerformancePage /> : <Navigate to="/dashboard" replace />} />
-        <Route path="media-dashboard" element={hasRole(user.role.name, 'client') ? <ClientMediaDashboard /> : <Navigate to="/dashboard" replace />} />
+        <Route path="media-reports" element={hasRole(user, 'client') ? <MediaReportsPage /> : <Navigate to="/dashboard" replace />} />
+        <Route path="performance" element={hasRole(user, 'client') ? <PerformancePage /> : <Navigate to="/dashboard" replace />} />
+        <Route path="media-dashboard" element={hasRole(user, 'client') ? <ClientMediaDashboard /> : <Navigate to="/dashboard" replace />} />
 
-        <Route path="insights" element={hasRole(user.role.name, 'client') ? <ClientOutcomeInsightsPage /> : <Navigate to="/dashboard" replace />} />
-        <Route path="industry" element={hasRole(user.role.name, 'client') ? <IndustryLandscapePage /> : <Navigate to="/dashboard" replace />} />
-        <Route path="brand-sentiment" element={hasRole(user.role.name, 'client') ? <BrandSentimentPage /> : <Navigate to="/dashboard" replace />} />
-        <Route path="brand-media" element={hasRole(user.role.name, 'client') ? <BrandMediaAnalysisPage /> : <Navigate to="/dashboard" replace />} />
-        <Route path="media-distribution" element={hasRole(user.role.name, 'client') ? <MediaDistributionPage /> : <Navigate to="/dashboard" replace />} />
-        <Route path="publications" element={hasRole(user.role.name, 'client') ? <PublicationsAnalysisPage /> : <Navigate to="/dashboard" replace />} />
-        <Route path="coverage-region" element={hasRole(user.role.name, 'client') ? <CoverageRegionPage /> : <Navigate to="/dashboard" replace />} />
-        <Route path="competitive" element={hasRole(user.role.name, 'client') ? <CompetitiveIntelligencePage /> : <Navigate to="/dashboard" replace />} />
-        <Route path="competitive-sentiment" element={hasRole(user.role.name, 'client') ? <CompetitiveSentimentPage /> : <Navigate to="/dashboard" replace />} />
-        <Route path="competitive-ceos" element={hasRole(user.role.name, 'client') ? <CompetitiveCEOsPage /> : <Navigate to="/dashboard" replace />} />
-        <Route path="competitive-pr" element={hasRole(user.role.name, 'client') ? <CompetitivePRDriversPage /> : <Navigate to="/dashboard" replace />} />
-        <Route path="glossary" element={hasRole(user.role.name, 'client') ? <GlossaryPage /> : <Navigate to="/dashboard" replace />} />
-        <Route path="methodology" element={hasRole(user.role.name, 'client') ? <PrincipleMethodologyPage /> : <Navigate to="/dashboard" replace />} />
-        <Route path="mentions-inbox" element={hasRole(user.role.name, 'client') ? <DailyMentionsInboxPage /> : <Navigate to="/dashboard" replace />} />
+        <Route path="insights" element={hasRole(user, 'client') ? <ClientOutcomeInsightsPage /> : <Navigate to="/dashboard" replace />} />
+        <Route path="industry" element={hasRole(user, 'client') ? <IndustryLandscapePage /> : <Navigate to="/dashboard" replace />} />
+        <Route path="brand-sentiment" element={hasRole(user, 'client') ? <BrandSentimentPage /> : <Navigate to="/dashboard" replace />} />
+        <Route path="brand-media" element={hasRole(user, 'client') ? <BrandMediaAnalysisPage /> : <Navigate to="/dashboard" replace />} />
+        <Route path="media-distribution" element={hasRole(user, 'client') ? <MediaDistributionPage /> : <Navigate to="/dashboard" replace />} />
+        <Route path="publications" element={hasRole(user, 'client') ? <PublicationsAnalysisPage /> : <Navigate to="/dashboard" replace />} />
+        <Route path="coverage-region" element={hasRole(user, 'client') ? <CoverageRegionPage /> : <Navigate to="/dashboard" replace />} />
+        <Route path="competitive" element={hasRole(user, 'client') ? <CompetitiveIntelligencePage /> : <Navigate to="/dashboard" replace />} />
+        <Route path="competitive-sentiment" element={hasRole(user, 'client') ? <CompetitiveSentimentPage /> : <Navigate to="/dashboard" replace />} />
+        <Route path="competitive-ceos" element={hasRole(user, 'client') ? <CompetitiveCEOsPage /> : <Navigate to="/dashboard" replace />} />
+        <Route path="competitive-pr" element={hasRole(user, 'client') ? <CompetitivePRDriversPage /> : <Navigate to="/dashboard" replace />} />
+        <Route path="glossary" element={hasRole(user, 'client') ? <GlossaryPage /> : <Navigate to="/dashboard" replace />} />
+        <Route path="methodology" element={hasRole(user, 'client') ? <PrincipleMethodologyPage /> : <Navigate to="/dashboard" replace />} />
+        <Route path="mentions-inbox" element={hasRole(user, 'client') ? <DailyMentionsInboxPage /> : <Navigate to="/dashboard" replace />} />
 
         {/* FALLBACK */}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
