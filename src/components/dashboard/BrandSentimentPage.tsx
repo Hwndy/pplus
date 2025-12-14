@@ -50,10 +50,10 @@ const BrandSentimentPage: React.FC = () => {
 
     if (filterValues.dateRange) {
       const [startDate, endDate] = filterValues.dateRange as [string | null, string | null];
-      if (!startDate || !endDate) {
-        console.log('Waiting for both dates to be selected...');
+      if (new Date(startDate) > new Date(endDate)) {
+        toast.error('Start date must be before or equal to end date');
         setLoading(false);
-        return; // Exit early if both dates aren't selected
+        return;
       }
     }
 
@@ -87,7 +87,7 @@ const BrandSentimentPage: React.FC = () => {
       if (response.ok && result.success && result.data) {
         const apiData = result.data;
 
-        setCompanyName(activePair.company_name || 'Your Company');
+        setCompanyName(activePair.base_company.company_name || 'Your Company');
         setPeriod({
           start: apiData.period.start || '',
           end: apiData.period.end || '',
@@ -103,19 +103,19 @@ const BrandSentimentPage: React.FC = () => {
 
         setHasData(true);
       } else {
-        setCompanyName(activePair.company_name || 'Your Company');
+        setCompanyName(activePair.base_company.company_name || 'Your Company');
         setPeriod({ start: '', end: '' });
         setData(DEFAULT_ZERO_DATA);
         setHasData(false);
 
         if (result.message?.includes('No editorials') || result.message?.includes('No data')) {
-          toast.info(`No media mentions found for ${activePair.company_name} this month`);
+          toast.info(`No media mentions found for ${activePair.base_company.company_name} this month`);
         }
       }
     } catch (err) {
       console.error('Fetch error:', err);
       toast.error('Failed to load brand sentiment analysis');
-      setCompanyName(activePair?.company_name || 'Your Company');
+      setCompanyName(activePair?.base_company.company_name || 'Your Company');
       setData(DEFAULT_ZERO_DATA);
       setHasData(false);
     } finally {
@@ -148,7 +148,8 @@ const BrandSentimentPage: React.FC = () => {
       key: 'dateRange',
       label: 'Select Month',
       type: 'daterange',
-      placeholder: 'Pick a month',
+      placeholder: 'Select start and end date',
+      closeOnSelect: true,
     },
   ];
 
@@ -157,7 +158,7 @@ const BrandSentimentPage: React.FC = () => {
       <div className="flex items-center justify-center h-96">
         <Loader2 className="w-10 h-10 animate-spin text-pink-600" />
         <span className="ml-4 text-lg">
-          Loading sentiment analysis for <strong>{activePair?.company_name || 'your company'}</strong>...
+          Loading sentiment analysis for <strong>{activePair?.base_company.company_name || 'your company'}</strong>...
         </span>
       </div>
     );
@@ -176,7 +177,7 @@ const BrandSentimentPage: React.FC = () => {
               Brand Media Sentiment Distribution Matrix
             </h1>
             <p className="text-pink-100">
-              {companyName} • {period.start ? `${formatDate(period.start)} – ${formatDate(period.end)}` : 'Select a month'}
+              {companyName} • {period.start ? `${formatDate(period.start)} – ${formatDate(period.end)}` : 'Select a date range'}
             </p>
           </div>
           <div className="bg-white/20 backdrop-blur-sm rounded-full p-3">

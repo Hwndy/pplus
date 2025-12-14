@@ -78,8 +78,8 @@ export function Header({ children }: HeaderProps) {
     return str && str.trim() ? str.trim()[0].toUpperCase() : '?';
   };
 
-  const activeCompanyLetter = activePair?.company_name
-    ? getFallbackLetter(activePair.company_name)
+  const activeCompanyLetter = activePair?.base_company.company_name
+    ? getFallbackLetter(activePair.base_company.company_name)
     : getFallbackLetter(user.name);
 
   return (
@@ -92,7 +92,7 @@ export function Header({ children }: HeaderProps) {
             <>
               <span className="text-muted-foreground">•</span>
               <span className="text-sm font-medium text-foreground">
-                {activePair.company_name}
+                {activePair.base_company.company_name}
               </span>
             </>
           )}
@@ -201,7 +201,7 @@ export function Header({ children }: HeaderProps) {
               </Avatar>
               <div className="flex-1">
                 <p className="text-sm font-semibold">
-                  {activePair?.company_name || 'No company selected'}
+                  {activePair?.base_company.company_name || 'No company selected'}
                 </p>
                 <p className="text-xs text-muted-foreground">{user.name} • {user.email}</p>
               </div>
@@ -222,11 +222,11 @@ export function Header({ children }: HeaderProps) {
                 >
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className="text-xs">
-                      {getFallbackLetter(pair.company_name)}
+                      {getFallbackLetter(pair.base_company.company_name)}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
-                    <p className="text-sm font-medium">{pair.company_name}</p>
+                    <p className="text-sm font-medium">{pair.base_company.company_name}</p>
                   </div>
                   {activePair?.pair_id === pair.pair_id && (
                     <CheckCircle className="h-4 w-4 text-primary" />

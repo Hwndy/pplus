@@ -3,6 +3,9 @@ import { apiService, QueryParams } from '@/services/apiService';
 
 // Generic type for paginated responses
 type PaginatedResponse<T> = {
+  filter(arg0: (u: any) => boolean): unknown;
+  filter(arg0: (u: any) => boolean): unknown;
+  length: number;
   data: T[];
   pagination: {
     total: number;

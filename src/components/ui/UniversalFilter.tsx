@@ -15,6 +15,7 @@ export interface FilterOption {
   type: 'select' | 'multiselect' | 'date' | 'daterange' | 'search' | 'number';
   options?: { value: string; label: string }[];
   placeholder?: string;
+  closeOnSelect: boolean
 }
 
 export interface FilterValues {

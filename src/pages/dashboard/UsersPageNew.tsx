@@ -82,7 +82,7 @@ const renderRole = (role: string | { id: string; name: string } | unknown): stri
 };
 
 // Filter options for users
-const filterOptions: FilterOption[] = [
+const filterOptions = [
   {
     key: 'role',
     label: 'Role',
@@ -92,7 +92,8 @@ const filterOptions: FilterOption[] = [
       { value: 'Supervisor', label: 'Supervisor' },
       { value: 'Analyst', label: 'Analyst' },
       { value: 'Client', label: 'Client' }
-    ]
+    ],
+    closeOnSelect: true
   },
   {
     key: 'status',
@@ -102,13 +103,15 @@ const filterOptions: FilterOption[] = [
       { value: 'ACTIVE', label: 'Active' },
       { value: 'INACTIVE', label: 'Inactive' },
       { value: 'SUSPENDED', label: 'Suspended' }
-    ]
+    ],
+    closeOnSelect: true
   },
   {
     key: 'search',
     label: 'Search',
     type: 'search',
-    placeholder: 'Search users...'
+    placeholder: 'Search users...',
+    closeOnSelect: true
   }
 ];
 

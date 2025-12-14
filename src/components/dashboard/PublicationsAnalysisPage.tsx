@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/components/auth/AuthContext';
 import { toast } from 'sonner';
-import { Newspaper, Users, FileText, Globe, User, Quote } from 'lucide-react';
+import { Newspaper, Users, FileText, Globe, User, Quote, Loader2 } from 'lucide-react';
 import { UniversalFilter, FilterOption, FilterValues } from '@/components/ui/UniversalFilter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -9,7 +9,6 @@ import {
   Bar,
   XAxis,
   YAxis,
-  CartesianGrid,
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
@@ -27,75 +26,117 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export function PublicationsAnalysisPage() {
-  const { user, token, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { token, activePair } = useAuth();
   const [filterValues, setFilterValues] = useState<FilterValues>({});
   const [analysisData, setAnalysisData] = useState<any>(null);
-  const [dataLoading, setDataLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  // Use company directly from authenticated user
-  const companyName = user?.company_name || user?.company || 'Your Company';
+  const companyName = activePair?.base_company.company_name || 'Your Company';
 
-  const currentDate = new Date();
-  const formattedDate = `${currentDate.getDate()} ${currentDate.toLocaleString('default', { month: 'short' })} ${currentDate.getFullYear()} ${currentDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZoneName: 'short', hour12: true })}`;
+  const hasValidDateRange = filterValues.dateRange && Array.isArray(filterValues.dateRange) && filterValues.dateRange[0] && filterValues.dateRange[1];
+  const startDate = (hasValidDateRange ? filterValues.dateRange[0] : '') as string;
+  const endDate = (hasValidDateRange ? filterValues.dateRange[1] : '') as string;
 
-  const filterOptions: FilterOption[] = [
+  const filterOptions = [
     {
       key: 'dateRange',
-      label: 'Date Range',
+      label: 'Select Date Range',
       type: 'daterange',
-      placeholder: 'Select date range',
+      placeholder: 'Pick date range',
+      closeOnSelect: true,        // ← This makes the calendar close after ANY date selection
     },
   ];
 
   const resetFilters = () => setFilterValues({});
 
-  const getMonthFromDateRange = (dateRange: any): string | null => {
-    if (!dateRange?.start) return null;
-    const start = new Date(dateRange.start);
-    return `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}`;
+  const formatDate = (date: string) => {
+    const [year, month, day] = date.split('-');
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${parseInt(day)} ${monthNames[parseInt(month) - 1]} ${year}`;
   };
 
-  useEffect(() => {
-    if (authLoading || !isAuthenticated || !token || !companyName) return;
+  const getDisplayDates = () => {
+    if (filterValues.dateRange) {
+      const [start, end] = filterValues.dateRange as [string | null, string | null];
+      if (start && end) return { start, end };
+    }
+    
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    
+    return {
+      start: `${year}-${month}-01`,
+      end: `${year}-${month}-${day}`
+    };
+  };
 
-    const fetchAnalysisData = async () => {
-      setDataLoading(true);
-      try {
-        const month = getMonthFromDateRange(filterValues.dateRange);
-        const params = new URLSearchParams();
-        params.append('company', companyName);
-        if (month) params.append('month', month);
+  const displayDates = getDisplayDates();
 
-        const url = `https://pplus-ipn6.onrender.com/api/report/publication-reporter-spokesperson-analysis?${params.toString()}`;
+  const fetchAnalysisData = useCallback(async () => {
+    if (!token || !activePair) {
+      setAnalysisData(null);
+      setLoading(false);
+      return;
+    }
 
-        const response = await fetch(url, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
+    if (filterValues.dateRange) {
+      const [start, end] = filterValues.dateRange as [string | null, string | null];
+      if (new Date(start) > new Date(end)) {
+      toast.error('Start date must be before or equal to end date');
+      setLoading(false);
+      return;
+      }
+    }
 
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    setLoading(true);
 
-        const result = await response.json();
+    try {
+      const params = new URLSearchParams();
+      params.append('pair_id', String(activePair.pair_id));
 
-        if (result.success && result.data) {
-          setAnalysisData(result.data);
-        } else {
-          setAnalysisData(null);
-          toast.info(result.message || 'No publication data available for this period');
+      if (hasValidDateRange) {
+        params.append('startDate', startDate);
+        params.append('endDate', endDate);
+      }
+
+      const url = `https://pplus-ipn6.onrender.com/api/report/publication-reporter-spokesperson-analysis?${params.toString()}`;
+      console.log('Fetching Publications Analysis →', url);
+
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success && result.data) {
+        setAnalysisData(result.data);
+      } else {
+        setAnalysisData(null);
+        if (result.message && !result.message.includes('No publication')) {
+          toast.info(result.message);
         }
-      } catch (err) {
-        console.error('Error fetching publication analysis:', err);
+      }
+    } catch (err: any) {
+      console.error('Error fetching publication analysis:', err);
+      if (err.response?.status === 404 || err.message?.includes('No publication')) {
+        setAnalysisData(null);
+      } else {
         toast.error('Failed to load publication analysis');
         setAnalysisData(null);
-      } finally {
-        setDataLoading(false);
       }
-    };
+    } finally {
+      setLoading(false);
+    }
+  }, [token, activePair, filterValues.dateRange, hasValidDateRange, startDate, endDate]);
 
+  useEffect(() => {
     fetchAnalysisData();
-  }, [authLoading, isAuthenticated, token, companyName, filterValues.dateRange]);
+  }, [fetchAnalysisData]);
 
   const printPublications = analysisData?.analysis?.print_publications_volume?.sources?.map((s: any) => ({
     name: s.source,
@@ -121,13 +162,25 @@ export function PublicationsAnalysisPage() {
     percentage: parseFloat(r.percentage) || 0,
   })) || [];
 
-  if (authLoading || dataLoading) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>;
-  }
-
   return (
-    <div className="space-y-8 animate-fade-in">
-      {/* Beautiful Header Section */}
+    <div className="space-y-8 animate-fade-in relative">
+      {loading && (
+        <div className="fixed inset-0 bg-white/60 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 flex flex-col items-center space-y-4 border border-gray-100">
+            <Loader2 className="w-12 h-12 animate-spin text-blue-600" />
+            <div className="text-center">
+              <p className="text-lg font-semibold text-gray-800">
+                Loading publications analysis for {companyName}
+              </p>
+              <p className="text-sm text-gray-500 mt-1">
+                {formatDate(displayDates.start)} – {formatDate(displayDates.end)}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-2xl p-8 text-white relative overflow-hidden">
         <div className="absolute inset-0 bg-black/10"></div>
         <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-white/10 transform translate-x-32 -translate-y-32"></div>
@@ -135,17 +188,26 @@ export function PublicationsAnalysisPage() {
 
         <div className="relative z-10 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold mb-2 tracking-tight">Publications & Spokespersons Analysis</h1>
-            <p className="text-blue-100 text-lg">Media coverage insights and spokesperson performance metrics</p>
+            <h1 className="text-3xl font-bold mb-2 tracking-tight">Publications & Reporters Analysis</h1>
+            <p className="text-blue-100 text-lg">Media coverage insights and reporter engagement</p>
+            {activePair && (
+              <p className="text-blue-200 text-sm mt-1">Currently viewing: <strong>{activePair.base_company.company_name}</strong></p>
+            )}
           </div>
           <div className="flex items-center gap-4">
             <div className="bg-white/20 backdrop-blur-sm rounded-full p-4">
               <Newspaper size={32} className="text-white" />
             </div>
-            <div className="text-right">
-              <div className="text-sm text-blue-100">Last Updated</div>
-              <div className="text-white font-medium">{formattedDate}</div>
-            </div>
+            {analysisData && (
+              <div className="text-right">
+                <div className="text-sm text-blue-100">Publications</div>
+                <div className="text-2xl font-bold text-white">
+                  {(analysisData.analysis?.print_publications_volume?.total_count || 0) + 
+                   (analysisData.analysis?.online_publications_volume?.total_count || 0)}
+                </div>
+                <div className="text-sm text-blue-200">Total coverage</div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -171,7 +233,9 @@ export function PublicationsAnalysisPage() {
                     <FileText size={20} className="text-white" />
                   </div>
                   Print Publications
-                  <span className="text-sm font-normal text-gray-500">(Volume)</span>
+                  <span className="text-sm font-normal text-gray-500">
+                    ({analysisData?.analysis?.print_publications_volume?.total_count || 0})
+                  </span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -193,7 +257,7 @@ export function PublicationsAnalysisPage() {
                     </ResponsiveContainer>
                   ) : (
                     <div className="h-full flex items-center justify-center text-gray-400">
-                      <p>No print publication data</p>
+                      <p>{hasValidDateRange ? 'No print publications found' : 'Select date range to view data'}</p>
                     </div>
                   )}
                 </div>
@@ -208,7 +272,9 @@ export function PublicationsAnalysisPage() {
                     <Globe size={20} className="text-white" />
                   </div>
                   Online Publications
-                  <span className="text-sm font-normal text-gray-500">(Volume)</span>
+                  <span className="text-sm font-normal text-gray-500">
+                    ({analysisData?.analysis?.online_publications_volume?.total_count || 0})
+                  </span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -230,7 +296,7 @@ export function PublicationsAnalysisPage() {
                     </ResponsiveContainer>
                   ) : (
                     <div className="h-full flex items-center justify-center text-gray-400">
-                      <p>No online publication data</p>
+                      <p>{hasValidDateRange ? 'No online publications found' : 'Select date range to view data'}</p>
                     </div>
                   )}
                 </div>
@@ -248,7 +314,9 @@ export function PublicationsAnalysisPage() {
                     <User size={20} className="text-white" />
                   </div>
                   Print Reporters
-                  <span className="text-sm font-normal text-gray-500">(Volume)</span>
+                  <span className="text-sm font-normal text-gray-500">
+                    ({analysisData?.analysis?.print_reporters?.unique_reporters || 0})
+                  </span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -270,7 +338,7 @@ export function PublicationsAnalysisPage() {
                     </ResponsiveContainer>
                   ) : (
                     <div className="h-full flex items-center justify-center text-gray-400">
-                      <p>No print reporter data</p>
+                      <p>{hasValidDateRange ? 'No print reporters found' : 'Select date range to view data'}</p>
                     </div>
                   )}
                 </div>
@@ -285,7 +353,9 @@ export function PublicationsAnalysisPage() {
                     <Users size={20} className="text-white" />
                   </div>
                   Online Reporters
-                  <span className="text-sm font-normal text-gray-500">(Volume)</span>
+                  <span className="text-sm font-normal text-gray-500">
+                    ({analysisData?.analysis?.online_reporters?.unique_reporters || 0})
+                  </span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -307,7 +377,7 @@ export function PublicationsAnalysisPage() {
                     </ResponsiveContainer>
                   ) : (
                     <div className="h-full flex items-center justify-center text-gray-400">
-                      <p>No online reporter data</p>
+                      <p>{hasValidDateRange ? 'No online reporters found' : 'Select date range to view data'}</p>
                     </div>
                   )}
                 </div>
@@ -316,7 +386,7 @@ export function PublicationsAnalysisPage() {
           </div>
         </div>
 
-        {/* Right side - Spokespersons */}
+        {/* Right side - Summary Stats */}
         <div className="xl:col-span-1">
           <Card className="border-0 shadow-lg bg-gradient-to-br from-slate-50 to-gray-50 hover:shadow-xl transition-all duration-300 h-full">
             <CardHeader className="pb-4">
@@ -324,11 +394,51 @@ export function PublicationsAnalysisPage() {
                 <div className="bg-gradient-to-br from-slate-600 to-gray-600 p-2 rounded-lg">
                   <Quote size={20} className="text-white" />
                 </div>
-                Spokespersons
+                Summary
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              <p className="text-gray-500 text-center">Spokesperson data coming soon</p>
+              {analysisData ? (
+                <>
+                  <div className="bg-white rounded-lg p-4 shadow-sm">
+                    <p className="text-sm text-gray-500 mb-1">Print Publications</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {analysisData.analysis?.print_publications_volume?.total_count || 0}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {analysisData.analysis?.print_publications_volume?.unique_sources || 0} unique sources
+                    </p>
+                  </div>
+                  
+                  <div className="bg-white rounded-lg p-4 shadow-sm">
+                    <p className="text-sm text-gray-500 mb-1">Online Publications</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {analysisData.analysis?.online_publications_volume?.total_count || 0}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {analysisData.analysis?.online_publications_volume?.unique_sources || 0} unique sources
+                    </p>
+                  </div>
+
+                  <div className="bg-white rounded-lg p-4 shadow-sm">
+                    <p className="text-sm text-gray-500 mb-1">Print Reporters</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {analysisData.analysis?.print_reporters?.unique_reporters || 0}
+                    </p>
+                  </div>
+
+                  <div className="bg-white rounded-lg p-4 shadow-sm">
+                    <p className="text-sm text-gray-500 mb-1">Online Reporters</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {analysisData.analysis?.online_reporters?.unique_reporters || 0}
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <p className="text-gray-500 text-center">
+                  {hasValidDateRange ? 'No data available' : 'Select date range to view summary'}
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>

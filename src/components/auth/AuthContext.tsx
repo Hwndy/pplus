@@ -28,7 +28,32 @@ export interface User {
 
 export interface MonitoringPair {
   pair_id: number;
-  company_name: string;
+  pair_number: number;
+
+  base_company: {
+    id: number;
+    company_name: string;
+    industry: string;
+    sub_industry: string;
+  };
+
+  competitors: Array<{
+    id: number;
+    company_name: string;
+  }>;
+
+  subsidiaries: Array<any>;
+
+  media_prominence: string[];
+  monitoring_date: string;
+  is_expired: boolean;
+  status: 'active' | 'expired';
+
+  summary: {
+    total_competitors: number;
+    total_subsidiaries: number;
+    total_companies_monitored: number;
+  };
 }
 
 interface AuthState {
@@ -160,9 +185,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (response.ok && result.success) {
         const pairs: MonitoringPair[] = result.data.pairs.map((p: any) => ({
-          pair_id: p.pair_id,
+        pair_id: p.pair_id,
+        pair_number: p.pair_number,
+        base_company: {
+          id: p.base_company.id,
           company_name: p.base_company.company_name.trim(),
-        }));
+          industry: p.base_company.industry.trim(),
+          sub_industry: p.base_company.sub_industry.trim(),
+        },
+        competitors: p.competitors || [],
+        subsidiaries: p.subsidiaries || [],
+        media_prominence: p.media_prominence || [],
+        monitoring_date: p.monitoring_date,
+        is_expired: p.is_expired,
+        status: p.status,
+        summary: {
+          total_competitors: p.summary.total_competitors,
+          total_subsidiaries: p.summary.total_subsidiaries,
+          total_companies_monitored: p.summary.total_companies_monitored,
+        },
+      }));
 
         dispatch({ type: 'SET_MONITORING_PAIRS', payload: pairs });
 
@@ -184,7 +226,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const setActivePair = useCallback((pair: MonitoringPair) => {
     dispatch({ type: 'SET_ACTIVE_PAIR', payload: pair });
     localStorage.setItem('activePairId', String(pair.pair_id));
-    toast.success(`Switched to ${pair.company_name}`);
+    toast.success(`Switched to ${pair.base_company.company_name}`);
   }, []);
 
   // Validate session on mount

@@ -63,10 +63,10 @@ export default function IndustryLandscapePage() {
 
     if (filterValues.dateRange) {
       const [start, end] = filterValues.dateRange as [string | null, string | null];
-      if (!start || !end) {
-        console.log('Waiting for both dates to be selected...');
-        setLoading(false);
-        return;
+      if (new Date(start) > new Date(end)) {
+      toast.error('Start date must be before or equal to end date');
+      setLoading(false);
+      return;
       }
     }
 
@@ -151,7 +151,13 @@ export default function IndustryLandscapePage() {
   const totalCount = overviews.length;
 
   const filterOptions = [
-    { key: 'dateRange', label: 'Select Date Range', type: 'daterange', placeholder: 'Pick date range' },
+    {
+      key: 'dateRange',
+      label: 'Select Date Range',
+      type: 'daterange',
+      placeholder: 'Pick date range',
+      closeOnSelect: true,  
+    },
   ];
 
   const formatDate = (date: string) => {
@@ -187,7 +193,7 @@ export default function IndustryLandscapePage() {
             <Loader2 className="w-12 h-12 animate-spin text-teal-600" />
             <div className="text-center">
               <p className="text-lg font-semibold text-gray-800">
-                Loading industry updates for {activePair?.company_name || 'your company'}
+                Loading industry updates for {activePair?.base_company.company_name || 'your company'}
               </p>
               <p className="text-sm text-gray-500 mt-1">
                 {formatDate(displayDates.start)} – {formatDate(displayDates.end)}
@@ -205,7 +211,7 @@ export default function IndustryLandscapePage() {
             <h1 className="text-3xl font-bold mb-2 tracking-tight">Industry Landscape</h1>
             <p className="text-teal-100 text-lg">Sector updates and market insights</p>
             {activePair && (
-              <p className="text-teal-200 text-sm mt-1">Currently viewing: <strong>{activePair.company_name}</strong></p>
+              <p className="text-teal-200 text-sm mt-1">Currently viewing: <strong>{activePair.base_company.company_name}</strong></p>
             )}
           </div>
           <div className="flex items-center gap-4">
@@ -242,7 +248,7 @@ export default function IndustryLandscapePage() {
                 </h3>
                 <p className="text-gray-500 max-w-md">
                   {hasValidDateRange
-                    ? `No updates found for ${activePair?.company_name || 'this company'} in the selected period.`
+                    ? `No updates found for ${activePair?.base_company.company_name || 'this company'} in the selected period.`
                     : 'Use the date picker above to fetch industry landscape updates.'}
                 </p>
               </CardContent>
@@ -272,9 +278,6 @@ export default function IndustryLandscapePage() {
                         {format(new Date(overview.date), 'MMM dd, yyyy')}
                       </span>
                     </div>
-                    {/* <Badge className={getStatusColor(overview.status)}>
-                      {overview.status}
-                    </Badge> */}
                   </div>
 
                   <div className="mb-3">
@@ -286,25 +289,11 @@ export default function IndustryLandscapePage() {
                   <h3 className={cn("text-lg leading-tight mb-2", overview.isRead ? 'text-gray-700' : 'font-semibold text-gray-900')}>
                     {overview.title}
                   </h3>
-
-                  {/* <p className={cn("text-sm mb-4 line-clamp-2 leading-relaxed", overview.isRead ? 'text-gray-500' : 'text-gray-700')}>
-                    {overview.analystNote}
-                  </p> */}
-
                   <div className="flex items-center gap-2 mb-3">
                     <Badge variant="secondary" className="text-xs">
                       {overview.totalHighlights} highlights
                     </Badge>
                   </div>
-
-                  {/* <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                    <span className={cn("text-xs", overview.isRead ? 'text-gray-400' : 'text-gray-600 font-medium')}>
-                      {overview.analystName}
-                    </span>
-                    <span className="text-xs text-gray-400">
-                      {format(new Date(overview.createdAt), 'MMM dd, HH:mm')}
-                    </span>
-                  </div> */}
                 </CardContent>
               </Card>
             ))
@@ -327,22 +316,12 @@ export default function IndustryLandscapePage() {
                     <h3 className="font-semibold text-gray-900 text-lg leading-tight pr-4">
                       {selectedOverview.title}
                     </h3>
-                    {/* <Badge className={getStatusColor(selectedOverview.status)}>
-                      {selectedOverview.status}
-                    </Badge> */}
                   </div>
                   <Badge variant="secondary" className="bg-teal-100 text-teal-800 mb-2">
                     {selectedOverview.sector}
                   </Badge>
                   <p className="text-sm text-gray-600 mt-2">{format(new Date(selectedOverview.date), 'PPPP')}</p>
                 </div>
-
-                {/* <div className="bg-teal-50 rounded-lg p-4">
-                  <h4 className="text-sm font-semibold text-teal-800 mb-2">
-                    Analyst Note
-                  </h4>
-                  <p className="text-sm text-teal-900">{selectedOverview.analystNote}</p>
-                </div> */}
 
                 {/* Highlights */}
                 <div className="space-y-3">
@@ -358,42 +337,6 @@ export default function IndustryLandscapePage() {
                     ))}
                   </ul>
                 </div>
-
-                {/* Notes */}
-                {/* <div className="space-y-3">
-                  <h4 className="text-sm font-medium text-gray-700 border-b border-gray-200 pb-1">Notes</h4>
-                  <div className="text-sm space-y-2">
-                    <div>
-                      <span className="text-gray-500">Supervisor Note:</span>
-                      <p className="font-medium mt-1">{selectedOverview.supervisorNote}</p>
-                    </div>
-                  </div>
-                </div> */}
-
-                {/* Metadata */}
-                {/* <div className="space-y-3">
-                  <h4 className="text-sm font-medium text-gray-700 border-b border-gray-200 pb-1">Details</h4>
-                  <div className="text-sm space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Analyst:</span>
-                      <span className="font-medium text-right">{selectedOverview.analystName}</span>
-                    </div>
-                    {selectedOverview.approvedBy && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Approved by:</span>
-                        <span className="font-medium text-right">{selectedOverview.approvedBy.username}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Created:</span>
-                      <span className="font-medium text-right">{format(new Date(selectedOverview.createdAt), 'PPp')}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Updated:</span>
-                      <span className="font-medium text-right">{format(new Date(selectedOverview.updatedAt), 'PPp')}</span>
-                    </div>
-                  </div>
-                </div> */}
               </CardContent>
             </Card>
           ) : (

@@ -65,10 +65,10 @@ export default function OutcomeInsightsPage() {
 
     if (filterValues.dateRange) {
       const [start, end] = filterValues.dateRange as [string | null, string | null];
-      if (!start || !end) {
-        console.log('Waiting for both dates to be selected...');
-        setLoading(false);
-        return;
+      if (new Date(start) > new Date(end)) {
+      toast.error('Start date must be before or equal to end date');
+      setLoading(false);
+      return;
       }
     }
 
@@ -166,7 +166,13 @@ export default function OutcomeInsightsPage() {
   const totalCount = insightItems.length;
 
   const filterOptions = [
-    { key: 'dateRange', label: 'Select Month', type: 'daterange', placeholder: 'Pick a month' },
+    {
+      key: 'dateRange',
+      label: 'Select Date Range',
+      type: 'daterange',
+      placeholder: 'Pick date range',
+      closeOnSelect: true,        // ← This makes the calendar close after ANY date selection
+    },
   ];
 
   const formatDate = (date: string) => {
@@ -202,7 +208,7 @@ export default function OutcomeInsightsPage() {
             <Loader2 className="w-12 h-12 animate-spin text-amber-600" />
             <div className="text-center">
               <p className="text-lg font-semibold text-gray-800">
-                Loading outcome insights for {activePair?.company_name || 'your company'}
+                Loading outcome insights for {activePair?.base_company.company_name || 'your company'}
               </p>
               <p className="text-sm text-gray-500 mt-1">
                 {formatDate(displayDates.start)} – {formatDate(displayDates.end)}
@@ -220,7 +226,7 @@ export default function OutcomeInsightsPage() {
             <h1 className="text-3xl font-bold mb-2 tracking-tight">Outcome Insights</h1>
             <p className="text-amber-100 text-lg">Strategic insights and recommendations</p>
             {activePair && (
-              <p className="text-amber-200 text-sm mt-1">Currently viewing: <strong>{activePair.company_name}</strong></p>
+              <p className="text-amber-200 text-sm mt-1">Currently viewing: <strong>{activePair.base_company.company_name}</strong></p>
             )}
           </div>
           <div className="flex items-center gap-4">
@@ -257,7 +263,7 @@ export default function OutcomeInsightsPage() {
                 </h3>
                 <p className="text-gray-500 max-w-md">
                   {hasValidDateRange
-                    ? `No insights found for ${activePair?.company_name || 'this company'} in the selected period.`
+                    ? `No insights found for ${activePair?.base_company.company_name || 'this company'} in the selected period.`
                     : 'Use the date picker above to fetch outcome insights.'}
                 </p>
               </CardContent>
@@ -327,12 +333,12 @@ export default function OutcomeInsightsPage() {
                   <p className="text-sm text-gray-600">{format(new Date(selectedInsight.date), 'PPPP')}</p>
                 </div>
 
-                <div className="bg-amber-50 rounded-lg p-4">
+                {/* <div className="bg-amber-50 rounded-lg p-4">
                   <h4 className="text-sm font-semibold text-amber-800 mb-2">
                     Total Insights: {selectedInsight.totalInsights}
                   </h4>
                   <p className="text-sm text-amber-900">{selectedInsight.analystNote}</p>
-                </div>
+                </div> */}
 
                 {/* Insights by Category */}
                 <div className="space-y-3">

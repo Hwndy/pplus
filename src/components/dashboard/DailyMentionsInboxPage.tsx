@@ -7,6 +7,7 @@ import { Inbox, Mail, MailOpen, User, Building, Eye, ExternalLink } from 'lucide
 import { format } from 'date-fns';
 import axios from 'axios';
 import { useAuth } from '@/components/auth/AuthContext';
+import { toast } from 'sonner';
 
 interface MentionItem {
   id: string;
@@ -27,9 +28,7 @@ const STORAGE_KEY = 'daily-mentions-read-status';
 
 export function DailyMentionsInboxPage() {
   const { token, activePair } = useAuth();
-  const [filterValues, setFilterValues] = useState<FilterValues>({
-    date: ['', ''],
-  });
+  const [filterValues, setFilterValues] = useState<FilterValues>({});
 
   const [selectedMention, setSelectedMention] = useState<MentionItem | null>(null);
   const [mentions, setMentions] = useState<MentionItem[]>([]);
@@ -37,9 +36,13 @@ export function DailyMentionsInboxPage() {
   const [error, setError] = useState<string | null>(null);
   const [readStatus, setReadStatus] = useState<Record<string, boolean>>({});
 
-  const hasValidDateRange = filterValues.date?.[0] && filterValues.date?.[1];
-  const startDate = filterValues.date?.[0] || '';
-  const endDate = filterValues.date?.[1] || '';
+  const hasValidDateRange = filterValues.dateRange && 
+    Array.isArray(filterValues.dateRange) && 
+    filterValues.dateRange[0] && 
+    filterValues.dateRange[1];
+
+  const startDate = (hasValidDateRange ? filterValues.dateRange[0] : '') as string;
+  const endDate = (hasValidDateRange ? filterValues.dateRange[1] : '') as string;
 
   useEffect(() => {
     try {
@@ -63,6 +66,15 @@ export function DailyMentionsInboxPage() {
   const fetchDailyMentions = useCallback(async () => {
     if (!token || !activePair || !hasValidDateRange) {
       setMentions([]);
+      setLoading(false);
+      return;
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    if (start > end) {
+      toast.error('Start date must be before or equal to end date');
       setLoading(false);
       return;
     }
@@ -142,18 +154,7 @@ export function DailyMentionsInboxPage() {
     fetchDailyMentions();
   }, [fetchDailyMentions]);
 
-  const filteredMentions = useMemo(() => {
-    if (!hasValidDateRange || mentions.length === 0) return mentions;
-
-    const start = new Date(filterValues.date![0]);
-    const end = new Date(filterValues.date![1]);
-    end.setHours(23, 59, 59, 999);
-
-    return mentions.filter((m) => {
-      const mentionDate = new Date(m.publicationDate);
-      return mentionDate >= start && mentionDate <= end;
-    });
-  }, [mentions, filterValues.date, hasValidDateRange]);
+  const displayedMentions = mentions;
 
   const handleMentionClick = (mention: MentionItem) => {
     setSelectedMention(mention);
@@ -190,22 +191,28 @@ export function DailyMentionsInboxPage() {
     }
   };
 
-  const unreadCount = filteredMentions.filter(m => !m.isRead).length;
-  const totalCount = filteredMentions.length;
-  const todayCount = filteredMentions.filter(m => {
+  const unreadCount = displayedMentions.filter(m => !m.isRead).length;
+  const totalCount = displayedMentions.length;
+  const todayCount = displayedMentions.filter(m => {
     const today = new Date().toISOString().split('T')[0];
     return m.publicationDate === today;
   }).length;
 
   const filterOptions = [
-    { key: 'date', label: 'Date Range', type: 'daterange', placeholder: 'Select date range' },
+    {
+      key: 'dateRange',
+      label: 'Select Date Range',
+      type: 'daterange',
+      placeholder: 'Pick date range',
+      closeOnSelect: true,        // ← This makes the calendar close after ANY date selection
+    },
   ];
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-lg text-gray-600">
-          Loading daily mentions for {activePair?.company_name || 'your company'}...
+          Loading daily mentions for {activePair?.base_company.company_name || 'your company'}...
         </div>
       </div>
     );
@@ -232,7 +239,7 @@ export function DailyMentionsInboxPage() {
             <h1 className="text-3xl font-bold mb-2 tracking-tight">Daily Mentions Inbox</h1>
             <p className="text-blue-100 text-lg">Review and manage daily media mentions</p>
             {activePair && (
-              <p className="text-blue-200 text-sm mt-1">Currently viewing: <strong>{activePair.company_name}</strong></p>
+              <p className="text-blue-200 text-sm mt-1">Currently viewing: <strong>{activePair.base_company.company_name}</strong></p>
             )}
           </div>
           <div className="flex items-center gap-4">
@@ -264,7 +271,7 @@ export function DailyMentionsInboxPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* List */}
         <div className="lg:col-span-2 space-y-4">
-          {filteredMentions.length === 0 ? (
+          {displayedMentions.length === 0 ? (
             <Card className="border-0 shadow-lg">
               <CardContent className="flex flex-col items-center justify-center h-96 text-center">
                 <Inbox size={64} className="text-gray-400 mb-6" />
@@ -275,13 +282,13 @@ export function DailyMentionsInboxPage() {
                 </h3>
                 <p className="text-gray-500 max-w-md">
                   {hasValidDateRange
-                    ? `No mentions were submitted for ${activePair?.company_name || 'this company'} between ${format(new Date(startDate), 'MMM dd, yyyy')} and ${format(new Date(endDate), 'MMM dd, yyyy')}.`
+                    ? `No mentions were submitted for ${activePair?.base_company.company_name || 'this company'} between ${format(new Date(startDate), 'MMM dd, yyyy')} and ${format(new Date(endDate), 'MMM dd, yyyy')}.`
                     : 'Use the date picker above to fetch daily media mentions.'}
                 </p>
               </CardContent>
             </Card>
           ) : (
-            filteredMentions.map((mention) => (
+            displayedMentions.map((mention) => (
               <Card
                 key={mention.id}
                 className={`border-0 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer border-l-4 ${

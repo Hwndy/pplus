@@ -490,26 +490,21 @@ export function SupervisorDashboard() {
         const json = await res.json();
 
         const s = json.data?.stats || {};
-        const pending = s[`pending_${activeTab}`] ?? 0;
-        const approved = s[`approved_${activeTab}`] ?? 0;
-        const rejected = s[`rejected_${activeTab}`] ?? 0;
-        const total = s[`total_${activeTab}`] ?? 0;
-
         setStats(prev => ({
           ...prev,
-          pending,
-          approved,
-          rejected,
-          total,
-          approvedToday: 0,
-          rejectedToday: 0,
+          pending: s.pending_editorials ?? 0,
+          approved: s.approved_editorials ?? 0,
+          rejected: s.rejected_editorials ?? 0,
+          total: s.total_editorials ?? 0,
+          approvedToday: s.approved_today ?? 0,
+          rejectedToday: s.rejected_today ?? 0,
           byType: {
             ...prev.byType,
             [activeTab]: {
-              pending,
-              approved,
-              rejected,
-              total,
+              pending: s.pending_editorials ?? 0,
+              approved: s.approved_editorials ?? 0,
+              rejected: s.rejected_editorials ?? 0,
+              total: s.total_editorials ?? 0,
               displayName: contentTypes[activeTab].displayName,
             },
           },
@@ -559,18 +554,19 @@ export function SupervisorDashboard() {
 
           // Update stats from this response
           setStats(prev => ({
-            ...prev,
-            pending: s[`pending_${type}`] ?? prev.pending,
-            approved: s[`approved_${type}`] ?? prev.approved,
-            rejected: s[`rejected_${type}`] ?? prev.rejected,
-            total: s[`total_${type}`] ?? prev.total,
+            pending: s.pending_editorials ?? prev.pending,
+            approved: s.approved_editorials ?? prev.approved,
+            rejected: s.rejected_editorials ?? prev.rejected,
+            total: s.total_editorials ?? prev.total,
+            approvedToday: s.approved_today ?? 0,
+            rejectedToday: s.rejected_today ?? 0,
             byType: {
               ...prev.byType,
               [type]: {
-                pending: s[`pending_${type}`] ?? 0,
-                approved: s[`approved_${type}`] ?? 0,
-                rejected: s[`rejected_${type}`] ?? 0,
-                total: s[`total_${type}`] ?? 0,
+                pending: s.pending_editorials ?? 0,
+                approved: s.approved_editorials ?? 0,
+                rejected: s.rejected_editorials ?? 0,
+                total: s.total_editorials ?? 0,
                 displayName: contentTypes[type].displayName,
               },
             },

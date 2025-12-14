@@ -86,8 +86,8 @@ export function ExecutiveSummaryPage() {
 
     if (filterValues.dateRange) {
       const [startDate, endDate] = filterValues.dateRange as [string | null, string | null];
-      if (!startDate || !endDate) {
-        console.log('Waiting for both dates to be selected...');
+      if (new Date(startDate) > new Date(endDate)) {
+        toast.error('Start date must be before or equal to end date');
         setLoading(false);
         return; // Exit early if both dates aren't selected
       }
@@ -123,7 +123,7 @@ export function ExecutiveSummaryPage() {
         setData(result.data);
         setHasData(true);
       } else {
-        const companyName = activePair.company_name || 'Your Company';
+        const companyName = activePair.base_company.company_name || 'Your Company';
         const period = result.data?.period || DEFAULT_ZERO_DATA.period;
 
         setData({
@@ -146,7 +146,7 @@ export function ExecutiveSummaryPage() {
       toast.error('Failed to load executive summary');
       setData({
         ...DEFAULT_ZERO_DATA,
-        company: activePair?.company_name || 'Your Company',
+        company: activePair?.base_company.company_name || 'Your Company',
       });
       setHasData(false);
     } finally {
@@ -203,7 +203,8 @@ export function ExecutiveSummaryPage() {
       key: 'dateRange', 
       label: 'Select Month', 
       type: 'daterange', 
-      placeholder: 'Pick a month',
+      placeholder: 'Select a date range',
+      closeOnSelect: true,
     },
   ];
 
@@ -211,7 +212,7 @@ export function ExecutiveSummaryPage() {
     return (
       <div className="flex items-center justify-center h-96">
         <Loader2 className="w-10 h-10 animate-spin text-indigo-600" />
-        <span className="ml-4 text-lg">Loading executive summary for {activePair?.company_name || 'your company'}...</span>
+        <span className="ml-4 text-lg">Loading executive summary for {activePair?.base_company.company_name || 'your company'}...</span>
       </div>
     );
   }

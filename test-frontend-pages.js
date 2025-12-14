@@ -84,7 +84,6 @@ class FrontendTester {
       { name: 'Dashboard Summary', endpoint: '/analytics/dashboard-summary' },
       { name: 'Users List', endpoint: '/users' },
       { name: 'Companies List', endpoint: '/companies' },
-      { name: 'Data Entries List', endpoint: '/data-entries' },
       { name: 'Audit Logs', endpoint: '/audit-logs' },
       
       // Companies Page APIs
@@ -188,11 +187,6 @@ class FrontendTester {
         endpoint: '/companies',
         expectedStructure: 'array'
       },
-      // {
-      //   name: 'Data Entries for filtering',
-      //   endpoint: '/data-entries',
-      //   expectedStructure: 'array'
-      // },
       {
         name: 'Users for UserManagement',
         endpoint: '/users',

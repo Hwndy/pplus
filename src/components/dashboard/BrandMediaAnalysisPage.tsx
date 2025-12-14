@@ -95,6 +95,12 @@ export function BrandMediaAnalysisPage() {
         setLoading(false);
         return; // Exit early if both dates aren't selected
       }
+
+      if (new Date(startDate) > new Date(endDate)) {
+        toast.error('Start date must be before or equal to end date');
+        setLoading(false);
+        return;
+      }
       } else {
       setLoading(false);
       return;
@@ -132,13 +138,13 @@ export function BrandMediaAnalysisPage() {
       } else {
         setData({
           ...DEFAULT_DATA,
-          company: activePair.company_name || 'Your Company',
+          company: activePair.base_company.company_name || 'Your Company',
           period: result.data?.period || { start: '', end: '' },
         });
         setHasData(false);
 
         if (result.message?.includes('No editorials') || result.message?.includes('No data')) {
-          toast.info(`No media mentions found for ${activePair.company_name} this month`);
+          toast.info(`No media mentions found for ${activePair.base_company.company_name} this month`);
         }
       }
     } catch (err) {
@@ -146,7 +152,7 @@ export function BrandMediaAnalysisPage() {
       toast.error('Failed to load brand media analysis');
       setData({
         ...DEFAULT_DATA,
-        company: activePair?.company_name || 'Your Company',
+        company: activePair?.base_company.company_name || 'Your Company',
       });
       setHasData(false);
     } finally {
@@ -191,9 +197,10 @@ export function BrandMediaAnalysisPage() {
   const filterOptions = [
     {
       key: 'dateRange',
-      label: 'Select Month',
+      label: 'Select Date Range',
       type: 'daterange',
-      placeholder: 'Pick a month',
+      placeholder: 'Pick date range',
+      closeOnSelect: true,        // ← This makes the calendar close after ANY date selection
     },
   ];
 
@@ -202,7 +209,7 @@ export function BrandMediaAnalysisPage() {
       <div className="flex items-center justify-center h-96">
         <Loader2 className="w-10 h-10 animate-spin text-purple-600" />
         <span className="ml-4 text-lg">
-          Loading media analysis for <strong>{activePair?.company_name || 'your company'}</strong>...
+          Loading media analysis for <strong>{activePair?.base_company.company_name || 'your company'}</strong>...
         </span>
       </div>
     );
@@ -220,7 +227,7 @@ export function BrandMediaAnalysisPage() {
           <div>
             <h1 className="text-3xl font-bold mb-2 tracking-tight">Brand Media Analysis</h1>
             <p className="text-purple-100 text-lg">
-              {activePair?.company_name || 'Your Company'} • {data.period.start ? `${formatDate(data.period.start)} – ${formatDate(data.period.end)}` : 'Select a month'}
+              {activePair?.base_company.company_name || 'Your Company'} • {data.period.start ? `${formatDate(data.period.start)} – ${formatDate(data.period.end)}` : 'Select a date range'}
             </p>
           </div>
           <div className="flex items-center gap-4">
@@ -242,7 +249,7 @@ export function BrandMediaAnalysisPage() {
       {/* No Data Alert */}
       {!hasData && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-amber-800">
-          No media mentions found for {activePair?.company_name || 'your company'} in the selected month. Charts below show zero values.
+          No media mentions found for {activePair?.base_company.company_name || 'your company'} in the selected month. Charts below show zero values.
         </div>
       )}
 

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/components/auth/AuthContext';
 import { toast } from 'sonner';
-import { BarChart2, Activity } from 'lucide-react';
+import { BarChart2, Activity, Loader2 } from 'lucide-react';
 import { UniversalFilter, FilterOption, FilterValues } from '@/components/ui/UniversalFilter';
 import { DataCard } from '@/components/ui/DataCard';
 import {
@@ -16,95 +16,126 @@ import {
 } from 'recharts';
 
 export function MediaDistributionPage() {
-  const { token, isAuthenticated, isLoading: authLoading, activePair } = useAuth(); // Now using activePair
+  const { token, activePair } = useAuth();
   const [filterValues, setFilterValues] = useState<FilterValues>({});
   const [thematicData, setThematicData] = useState<any>(null);
-  const [dataLoading, setDataLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  // Use activePair company name
-  const companyName = activePair?.company_name || 'Your Company';
+  const companyName = activePair?.base_company.company_name || 'Your Company';
 
-  const currentDate = new Date();
-  const formattedDate = `${currentDate.getDate()} ${currentDate.toLocaleString('default', { month: 'short' })} ${currentDate.getFullYear()} ${currentDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZoneName: 'short', hour12: true })}`;
+  const hasValidDateRange = filterValues.dateRange && Array.isArray(filterValues.dateRange) && filterValues.dateRange[0] && filterValues.dateRange[1];
+  const startDate = (hasValidDateRange ? filterValues.dateRange[0] : '') as string;
+  const endDate = (hasValidDateRange ? filterValues.dateRange[1] : '') as string;
 
-  const filterOptions: FilterOption[] = [
+  const filterOptions = [
     {
       key: 'dateRange',
-      label: 'Date Range',
+      label: 'Select Date Range',
       type: 'daterange',
-      placeholder: 'Select date range',
+      placeholder: 'Pick date range',
+      closeOnSelect: true,        // ← This makes the calendar close after ANY date selection
     },
   ];
-
   const resetFilters = () => setFilterValues({});
 
-  const getMonthFromDateRange = (dateRange: any): string | null => {
-    if (!dateRange?.start) return null;
-    const start = new Date(dateRange.start);
-    return `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}`;
+  const formatDate = (date: string) => {
+    const [year, month, day] = date.split('-');
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${parseInt(day)} ${monthNames[parseInt(month) - 1]} ${year}`;
   };
 
-  useEffect(() => {
-    if (authLoading || !isAuthenticated || !token || !activePair) return;
-
-    const fetchThematicData = async () => {
-      setDataLoading(true);
-      try {
-        const month = getMonthFromDateRange(filterValues.dateRange);
-        const params = new URLSearchParams();
-        params.append('pair_id', String(activePair.pair_id));
-        if (month) params.append('month', month);
-
-        // Optional filters (backend must support them)
-        if (filterValues.mediaType) params.append('media_type', filterValues.mediaType as string);
-        if (filterValues.thematicArea) {
-          (filterValues.thematicArea as string[]).forEach(t => params.append('thematic_area', t));
-        }
-        if (filterValues.activityType) {
-          (filterValues.activityType as string[]).forEach(t => params.append('activity_type', t));
-        }
-
-        const url = `https://pplus-ipn6.onrender.com/api/report/top-thematic-distribution-breakdown?${params.toString()}`;
-
-        const response = await fetch(url, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-        const result = await response.json();
-
-        if (result.success && result.data?.items) {
-          const limitedItems = result.data.items.slice(0, 10);
-          setThematicData({ ...result.data, items: limitedItems });
-        } else {
-          setThematicData({ items: [] });
-          toast.info(result.message || 'No thematic data available');
-        }
-      } catch (err) {
-        console.error('Error fetching thematic distribution:', err);
-        toast.error('Failed to load media distribution');
-        setThematicData({ items: [] });
-      } finally {
-        setDataLoading(false);
-      }
+  const getDisplayDates = () => {
+    if (filterValues.dateRange) {
+      const [start, end] = filterValues.dateRange as [string | null, string | null];
+      if (start && end) return { start, end };
+    }
+    
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    
+    return {
+      start: `${year}-${month}-01`,
+      end: `${year}-${month}-${day}`
     };
+  };
 
+  const displayDates = getDisplayDates();
+
+  const fetchThematicData = useCallback(async () => {
+    if (!token || !activePair) {
+      setThematicData({ activities: [] });
+      setLoading(false);
+      return;
+    }
+
+    if (filterValues.dateRange) {
+      const [start, end] = filterValues.dateRange as [string | null, string | null];
+      if (new Date(start) > new Date(end)) {
+      toast.error('Start date must be before or equal to end date');
+      setLoading(false);
+      return;
+      }
+    }
+
+    setLoading(true);
+
+    try {
+      const params = new URLSearchParams();
+      params.append('pair_id', String(activePair.pair_id));
+
+      if (hasValidDateRange) {
+        params.append('startDate', startDate);
+        params.append('endDate', endDate);
+      }
+
+      const url = `https://pplus-ipn6.onrender.com/api/report/top-thematic-distribution-breakdown?${params.toString()}`;
+      console.log('Fetching Media Distribution →', url);
+
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success && result.data?.activities) {
+        setThematicData(result.data);
+      } else {
+        setThematicData({ activities: [] });
+        if (result.message && !result.message.includes('No')) {
+          toast.info(result.message);
+        }
+      }
+    } catch (err: any) {
+      console.error('Error fetching thematic distribution:', err);
+      if (err.response?.status === 404 || err.message?.includes('No')) {
+        setThematicData({ activities: [] });
+      } else {
+        toast.error('Failed to load media distribution');
+        setThematicData({ activities: [] });
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [token, activePair, filterValues.dateRange, hasValidDateRange, startDate, endDate]);
+
+  useEffect(() => {
     fetchThematicData();
-  }, [authLoading, isAuthenticated, token, activePair, filterValues]); // activePair in deps
+  }, [fetchThematicData]);
 
   const colors = [
     '#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8',
     '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
   ];
 
-  const chartData = thematicData?.items.map((item: any, index: number) => ({
+  const chartData = thematicData?.activities?.map((item: any, index: number) => ({
     activity: item.activity,
-    title: item.title,
-    value: 1,
+    frequency: item.frequency,
+    percentage: parseFloat(item.percentage),
     fill: colors[index % colors.length],
   })) || [];
 
@@ -116,24 +147,32 @@ export function MediaDistributionPage() {
       return (
         <div className="bg-white p-4 rounded-lg shadow-lg border border-gray-200">
           <p className="font-semibold text-gray-800">{data.activity}</p>
-          <p className="text-sm text-gray-600 mt-1">{data.title}</p>
-          <p className="text-xs text-gray-500 mt-2">Occurrences: {data.value}</p>
+          <p className="text-sm text-gray-600 mt-1">Frequency: {data.frequency}</p>
+          <p className="text-xs text-gray-500 mt-1">Percentage: {data.percentage}%</p>
         </div>
       );
     }
     return null;
   };
 
-  if (authLoading || dataLoading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div>Loading media distribution for <strong>{companyName}</strong>...</div>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-8 animate-fade-in relative">
+      {loading && (
+        <div className="fixed inset-0 bg-white/60 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 flex flex-col items-center space-y-4 border border-gray-100">
+            <Loader2 className="w-12 h-12 animate-spin text-orange-600" />
+            <div className="text-center">
+              <p className="text-lg font-semibold text-gray-800">
+                Loading media distribution for {companyName}
+              </p>
+              <p className="text-sm text-gray-500 mt-1">
+                {formatDate(displayDates.start)} – {formatDate(displayDates.end)}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-gradient-to-r from-orange-600 via-red-600 to-pink-600 rounded-2xl p-8 text-white relative overflow-hidden">
         <div className="absolute inset-0 bg-black/10"></div>
@@ -145,17 +184,20 @@ export function MediaDistributionPage() {
             <h1 className="text-3xl font-bold mb-2 tracking-tight">Distribution of Media Activities</h1>
             <p className="text-orange-100 text-lg">Thematic analysis and media activity breakdown</p>
             {activePair && (
-              <p className="text-orange-200 text-sm mt-1">Currently viewing: <strong>{activePair.company_name}</strong></p>
+              <p className="text-orange-200 text-sm mt-1">Currently viewing: <strong>{activePair.base_company.company_name}</strong></p>
             )}
           </div>
           <div className="flex items-center gap-4">
             <div className="bg-white/20 backdrop-blur-sm rounded-full p-4">
               <Activity size={32} className="text-white" />
             </div>
-            <div className="text-right">
-              <div className="text-sm text-orange-100">Last Updated</div>
-              <div className="text-white font-medium">{formattedDate}</div>
-            </div>
+            {thematicData?.total_editorials !== undefined && (
+              <div className="text-right">
+                <div className="text-sm text-orange-100">Total Editorials</div>
+                <div className="text-2xl font-bold text-white">{thematicData.total_editorials}</div>
+                <div className="text-sm text-orange-200">{thematicData.unique_activities || 0} unique activities</div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -172,38 +214,46 @@ export function MediaDistributionPage() {
       <div className="grid grid-cols-1 gap-6">
         {/* Bar Chart */}
         <DataCard title="Thematic Distribution of Media Activities" variant="glass" icon={<BarChart2 size={24} />}>
-          <div className="w-full overflow-x-auto">
-            <div style={{ minWidth: '600px' }}>
-              <ResponsiveContainer width="100%" height={chartHeight}>
-                <RechartsBarChart layout="vertical" data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                  <XAxis type="number" domain={[0, 1]} hide />
-                  <YAxis
-                    dataKey="activity"
-                    type="category"
-                    width={170}
-                    tick={{ fontSize: 13, fill: '#374151' }}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }} />
-                  <Bar dataKey="value" barSize={28} radius={[0, 4, 4, 0]}>
-                    {chartData.map((entry: any, index: number) => (
-                      <Cell key={`cell-${index}`} fill={entry.fill} />
-                    ))}
-                  </Bar>
-                </RechartsBarChart>
-              </ResponsiveContainer>
+          {chartData.length > 0 ? (
+            <div className="w-full overflow-x-auto">
+              <div style={{ minWidth: '600px' }}>
+                <ResponsiveContainer width="100%" height={chartHeight}>
+                  <RechartsBarChart layout="vertical" data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                    <XAxis type="number" />
+                    <YAxis
+                      dataKey="activity"
+                      type="category"
+                      width={170}
+                      tick={{ fontSize: 13, fill: '#374151' }}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }} />
+                    <Bar dataKey="frequency" barSize={28} radius={[0, 4, 4, 0]}>
+                      {chartData.map((entry: any, index: number) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </RechartsBarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="text-center py-12 text-gray-500">
+              {hasValidDateRange
+                ? `No media activities found for ${companyName} in the selected period`
+                : 'Select a date range to view media distribution'}
+            </div>
+          )}
         </DataCard>
 
         {/* Thematic Breakdown List */}
         <DataCard title="Thematic Distribution Breakdown" variant="glass" icon={<BarChart2 size={24} />}>
           <div className="p-4 space-y-4">
-            {thematicData?.items.length > 0 ? (
-              thematicData.items.map((item: any, index: number) => (
-                <div key={item.title} className="border rounded-lg overflow-hidden shadow-sm">
+            {chartData.length > 0 ? (
+              chartData.map((item: any, index: number) => (
+                <div key={item.activity} className="border rounded-lg overflow-hidden shadow-sm">
                   <div className="flex">
                     <div
                       className="w-16 flex items-center justify-center p-4 text-2xl font-bold text-white"
@@ -211,16 +261,21 @@ export function MediaDistributionPage() {
                     >
                       {String(index + 1).padStart(2, '0')}
                     </div>
-                    <div className="p-4 bg-muted/20 flex-1">
-                      <h3 className="text-lg font-semibold text-foreground mb-1">{item.activity}</h3>
-                      <p className="text-sm text-muted-foreground">{item.title}</p>
+                    <div className="p-4 bg-gray-50 flex-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="text-lg font-semibold text-gray-900">{item.activity}</h3>
+                        <span className="text-sm font-medium text-gray-600">{item.percentage}%</span>
+                      </div>
+                      <p className="text-sm text-gray-600">Frequency: {item.frequency} occurrences</p>
                     </div>
                   </div>
                 </div>
               ))
             ) : (
               <div className="text-center py-12 text-gray-500">
-                No media activities found for the selected period
+                {hasValidDateRange
+                  ? `No media activities found for ${companyName} in the selected period`
+                  : 'Select a date range to view the breakdown'}
               </div>
             )}
           </div>

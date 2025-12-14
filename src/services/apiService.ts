@@ -893,19 +893,6 @@ class ApiService {
   // --------------------------------------------------------------------------
   // DATA ENTRIES / PARAMETERS
   // --------------------------------------------------------------------------
-  async getDataEntries(p?: QueryParams): Promise<ApiResponse<any[]>> {
-    const res = await get(`${this.baseUrl}/data-entries${this.buildQuery(p)}`, {
-      headers: this.getAuthHeaders(false),
-    });
-    return this.extract<any[]>(res);
-  }
-
-  async getDataEntryById(id: string): Promise<ApiResponse<any>> {
-    const res = await get(`${this.baseUrl}/data-entries/${id}`, {
-      headers: this.getAuthHeaders(false),
-    });
-    return this.extract<any>(res);
-  }
 
   async getDataParameters(p?: QueryParams): Promise<ApiResponse<any[]>> {
     const res = await get(`${this.baseUrl}/data-parameters${this.buildQuery(p)}`, {

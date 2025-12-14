@@ -67,8 +67,8 @@ export default function SwotAnalysisPage() {
     // Only fetch if both dates are selected
     if (filterValues.dateRange) {
       const [start, end] = filterValues.dateRange as [string | null, string | null];
-      if (!start || !end) {
-        console.log('Waiting for both dates to be selected...');
+      if (new Date(start) > new Date(end)) {
+        toast.error('Start date must be before or equal to end date');
         setLoading(false);
         return;
       }
@@ -158,7 +158,13 @@ export default function SwotAnalysisPage() {
   const totalCount = swotItems.length;
 
   const filterOptions = [
-    { key: 'dateRange', label: 'Select Month', type: 'daterange', placeholder: 'Pick a month' },
+    {
+      key: 'dateRange',
+      label: 'Select Date Range',
+      type: 'daterange',
+      placeholder: 'Pick date range',
+      closeOnSelect: true,        // ← This makes the calendar close after ANY date selection
+    },
   ];
 
   const formatDate = (date: string) => {
@@ -194,7 +200,7 @@ export default function SwotAnalysisPage() {
             <Loader2 className="w-12 h-12 animate-spin text-indigo-600" />
             <div className="text-center">
               <p className="text-lg font-semibold text-gray-800">
-                Loading SWOT analyses for {activePair?.company_name || 'your company'}
+                Loading SWOT analyses for {activePair?.base_company.company_name || 'your company'}
               </p>
               <p className="text-sm text-gray-500 mt-1">
                 {formatDate(displayDates.start)} – {formatDate(displayDates.end)}
@@ -212,7 +218,7 @@ export default function SwotAnalysisPage() {
             <h1 className="text-3xl font-bold mb-2 tracking-tight">SWOT Analysis</h1>
             <p className="text-purple-100 text-lg">Strategic insights and analysis</p>
             {activePair && (
-              <p className="text-purple-200 text-sm mt-1">Currently viewing: <strong>{activePair.company_name}</strong></p>
+              <p className="text-purple-200 text-sm mt-1">Currently viewing: <strong>{activePair.base_company.company_name}</strong></p>
             )}
           </div>
           <div className="flex items-center gap-4">
@@ -249,7 +255,7 @@ export default function SwotAnalysisPage() {
                 </h3>
                 <p className="text-gray-500 max-w-md">
                   {hasValidDateRange
-                    ? `No analyses found for ${activePair?.company_name || 'this company'} in the selected period.`
+                    ? `No analyses found for ${activePair?.base_company.company_name || 'this company'} in the selected period.`
                     : 'Use the date picker above to fetch SWOT analyses.'}
                 </p>
               </CardContent>
