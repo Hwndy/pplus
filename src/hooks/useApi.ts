@@ -15,6 +15,21 @@ type PaginatedResponse<T> = {
   };
 };
 
+// Audit log filters type
+interface AuditLogFilters {
+  page?: number;
+  limit?: number;
+  action?: string | string[];
+  resource_type?: string | string[];
+  user_id?: string | string[];
+  severity?: string | string[];
+  date_from?: Date | string;
+  date_to?: Date | string;
+  search?: string;
+  ip_address?: string;
+}
+
+
 // Completely rewritten & robust API data fetching hook
 export function useApiData<T>(
   apiCall: () => Promise<any>, // We accept any response shape
@@ -254,26 +269,6 @@ export function usePublication(id: string) {
   return useApiData(() => apiService.getPublicationById(id), [id]);
 }
 
-// Media Channels hooks
-export function useMediaChannels(params?: Record<string, any>) {
-  const deps = [
-    String(params?.page || 1),
-    String(params?.limit || 10),
-    String(params?.search || ''),
-    String(params?.type || ''),
-    String(params?.category || ''),
-    String(params?.isActive || '')
-  ];
-
-  return useApiData(() => apiService.getMediaChannels(params), deps, {
-    enableAutoRefresh: false
-  });
-}
-
-export function useMediaChannel(id: string) {
-  return useApiData(() => apiService.getMediaChannelById(id), [id]);
-}
-
 // Data Parameters hooks
 export function useDataParameters(params?: Record<string, any>) {
   const deps = [
@@ -400,66 +395,66 @@ export function useDailyMention(id: string) {
 }
 
 // Analytics hooks
-export function useDashboardSummary(params?: Record<string, any>) {
-  const deps = [
-    String(params?.startDate || ''),
-    String(params?.endDate || ''),
-    String(params?.companyId || '')
-  ];
+// export function useDashboardSummary(params?: Record<string, any>) {
+//   const deps = [
+//     String(params?.startDate || ''),
+//     String(params?.endDate || ''),
+//     String(params?.companyId || '')
+//   ];
 
-  return useApiData(() => apiService.getDashboardSummary(params), deps, {
-    enableAutoRefresh: false
-  });
-}
+//   return useApiData(() => apiService.getDashboardSummary(params), deps, {
+//     enableAutoRefresh: false
+//   });
+// }
 
-export function useMentionsTrend(params?: Record<string, any>) {
-  const deps = [
-    String(params?.startDate || ''),
-    String(params?.endDate || ''),
-    String(params?.companyId || ''),
-    String(params?.period || '')
-  ];
+// export function useMentionsTrend(params?: Record<string, any>) {
+//   const deps = [
+//     String(params?.startDate || ''),
+//     String(params?.endDate || ''),
+//     String(params?.companyId || ''),
+//     String(params?.period || '')
+//   ];
 
-  return useApiData(() => apiService.getMentionsTrend(params), deps, {
-    enableAutoRefresh: false
-  });
-}
+//   return useApiData(() => apiService.getMentionsTrend(params), deps, {
+//     enableAutoRefresh: false
+//   });
+// }
 
-export function useSentimentAnalysis(params?: Record<string, any>) {
-  const deps = [
-    String(params?.startDate || ''),
-    String(params?.endDate || ''),
-    String(params?.companyId || '')
-  ];
+// export function useSentimentAnalysis(params?: Record<string, any>) {
+//   const deps = [
+//     String(params?.startDate || ''),
+//     String(params?.endDate || ''),
+//     String(params?.companyId || '')
+//   ];
 
-  return useApiData(() => apiService.getSentimentAnalysis(params), deps, {
-    enableAutoRefresh: false
-  });
-}
+//   return useApiData(() => apiService.getSentimentAnalysis(params), deps, {
+//     enableAutoRefresh: false
+//   });
+// }
 
-export function useMediaChannelAnalysis(params?: Record<string, any>) {
-  const deps = [
-    String(params?.startDate || ''),
-    String(params?.endDate || ''),
-    String(params?.companyId || '')
-  ];
+// export function useMediaChannelAnalysis(params?: Record<string, any>) {
+//   const deps = [
+//     String(params?.startDate || ''),
+//     String(params?.endDate || ''),
+//     String(params?.companyId || '')
+//   ];
 
-  return useApiData(() => apiService.getMediaChannelAnalysis(params), deps, {
-    enableAutoRefresh: false
-  });
-}
+//   return useApiData(() => apiService.getMediaChannelAnalysis(params), deps, {
+//     enableAutoRefresh: false
+//   });
+// }
 
-export function useCompanyComparison(params?: QueryParams) {
-  const deps = [
-    String(params?.companyIds || ''),
-    String(params?.startDate || ''),
-    String(params?.endDate || '')
-  ];
+// export function useCompanyComparison(params?: QueryParams) {
+//   const deps = [
+//     String(params?.companyIds || ''),
+//     String(params?.startDate || ''),
+//     String(params?.endDate || '')
+//   ];
 
-  return useApiData(() => apiService.getCompanyComparison(params), deps, {
-    enableAutoRefresh: false
-  });
-}
+//   return useApiData(() => apiService.getCompanyComparison(params), deps, {
+//     enableAutoRefresh: false
+//   });
+// }
 
 // File management hooks
 export function useFiles(params?: QueryParams) {
@@ -480,31 +475,60 @@ export function useFile(id: string) {
 }
 
 // Audit logs hooks
-export function useAuditLogs(params?: QueryParams) {
-  const deps = [
-    String(params?.page || 1),
-    String(params?.limit || 10),
-    String(params?.search || ''),
-    String(params?.action || ''),
-    String(params?.userId || ''),
-    String(params?.startDate || ''),
-    String(params?.endDate || '')
-  ];
+export function useAuditLogs(filters: AuditLogFilters) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  return useApiData(() => apiService.getAuditLogs(params), deps, {
-    enableAutoRefresh: false
-  });
+  const refetch = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await apiService.getAuditLogs(filters);
+      setData(response.data);
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [filters]);
+
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
+
+  return { data, loading, error, refetch };
 }
 
-export function useAuditLogStats(params?: Record<string, any>) {
-  const deps = [
-    String(params?.startDate || ''),
-    String(params?.endDate || '')
-  ];
+export function useAuditLogStats(
+  filters?: { startDate?: string | Date; endDate?: string | Date }
+) {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  return useApiData(() => apiService.getAuditLogsStats(), deps, {
-    enableAutoRefresh: false
-  });
+  useEffect(() => {
+    async function fetchStats() {
+      setLoading(true);
+      try {
+        // Always pass a safe object — never undefined
+        const response = await apiService.getAuditLogStats(filters ?? {});
+        setData(response.data);
+      } catch (err) {
+        console.error('Failed to fetch audit log stats:', err);
+        setData(null);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchStats();
+  }, [
+    // Safe dependencies using optional chaining
+    filters?.startDate,
+    filters?.endDate,
+  ]);
+
+  return { data, loading };
 }
 
 // Mutation hooks for create/update/delete operations

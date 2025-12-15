@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { DataCard } from '@/components/ui/DataCard';
 import { Stat } from '@/components/ui/Stat';
 import { DataTable } from '@/components/ui/DataTable';
-import { useDashboardSummary, useUsers, useDataParameters, useCompanies, useEditorials, useDataEntries, useAuditLogStats } from '@/hooks/useApi';
+import { useUsers, useDataParameters, useCompanies, useEditorials, useDataEntries, useAuditLogStats } from '@/hooks/useApi';
 import { GlobalSearch } from '@/components/GlobalSearch';
 import { DataExport } from '@/components/DataExport';
 import { UserManagement } from '@/components/UserManagement';
@@ -81,14 +81,13 @@ export function AdminDashboard() {
   const [selectedSection, setSelectedSection] = useState<'overview' | 'users' | 'parameters' | 'content-review' | 'data-entry' | 'export' | 'audit'>('overview');
 
   // API hooks for real data
-  const { data: dashboardData, loading: dashboardLoading, refetch: refetchDashboard } = useDashboardSummary();
+  // const { data: dashboardData, loading: dashboardLoading, refetch: refetchDashboard } = useDashboardSummary();
   const { data: usersData, loading: usersLoading, refetch: refetchUsers } = useUsers();
   const { data: parametersData, loading: parametersLoading } = useDataParameters();
   const { data: companiesData, loading: companiesLoading } = useCompanies();
   const { data: editorialsData, loading: editorialsLoading } = useEditorials();
   const { data: dataEntriesData, loading: dataEntriesLoading } = useDataEntries();
-  const { data: response, loading: auditStatsLoading } = useAuditLogStats();
-  const auditStats = (response as any)?.data as AuditLogStats | undefined;
+  const { data: auditStats, loading: auditStatsLoading } = useAuditLogStats();
 
   const handleSearchResult = (result: any) => {
     toast.success(`Selected: ${result.title}`);
@@ -272,7 +271,7 @@ export function AdminDashboard() {
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart
-                    data={dashboardData?.mentionTrend || []}
+                    data={[]}
                     margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
                   >
                     <defs>
@@ -302,7 +301,7 @@ export function AdminDashboard() {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={dashboardData?.mediaBreakdown || []}
+                      data={[]}
                       cx="50%"
                       cy="50%"
                       labelLine={false}
@@ -311,7 +310,7 @@ export function AdminDashboard() {
                       fill="#8884d8"
                       dataKey="value"
                     >
-                      {(dashboardData?.mediaBreakdown || []).map((_entry: any, index: number) => (
+                      {([]).map((_entry: any, index: number) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>

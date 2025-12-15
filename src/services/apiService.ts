@@ -227,6 +227,20 @@ export interface AuditLog {
   createdAt: string;
 }
 
+interface AuditLogFilters {
+  page?: number;
+  limit?: number;
+  action?: string | string[];
+  resource_type?: string | string[];
+  user_id?: string | string[];
+  severity?: string | string[];
+  date_from?: Date | string;
+  date_to?: Date | string;
+  search?: string;
+  ip_address?: string;
+}
+
+
 export interface FileUpload {
   id: string;
   originalName: string;
@@ -671,110 +685,84 @@ class ApiService {
   // --------------------------------------------------------------------------
   // ANALYTICS
   // --------------------------------------------------------------------------
-  async getDashboardSummary(p?: QueryParams): Promise<ApiResponse<unknown>> {
-    const res = await get(`${this.baseUrl}/analytics/dashboard-summary${this.buildQuery(p)}`, {
-      headers: this.getAuthHeaders(false),
-    });
-    return this.extract<unknown>(res);
+  // async getDashboardSummary(p?: QueryParams): Promise<ApiResponse<unknown>> {
+  //   const res = await get(`${this.baseUrl}/analytics/dashboard-summary${this.buildQuery(p)}`, {
+  //     headers: this.getAuthHeaders(false),
+  //   });
+  //   return this.extract<unknown>(res);
+  // }
+
+  // async getMentionsTrend(p?: QueryParams): Promise<ApiResponse<unknown>> {
+  //   const res = await get(`${this.baseUrl}/analytics/mentions-trend${this.buildQuery(p)}`, {
+  //     headers: this.getAuthHeaders(false),
+  //   });
+  //   return this.extract<unknown>(res);
+  // }
+
+  // async getSentimentAnalysis(p?: QueryParams): Promise<ApiResponse<unknown>> {
+  //   const res = await get(`${this.baseUrl}/analytics/sentiment-analysis${this.buildQuery(p)}`, {
+  //     headers: this.getAuthHeaders(false),
+  //   });
+  //   return this.extract<unknown>(res);
+  // }
+
+  // async getMediaChannelAnalysis(p?: QueryParams): Promise<ApiResponse<unknown>> {
+  //   const res = await get(`${this.baseUrl}/analytics/media-channel-analysis${this.buildQuery(p)}`, {
+  //     headers: this.getAuthHeaders(false),
+  //   });
+  //   return this.extract<unknown>(res);
+  // }
+
+  // async getCompanyComparison(p?: QueryParams): Promise<ApiResponse<unknown>> {
+  //   const res = await get(`${this.baseUrl}/analytics/company-comparison${this.buildQuery(p)}`, {
+  //     headers: this.getAuthHeaders(false),
+  //   });
+  //   return this.extract<unknown>(res);
+  // }
+
+  async getAuditLogs(filters?: AuditLogFilters): Promise<ApiResponse<AuditLog[]>> {
+    const params = new URLSearchParams();
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value === undefined || value === null) return;
+        if (value instanceof Date) {
+          params.append(key, value.toISOString());
+        } else if (Array.isArray(value)) {
+          value.forEach(v => params.append(key, String(v)));
+        } else {
+          params.append(key, String(value));
+        }
+      });
+    }
+    const queryString = params.toString();
+    const url = queryString ? `${this.baseUrl}/audit-logs?${queryString}` : `${this.baseUrl}/audit-logs`;
+    const response = await get(url, { headers: this.getAuthHeaders() });
+    return response.data;
   }
 
-  async getMentionsTrend(p?: QueryParams): Promise<ApiResponse<unknown>> {
-    const res = await get(`${this.baseUrl}/analytics/mentions-trend${this.buildQuery(p)}`, {
-      headers: this.getAuthHeaders(false),
-    });
-    return this.extract<unknown>(res);
+  async getAuditLogStats(filters?: { startDate?: Date | string; endDate?: Date | string }) {
+    const params = new URLSearchParams();
+    if (filters?.startDate) {
+      const date = filters.startDate instanceof Date 
+        ? filters.startDate.toISOString().split('T')[0] 
+        : filters.startDate;
+      params.append('date_from', date);
+    }
+    if (filters?.endDate) {
+      const date = filters.endDate instanceof Date 
+        ? filters.endDate.toISOString().split('T')[0] 
+        : filters.endDate;
+      params.append('date_to', date);
+    }
+    const queryString = params.toString();
+    const url = queryString ? `${this.baseUrl}/audit-logs/stats?${queryString}` : `${this.baseUrl}/audit-logs/stats`;
+    const response = await get(url, { headers: this.getAuthHeaders() });
+    return response.data;
   }
 
-  async getSentimentAnalysis(p?: QueryParams): Promise<ApiResponse<unknown>> {
-    const res = await get(`${this.baseUrl}/analytics/sentiment-analysis${this.buildQuery(p)}`, {
-      headers: this.getAuthHeaders(false),
-    });
-    return this.extract<unknown>(res);
-  }
-
-  async getMediaChannelAnalysis(p?: QueryParams): Promise<ApiResponse<unknown>> {
-    const res = await get(`${this.baseUrl}/analytics/media-channel-analysis${this.buildQuery(p)}`, {
-      headers: this.getAuthHeaders(false),
-    });
-    return this.extract<unknown>(res);
-  }
-
-  async getCompanyComparison(p?: QueryParams): Promise<ApiResponse<unknown>> {
-    const res = await get(`${this.baseUrl}/analytics/company-comparison${this.buildQuery(p)}`, {
-      headers: this.getAuthHeaders(false),
-    });
-    return this.extract<unknown>(res);
-  }
-
-  // --------------------------------------------------------------------------
-  // ACTIVITIES / AUDIT LOGS
-  // --------------------------------------------------------------------------
-  async getAllActivities(p?: QueryParams): Promise<ApiResponse<AuditLog[]>> {
-    const res = await get(`${this.baseUrl}/audit-logs${this.buildQuery(p)}`, {
-      headers: this.getAuthHeaders(false),
-    });
-    return this.extract<AuditLog[]>(res);
-  }
-
-  async getActivity(id: string) {
-    return get(`${this.baseUrl}/activities/${id}`, { headers: this.getAuthHeaders(false) });
-  }
-
-  async createActivity(data: { name: string }) {
-    return post(`${this.baseUrl}/activities/create`, data, { headers: this.getAuthHeaders() });
-  }
-
-  async updateActivity(id: string, data: { name: string }) {
-    return put(`${this.baseUrl}/activities/update/${id}`, data, { headers: this.getAuthHeaders() });
-  }
-
-  async deleteActivity(id: string) {
-    return put(`${this.baseUrl}/activities/delete/${id}`, {}, { headers: this.getAuthHeaders() });
-  }
-
-  async getAuditLogs(p?: QueryParams): Promise<ApiResponse<AuditLog[]>> {
-    const res = await get(`${this.baseUrl}/audit-logs${this.buildQuery(p)}`, {
-      headers: this.getAuthHeaders(false),
-    });
-    return this.extract<AuditLog[]>(res);
-  }
-
-  async getAuditLogsStats() {
-    return get(`${this.baseUrl}/audit-logs/stats`, { headers: this.getAuthHeaders(false) });
-  }
-
-  async getAuditLogById(id: string) {
-    return get(`${this.baseUrl}/audit-logs/${id}`, { headers: this.getAuthHeaders(false) });
-  }
-
-  async createAuditLog(data: Partial<AuditLog>) {
-    return post(`${this.baseUrl}/audit-logs`, data, { headers: this.getAuthHeaders() });
-  }
-
-  // --------------------------------------------------------------------------
-  // CAMPAIGN TYPES
-  // --------------------------------------------------------------------------
-  async getCampaignTypes(p?: QueryParams): Promise<ApiResponse<unknown[]>> {
-    const res = await get(`${this.baseUrl}/campaign-types${this.buildQuery(p)}`, {
-      headers: this.getAuthHeaders(false),
-    });
-    return this.extract<unknown[]>(res);
-  }
-
-  async getCampaignTypeById(id: string) {
-    return get(`${this.baseUrl}/campaign-types/${id}`, { headers: this.getAuthHeaders(false) });
-  }
-
-  async createCampaignType(data: { name: string }) {
-    return post(`${this.baseUrl}/campaign-types/create`, data, { headers: this.getAuthHeaders() });
-  }
-
-  async updateCampaignType(id: string, data: { name: string }) {
-    return put(`${this.baseUrl}/campaign-types/update/${id}`, data, { headers: this.getAuthHeaders() });
-  }
-
-  async deleteCampaignType(id: string) {
-    return put(`${this.baseUrl}/campaign-types/delete/${id}`, {}, { headers: this.getAuthHeaders() });
+  async getAuditLogById(id: string): Promise<ApiResponse<AuditLog>> {
+    const response = await get(`${this.baseUrl}/audit-logs/${id}`, { headers: this.getAuthHeaders() });
+    return response.data;
   }
 
   // --------------------------------------------------------------------------
@@ -813,34 +801,6 @@ class ApiService {
 
   async downloadFile(id: string) {
     return get(`${this.baseUrl}/files/download/${id}`, { headers: this.getAuthHeaders(false) });
-  }
-
-  // --------------------------------------------------------------------------
-  // NATURES
-  // --------------------------------------------------------------------------
-  async getAllNatures(p?: QueryParams): Promise<ApiResponse<unknown[]>> {
-    const res = await get(`${this.baseUrl}/natures${this.buildQuery(p)}`, {
-      headers: this.getAuthHeaders(false),
-    });
-    return this.extract<unknown[]>(res);
-  }
-
-  async createNature(data: { name: string }) {
-    return post(`${this.baseUrl}/natures/create`, data, { headers: this.getAuthHeaders() });
-  }
-
-  // --------------------------------------------------------------------------
-  // PERMISSIONS
-  // --------------------------------------------------------------------------
-  async createPermission(data: { name: string }) {
-    return post(`${this.baseUrl}/permissions/create`, data, { headers: this.getAuthHeaders() });
-  }
-
-  async getAllPermissions(p?: QueryParams): Promise<ApiResponse<unknown[]>> {
-    const res = await get(`${this.baseUrl}/permissions${this.buildQuery(p)}`, {
-      headers: this.getAuthHeaders(false),
-    });
-    return this.extract<unknown[]>(res);
   }
 
   // --------------------------------------------------------------------------
