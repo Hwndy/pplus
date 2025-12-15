@@ -14,7 +14,7 @@ import { Spinner } from '@/components/ui/spinner';
 const Index = lazy(() => import('./pages/Index'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const NotFound = lazy(() => import('./pages/NotFound'));
-const AuditPage = lazy(() => import('./pages/components/AuditLogViewer')); 
+const AuditPage = lazy(() => import('./components/AuditLogViewer')); 
 const SocialMediaMentionsPage = lazy(() => import('./pages/dashboard/SocialMediaMentionsPage')); 
 // Create a loading fallback component
 const LoadingFallback = () => (
