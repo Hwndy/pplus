@@ -683,42 +683,8 @@ class ApiService {
   }
 
   // --------------------------------------------------------------------------
-  // ANALYTICS
+  // AUDIT LOGS
   // --------------------------------------------------------------------------
-  // async getDashboardSummary(p?: QueryParams): Promise<ApiResponse<unknown>> {
-  //   const res = await get(`${this.baseUrl}/analytics/dashboard-summary${this.buildQuery(p)}`, {
-  //     headers: this.getAuthHeaders(false),
-  //   });
-  //   return this.extract<unknown>(res);
-  // }
-
-  // async getMentionsTrend(p?: QueryParams): Promise<ApiResponse<unknown>> {
-  //   const res = await get(`${this.baseUrl}/analytics/mentions-trend${this.buildQuery(p)}`, {
-  //     headers: this.getAuthHeaders(false),
-  //   });
-  //   return this.extract<unknown>(res);
-  // }
-
-  // async getSentimentAnalysis(p?: QueryParams): Promise<ApiResponse<unknown>> {
-  //   const res = await get(`${this.baseUrl}/analytics/sentiment-analysis${this.buildQuery(p)}`, {
-  //     headers: this.getAuthHeaders(false),
-  //   });
-  //   return this.extract<unknown>(res);
-  // }
-
-  // async getMediaChannelAnalysis(p?: QueryParams): Promise<ApiResponse<unknown>> {
-  //   const res = await get(`${this.baseUrl}/analytics/media-channel-analysis${this.buildQuery(p)}`, {
-  //     headers: this.getAuthHeaders(false),
-  //   });
-  //   return this.extract<unknown>(res);
-  // }
-
-  // async getCompanyComparison(p?: QueryParams): Promise<ApiResponse<unknown>> {
-  //   const res = await get(`${this.baseUrl}/analytics/company-comparison${this.buildQuery(p)}`, {
-  //     headers: this.getAuthHeaders(false),
-  //   });
-  //   return this.extract<unknown>(res);
-  // }
 
   async getAuditLogs(filters?: AuditLogFilters): Promise<ApiResponse<AuditLog[]>> {
     const params = new URLSearchParams();

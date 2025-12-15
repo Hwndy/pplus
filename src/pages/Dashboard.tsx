@@ -40,7 +40,6 @@ import UsersPage from './dashboard/UsersPage';
 import ParametersPage from './dashboard/ParametersPage';
 import ReportsPage from './dashboard/ReportsPage';
 import AnalyticsPage from './dashboard/AnalyticsPage';
-// import AuditPage from './dashboard/AuditPage';
 import MediaReportsPage from './dashboard/MediaReportsPage';
 import PerformancePage from './dashboard/PerformancePage';
 import SwotAnalysisPage from './dashboard/SwotAnalysisPage';
@@ -106,7 +105,6 @@ const Dashboard = () => {
         <Route path="parameters" element={hasRole(user, 'admin') ? <ParametersPage /> : <Navigate to="/dashboard" replace />} />
         <Route path="reports" element={hasRole(user, 'admin') ? <ReportsPage /> : <Navigate to="/dashboard" replace />} />
         <Route path="analytics" element={hasRole(user, 'admin') ? <AnalyticsPage /> : <Navigate to="/dashboard" replace />} />
-        {/* <Route path="audit" element={hasRole(user, 'admin') ? <AuditPage /> : <Navigate to="/dashboard" replace />} /> */}
         <Route path="companies" element={hasRole(user, 'admin') ? <CompaniesPage /> : <Navigate to="/dashboard" replace />} />
         <Route path="publications-management" element={hasRole(user, 'admin') ? <PublicationsPage /> : <Navigate to="/dashboard" replace />} />
         <Route path="placement" element={hasRole(user, 'admin') ? <PlacementPage /> : <Navigate to="/dashboard" replace />} />

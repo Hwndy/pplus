@@ -25,14 +25,9 @@ import {
   useEditorials, 
   useDataEntries,
   usePublications,
-  useMediaChannels,
   useDataParameters,
   useSwotAnalyses,
   useDailyMentions,
-  useDashboardSummary,
-  useMentionsTrend,
-  useSentimentAnalysis,
-  useMediaChannelAnalysis,
   useFiles,
   useAuditLogs,
   useCreateUser,
@@ -57,14 +52,9 @@ export default function ApiDemoPage() {
   const { data: editorials, loading: editorialsLoading } = useEditorials();
   const { data: dataEntries, loading: dataEntriesLoading } = useDataEntries();
   const { data: publications, loading: publicationsLoading } = usePublications();
-  const { data: mediaChannels, loading: mediaChannelsLoading } = useMediaChannels();
   const { data: dataParameters, loading: dataParametersLoading } = useDataParameters();
   const { data: swotAnalyses, loading: swotLoading } = useSwotAnalyses();
   const { data: dailyMentions, loading: dailyMentionsLoading } = useDailyMentions();
-  const { data: dashboardSummary, loading: dashboardLoading } = useDashboardSummary();
-  const { data: mentionsTrend, loading: mentionsTrendLoading } = useMentionsTrend();
-  const { data: sentimentAnalysis, loading: sentimentLoading } = useSentimentAnalysis();
-  const { data: mediaChannelAnalysis, loading: mediaAnalysisLoading } = useMediaChannelAnalysis();
   const { data: files, loading: filesLoading } = useFiles();
   const { data: auditLogs, loading: auditLoading } = useAuditLogs();
 
@@ -128,14 +118,9 @@ export default function ApiDemoPage() {
     { name: 'Editorials', data: editorials, loading: editorialsLoading, icon: <FileText className="h-4 w-4" /> },
     { name: 'Data Entries', data: dataEntries, loading: dataEntriesLoading, icon: <Database className="h-4 w-4" /> },
     { name: 'Publications', data: publications, loading: publicationsLoading, icon: <FileText className="h-4 w-4" /> },
-    { name: 'Media Channels', data: mediaChannels, loading: mediaChannelsLoading, icon: <BarChart3 className="h-4 w-4" /> },
     { name: 'Data Parameters', data: dataParameters, loading: dataParametersLoading, icon: <Database className="h-4 w-4" /> },
     { name: 'SWOT Analyses', data: swotAnalyses, loading: swotLoading, icon: <BarChart3 className="h-4 w-4" /> },
     { name: 'Daily Mentions', data: dailyMentions, loading: dailyMentionsLoading, icon: <FileText className="h-4 w-4" /> },
-    { name: 'Dashboard Summary', data: dashboardSummary, loading: dashboardLoading, icon: <BarChart3 className="h-4 w-4" /> },
-    { name: 'Mentions Trend', data: mentionsTrend, loading: mentionsTrendLoading, icon: <BarChart3 className="h-4 w-4" /> },
-    { name: 'Sentiment Analysis', data: sentimentAnalysis, loading: sentimentLoading, icon: <BarChart3 className="h-4 w-4" /> },
-    { name: 'Media Channel Analysis', data: mediaChannelAnalysis, loading: mediaAnalysisLoading, icon: <BarChart3 className="h-4 w-4" /> },
     { name: 'Files', data: files, loading: filesLoading, icon: <Upload className="h-4 w-4" /> },
     { name: 'Audit Logs', data: auditLogs, loading: auditLoading, icon: <Shield className="h-4 w-4" /> },
   ];
