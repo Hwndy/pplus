@@ -248,7 +248,7 @@ export function AdminDashboard() {
               />
             </DataCard>
 
-            <DataCard title="Quick Actions" variant="glass" icon={<Zap size={24} />}>
+            {/* <DataCard title="Quick Actions" variant="glass" icon={<Zap size={24} />}>
               <div className="p-4 flex flex-col gap-2">
                 <Button asChild variant="outline" className="w-full">
                   <Link to="/dashboard/content-review">
@@ -263,11 +263,11 @@ export function AdminDashboard() {
                   </Link>
                 </Button>
               </div>
-            </DataCard>
+            </DataCard> */}
           </div>
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <DataCard title="Media Mentions Trend" variant="glass" icon={<BarChart size={24} />}>
+            {/* <DataCard title="Media Mentions Trend" variant="glass" icon={<BarChart size={24} />}>
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart
@@ -294,9 +294,9 @@ export function AdminDashboard() {
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
-            </DataCard>
+            </DataCard> */}
 
-            <DataCard title="Media Breakdown" variant="glass" icon={<BarChart size={24} />}>
+            {/* <DataCard title="Media Breakdown" variant="glass" icon={<BarChart size={24} />}>
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -318,7 +318,7 @@ export function AdminDashboard() {
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-            </DataCard>
+            </DataCard> */}
           </div>
         </div>
       )}

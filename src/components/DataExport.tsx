@@ -9,7 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CalendarIcon, Download, FileText, Database, BarChart3, Users, Newspaper, TrendingUp, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/components/auth/AuthContext' // Assuming AuthContext is in this path
+import { useAuth } from '@/components/auth/AuthContext' 
 import { toast } from 'sonner';
 
 interface ExportFilters {
