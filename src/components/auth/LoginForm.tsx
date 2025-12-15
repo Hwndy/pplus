@@ -26,7 +26,6 @@ const LoginForm = ({ className }: LoginFormProps) => {
 
     try {
       await login(email, password);
-      // Optionally: show toast or redirect
     } catch (error) {
       console.error('Login error:', error);
     } finally {

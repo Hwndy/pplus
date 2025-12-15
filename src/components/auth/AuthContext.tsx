@@ -11,10 +11,10 @@ export interface Role {
 
 export interface User {
   id: string;
-  name: string;
+  name?: string;
   username: string;
   email: string;
-  role: Role;
+  role: Role | string; // Backend sends role as string sometimes
   avatar?: string;
   status?: string;
   mobileContact?: string;
@@ -24,6 +24,8 @@ export interface User {
   lastLogin?: string;
   createdAt?: string;
   updatedAt?: string;
+  role_id?: number;
+  mobile_number?: string;
 }
 
 export interface MonitoringPair {
@@ -185,30 +187,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (response.ok && result.success) {
         const pairs: MonitoringPair[] = result.data.pairs.map((p: any) => ({
-        pair_id: p.pair_id,
-        pair_number: p.pair_number,
-        base_company: {
-          id: p.base_company.id,
-          company_name: p.base_company.company_name.trim(),
-          industry: p.base_company.industry.trim(),
-          sub_industry: p.base_company.sub_industry.trim(),
-        },
-        competitors: p.competitors || [],
-        subsidiaries: p.subsidiaries || [],
-        media_prominence: p.media_prominence || [],
-        monitoring_date: p.monitoring_date,
-        is_expired: p.is_expired,
-        status: p.status,
-        summary: {
-          total_competitors: p.summary.total_competitors,
-          total_subsidiaries: p.summary.total_subsidiaries,
-          total_companies_monitored: p.summary.total_companies_monitored,
-        },
-      }));
+          pair_id: p.pair_id,
+          pair_number: p.pair_number,
+          base_company: {
+            id: p.base_company.id,
+            company_name: p.base_company.company_name.trim(),
+            industry: p.base_company.industry.trim(),
+            sub_industry: p.base_company.sub_industry.trim(),
+          },
+          competitors: p.competitors || [],
+          subsidiaries: p.subsidiaries || [],
+          media_prominence: p.media_prominence || [],
+          monitoring_date: p.monitoring_date,
+          is_expired: p.is_expired,
+          status: p.status,
+          summary: {
+            total_competitors: p.summary.total_competitors,
+            total_subsidiaries: p.summary.total_subsidiaries,
+            total_companies_monitored: p.summary.total_companies_monitored,
+          },
+        }));
 
         dispatch({ type: 'SET_MONITORING_PAIRS', payload: pairs });
 
-        // Restore last selected pair from localStorage
         const savedPairId = localStorage.getItem('activePairId');
         const savedPair = pairs.find(p => p.pair_id === Number(savedPairId));
         if (savedPair) {
@@ -262,8 +263,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             },
           });
           localStorage.setItem('user', JSON.stringify(user));
-
-          // Load monitoring pairs after successful session
           await loadMonitoringPairs();
         } else {
           throw new Error(result.message || 'Session validation failed');
@@ -303,11 +302,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           throw new Error(result.message || 'Login failed');
         }
 
-        const { token, ...userDetails } = result.data;
+        // FIXED: Token is nested inside result.data.user.token
+        const token = result.data.user?.token;
+        const userDetails = { ...result.data.user };
 
         if (!token) {
           throw new Error('Login successful, but no token was provided by the server.');
         }
+
+        // Clean user object: remove token from stored user data
+        delete (userDetails as any).token;
 
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(userDetails));
@@ -323,7 +327,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         toast.success(`Welcome back, ${userDetails.username || 'User'}!`);
         navigate('/dashboard');
 
-        // Load monitoring pairs after login
         await loadMonitoringPairs();
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
