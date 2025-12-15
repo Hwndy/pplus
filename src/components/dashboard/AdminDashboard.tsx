@@ -122,7 +122,7 @@ export function AdminDashboard() {
           >
             Overview
           </button>
-          <button
+          {/* <button
             className={`px-4 py-2 rounded-md transition-colors ${
               selectedSection === 'users'
                 ? 'bg-primary text-primary-foreground'
@@ -131,8 +131,8 @@ export function AdminDashboard() {
             onClick={() => setSelectedSection('users')}
           >
             Users
-          </button>
-          <button
+          </button> */}
+          {/* <button
             className={`px-4 py-2 rounded-md transition-colors ${
               selectedSection === 'parameters'
                 ? 'bg-primary text-primary-foreground'
@@ -141,8 +141,8 @@ export function AdminDashboard() {
             onClick={() => setSelectedSection('parameters')}
           >
             Parameters
-          </button>
-          <button
+          </button> */}
+          {/* <button
             className={`px-4 py-2 rounded-md transition-colors ${
               selectedSection === 'content-review'
                 ? 'bg-primary text-primary-foreground'
@@ -151,8 +151,8 @@ export function AdminDashboard() {
             onClick={() => setSelectedSection('content-review')}
           >
             Content Review
-          </button>
-          <button
+          </button> */}
+          {/* <button
             className={`px-4 py-2 rounded-md transition-colors ${
               selectedSection === 'data-entry'
                 ? 'bg-primary text-primary-foreground'
@@ -161,7 +161,7 @@ export function AdminDashboard() {
             onClick={() => setSelectedSection('data-entry')}
           >
             Data Entry
-          </button>
+          </button> */}
           <button
             className={`px-4 py-2 rounded-md transition-colors ${
               selectedSection === 'export'
