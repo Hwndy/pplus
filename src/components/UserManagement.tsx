@@ -26,17 +26,6 @@ import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, useApiMutation }
 import { apiService } from '@/services/apiService';
 import { toast } from 'sonner';
 
-interface UserFormData {
-  name: string;
-  email: string;
-  password: string;
-  role: string;
-  mobileContact: string;
-  countryCode: string;
-  supervisorId: string;
-  expirationDate: string;
-}
-
 // Helper function to safely render role/status
 const renderValue = (value: string | { id: string; name: string } | unknown): string => {
   if (typeof value === 'string') {
@@ -57,6 +46,8 @@ interface UserFormData {
   countryCode?: string;
   supervisorId?: string;
   expirationDate?: string;
+  createdAt?: string;
+  lastLogin?: string;
 }
 
 export function UserManagement() {
