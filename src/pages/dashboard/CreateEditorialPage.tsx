@@ -13,8 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Plus, Copy, Save, Send, Loader2, ArrowLeft, MinusCircle } from 'lucide-react';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { Plus, Copy, Save, Send, Loader2, ArrowLeft, MinusCircle, ClipboardCopy } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/components/auth/AuthContext';
 
@@ -60,6 +60,7 @@ export interface Editorial {
   advert_spend?: number;
   circulation?: number;
   page_size?: string;
+  page_number?: string;
   analyst_note?: string;
   supervisor_note?: string;
   admin_note?: string;
@@ -75,7 +76,7 @@ export interface Editorial {
 }
 
 // ──────────────────────────────────────────────────────────────────────
-//  SearchableSelect Component
+// SearchableSelect Component (with proper scrolling)
 // ──────────────────────────────────────────────────────────────────────
 interface SearchableSelectProps {
   value?: string;
@@ -109,9 +110,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
   const filtered = useMemo(() => {
     if (!search) return options;
     const lower = search.toLowerCase();
-    return options.filter((opt) =>
-      opt.label.toLowerCase().includes(lower)
-    );
+    return options.filter((opt) => opt.label.toLowerCase().includes(lower));
   }, [options, search]);
 
   return (
@@ -124,27 +123,24 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
       <SelectTrigger className={className}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
-
-      <SelectContent>
-        <div className="flex items-center border-b px-3" onClick={(e) => e.stopPropagation()}>
+      <SelectContent className="max-h-[var(--radix-select-content-available-height)]">
+        <div className="flex items-center border-b px-3 py-2" onClick={(e) => e.stopPropagation()}>
           <Input
             ref={inputRef}
             placeholder="Search..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-9 border-0 focus-visible:ring-0"
+            className="h-8 border-0 focus-visible:ring-0"
             onKeyDown={(e) => e.stopPropagation()}
           />
         </div>
-
         {loading && (
           <div className="flex items-center justify-center py-6">
             <Loader2 className="h-4 w-4 animate-spin mr-2" />
             Loading...
           </div>
         )}
-
-        <ScrollArea className="max-h-[300px]">
+        <ScrollArea className="h-[250px]">
           {filtered.length === 0 && !loading ? (
             <div className="py-6 text-center text-sm text-muted-foreground">
               No results found
@@ -156,6 +152,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
               </SelectItem>
             ))
           )}
+          <ScrollBar />
         </ScrollArea>
       </SelectContent>
     </Select>
@@ -163,7 +160,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
 };
 
 // ──────────────────────────────────────────────────────────────────────
-//  EditorialForm Component
+// EditorialForm Component
 // ──────────────────────────────────────────────────────────────────────
 interface EditorialFormProps {
   editorials: Editorial[];
@@ -182,6 +179,7 @@ interface EditorialFormProps {
   apiPageSizes: string[];
   apiMediaTypes: string[];
   apiSentimentKeywords: SentimentKeyword[];
+  apiReporters: string[];
   onEditorialChange: (editorials: Editorial[]) => void;
   onSwitchEditorial: (index: number) => void;
   onFieldChange: (index: number, name: string, value: string | number) => void;
@@ -213,6 +211,7 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
   apiPageSizes = [],
   apiMediaTypes = [],
   apiSentimentKeywords = [],
+  apiReporters = [],
 }) => {
   const safeEditorials = Array.isArray(editorials) ? editorials : [];
   const currentEditorial = safeEditorials[activeIndex] || {};
@@ -225,39 +224,54 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
     return false;
   };
 
+  // Add a new blank row at the end
   const handleAddRow = () => {
     const newEditorial: Editorial = {
-      ...currentEditorial,
-      id: Date.now() + Math.random(),
-      title: '',
+      date: currentEditorial.date || new Date().toISOString().split('T')[0],
+      online_channel: '',
       source: '',
+      company_id: currentEditorial.company_id,
+      media_type: currentEditorial.media_type || '',
+      audience_reach: 0,
       placement: '',
+      language: '',
+      ceo_thought_leadership: '',
+      title: '',
       print_web_clips: '',
       reporter: '',
+      country: '',
       spokesperson: '',
-      ceo_thought_leadership: '',
       activity: '',
-      circulation: 0,
-      audience_reach: 0,
-      online_channel: '',
       sentiment: '',
       sentiment_keyword_indicator_id: undefined,
       advert_spend: 0,
+      circulation: 0,
       page_size: '',
+      page_number: '',
       analyst_note: '',
       supervisor_note: '',
       admin_note: '',
     };
     onEditorialChange([...safeEditorials, newEditorial]);
+    onSwitchEditorial(safeEditorials.length);
   };
 
+  // Clone a specific row (insert right after it)
+  const handleCloneRow = (index: number) => {
+    const cloned = { ...safeEditorials[index], id: Date.now() + Math.random() };
+    const newEditorials = [...safeEditorials];
+    newEditorials.splice(index + 1, 0, cloned);
+    onEditorialChange(newEditorials);
+    onSwitchEditorial(index + 1);
+  };
+
+  // Remove a specific row (prevent deleting the last one)
   const handleRemoveRow = (indexToRemove: number) => {
-    if (safeEditorials.length > 1) {
-      const newEditorials = safeEditorials.filter((_, index) => index !== indexToRemove);
-      onEditorialChange(newEditorials);
-      if (activeIndex >= indexToRemove) {
-        onSwitchEditorial(Math.max(0, activeIndex - 1));
-      }
+    if (safeEditorials.length <= 1) return;
+    const newEditorials = safeEditorials.filter((_, i) => i !== indexToRemove);
+    onEditorialChange(newEditorials);
+    if (activeIndex >= indexToRemove && activeIndex > 0) {
+      onSwitchEditorial(activeIndex - 1);
     }
   };
 
@@ -286,7 +300,6 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                   />
                   {errors.date && <p className="text-red-500 text-sm">{errors.date}</p>}
                 </div>
-
                 <div className="flex-1">
                   <Label htmlFor="company">
                     Company <span className="text-red-500">*</span>
@@ -304,7 +317,6 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                   />
                   {errors.company_id && <p className="text-red-500 text-sm">{errors.company_id}</p>}
                 </div>
-
                 <div className="flex-1">
                   <Label htmlFor="media_type">Media Type</Label>
                   <SearchableSelect
@@ -318,28 +330,44 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
               </div>
 
               <div className="overflow-x-auto">
-                <div className="min-w-max space-y-4">
+                <div className="min-w-max space-y-6">
                   {safeEditorials.length > 0 ? (
                     safeEditorials.map((editorial, index) => (
-                      <div key={editorial.id || index} className="flex gap-4 min-w-max">
-                        <div className="flex flex-col items-center pt-6 min-w-[40px]">
-                          {index === safeEditorials.length - 1 ? (
+                      <div key={editorial.id || index} className="flex gap-4 min-w-max items-center">
+                        {/* Action Buttons - Horizontal line */}
+                        <div className="flex items-center gap-2 min-w-[140px]">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleCloneRow(index)}
+                            className="h-8 w-8 p-0"
+                            title="Clone this row"
+                          >
+                            <ClipboardCopy className="h-4 w-4" />
+                          </Button>
+
+                          {index === safeEditorials.length - 1 && (
                             <Button
                               type="button"
                               variant="outline"
                               size="sm"
                               onClick={handleAddRow}
-                              className="h-8 w-8 p-0 rounded-full border-2 border-dashed border-gray-300 hover:border-blue-500 hover:bg-blue-50"
+                              className="h-8 w-8 p-0"
+                              title="Add new row"
                             >
                               <Plus className="h-4 w-4" />
                             </Button>
-                          ) : (
+                          )}
+
+                          {safeEditorials.length > 1 && (
                             <Button
                               type="button"
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
                               onClick={() => handleRemoveRow(index)}
-                              className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                              title="Remove this row"
                             >
                               <MinusCircle className="h-4 w-4" />
                             </Button>
@@ -382,8 +410,6 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                             </Label>
                           )}
                           <Input
-                            id="title"
-                            name="title"
                             value={editorial.title || ''}
                             onChange={(e) => onFieldChange(index, 'title', e.target.value)}
                             className={index === 0 && errors.title ? 'border-red-500' : ''}
@@ -396,8 +422,6 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                         <div className="min-w-[160px]">
                           {index === 0 && <Label htmlFor="print_web_clips">Print/Web Clips (URL)</Label>}
                           <Input
-                            id="print_web_clips"
-                            name="print_web_clips"
                             value={editorial.print_web_clips || ''}
                             onChange={(e) => onFieldChange(index, 'print_web_clips', e.target.value)}
                             placeholder="Enter URL"
@@ -407,12 +431,11 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                         {/* Reporter */}
                         <div className="min-w-[160px]">
                           {index === 0 && <Label htmlFor="reporter">Reporter</Label>}
-                          <Input
-                            id="reporter"
-                            name="reporter"
+                          <SearchableSelect
                             value={editorial.reporter || ''}
-                            onChange={(e) => onFieldChange(index, 'reporter', e.target.value)}
-                            placeholder="Enter reporter name"
+                            onValueChange={(v) => onFieldChange(index, 'reporter', v)}
+                            placeholder="Select reporter"
+                            options={apiReporters.map((r) => ({ value: r, label: r }))}
                           />
                         </div>
 
@@ -485,8 +508,6 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                         <div className="min-w-[160px]">
                           {index === 0 && <Label htmlFor="circulation">Circulation</Label>}
                           <Input
-                            id="circulation"
-                            name="circulation"
                             type="number"
                             value={editorial.circulation?.toString() || ''}
                             onChange={(e) => onFieldChange(index, 'circulation', parseInt(e.target.value) || 0)}
@@ -498,8 +519,6 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                         <div className="min-w-[160px]">
                           {index === 0 && <Label htmlFor="audience_reach">Audience Reach</Label>}
                           <Input
-                            id="audience_reach"
-                            name="audience_reach"
                             type="number"
                             value={editorial.audience_reach?.toString() || ''}
                             onChange={(e) => onFieldChange(index, 'audience_reach', parseInt(e.target.value) || 0)}
@@ -554,8 +573,6 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                         <div className="min-w-[160px]">
                           {index === 0 && <Label htmlFor="advert_spend">Advert Spend</Label>}
                           <Input
-                            id="advert_spend"
-                            name="advert_spend"
                             type="number"
                             value={editorial.advert_spend?.toString() || ''}
                             onChange={(e) => onFieldChange(index, 'advert_spend', parseInt(e.target.value) || 0)}
@@ -571,6 +588,16 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                             onValueChange={(v) => onFieldChange(index, 'page_size', v)}
                             placeholder="Select page size"
                             options={apiPageSizes.map((s) => ({ value: s, label: s }))}
+                          />
+                        </div>
+
+                        {/* Page Number */}
+                        <div className="min-w-[160px]">
+                          {index === 0 && <Label htmlFor="page_number">Page Number</Label>}
+                          <Input
+                            value={editorial.page_number || ''}
+                            onChange={(e) => onFieldChange(index, 'page_number', e.target.value)}
+                            placeholder="Enter page number"
                           />
                         </div>
                       </div>
@@ -632,7 +659,6 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                 />
               </div>
             </div>
-
             {onReviewAction && (
               <div className="flex justify-center space-x-4 mt-6 pt-4 border-t border-gray-200">
                 <Button onClick={() => onReviewAction('reject')} variant="destructive">
@@ -651,7 +677,7 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
 };
 
 // ──────────────────────────────────────────────────────────────────────
-//  Main Page Component
+// Main Page Component (with Back button)
 // ──────────────────────────────────────────────────────────────────────
 const CreateEditorialPage = () => {
   const { toast } = useToast();
@@ -661,11 +687,11 @@ const CreateEditorialPage = () => {
   const searchParams = new URLSearchParams(location.search);
   const reviewId = searchParams.get('review');
   const isReviewMode = !!reviewId;
-
   const BASE_URL = 'https://pplus-5kdv.onrender.com/api';
   const { user, isSessionValidated } = useAuth();
-  const [editorials, setEditorials] = useState<Editorial[]>([
-    isEditMode && location.state?.editorialData
+
+  const [editorials, setEditorials] = useState<Editorial[]>(
+    [isEditMode && location.state?.editorialData
       ? Array.isArray(location.state.editorialData)
         ? location.state.editorialData
         : [location.state.editorialData]
@@ -690,11 +716,14 @@ const CreateEditorialPage = () => {
           advert_spend: 0,
           circulation: 0,
           page_size: '',
+          page_number: '',
           analyst_note: '',
           supervisor_note: '',
           admin_note: '',
         },
-  ].filter(Boolean));
+    ].filter(Boolean)
+  );
+
   const [activeIndex, setActiveIndex] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -714,6 +743,7 @@ const CreateEditorialPage = () => {
   const [apiMediaTypes, setApiMediaTypes] = useState<string[]>([]);
   const [apiSentimentKeywords, setApiSentimentKeywords] = useState<SentimentKeyword[]>([]);
   const [apiCompanies, setApiCompanies] = useState<Company[]>([]);
+  const [apiReporters, setApiReporters] = useState<string[]>([]);
 
   useEffect(() => {
     if (isSessionValidated) {
@@ -733,6 +763,7 @@ const CreateEditorialPage = () => {
             mediaTypeRes,
             sentimentKeywordRes,
             companyRes,
+            reporterRes,
           ] = await Promise.all([
             axios.get(`${BASE_URL}/data-parameters/category/SpokesPerson`),
             axios.get(`${BASE_URL}/data-parameters/category/Placement`),
@@ -746,6 +777,7 @@ const CreateEditorialPage = () => {
             axios.get(`${BASE_URL}/data-parameters/category/Media_Type`),
             axios.get(`${BASE_URL}/sentiment-keyword-indicators/?limit=1000`),
             axios.get(`${BASE_URL}/companies/?limit=1000`),
+            axios.get(`${BASE_URL}/data-parameters/category/Reporter`),
           ]);
 
           setApiSpokespersons(spokespersonRes.data?.data?.[0]?.categories?.[0]?.values?.map((v: any) => v.value) || []);
@@ -760,6 +792,7 @@ const CreateEditorialPage = () => {
           setApiMediaTypes(mediaTypeRes.data?.data?.[0]?.categories?.[0]?.values?.map((v: any) => v.value) || []);
           setApiSentimentKeywords(sentimentKeywordRes.data?.data?.data || []);
           setApiCompanies(companyRes.data?.data?.data || []);
+          setApiReporters(reporterRes.data?.data?.[0]?.categories?.[0]?.values?.map((v: any) => v.value) || []);
         } catch (err) {
           console.error('API fetch error:', err);
           toast({
@@ -821,7 +854,6 @@ const CreateEditorialPage = () => {
       setErrors(validationErrors);
       return;
     }
-
     setIsSubmitting(true);
     setSubmissionType(status);
     try {
@@ -847,6 +879,7 @@ const CreateEditorialPage = () => {
           advert_spend: e.advert_spend,
           circulation: e.circulation,
           page_size: e.page_size,
+          page_number: e.page_number,
           language: e.language,
           ceo_thought_leadership: e.ceo_thought_leadership,
           print_web_clips: e.print_web_clips,
@@ -902,61 +935,22 @@ const CreateEditorialPage = () => {
 
   const handleCancel = () => navigate(-1);
 
-  const handleAddEditorial = () => {
-    setEditorials([
-      ...editorials,
-      {
-        date: new Date().toISOString().split('T')[0],
-        online_channel: '',
-        source: '',
-        company_id: undefined,
-        media_type: '',
-        audience_reach: 0,
-        placement: '',
-        language: '',
-        ceo_thought_leadership: '',
-        title: '',
-        print_web_clips: '',
-        reporter: '',
-        country: '',
-        spokesperson: '',
-        activity: '',
-        sentiment: '',
-        sentiment_keyword_indicator_id: undefined,
-        advert_spend: 0,
-        circulation: 0,
-        page_size: '',
-        analyst_note: '',
-        supervisor_note: '',
-        admin_note: '',
-      },
-    ]);
-    setActiveIndex(editorials.length);
-  };
-
-  const handleCloneEditorial = () => {
-    const currentEditorial = editorials[activeIndex];
-    const clonedEditorial = { ...currentEditorial, id: Date.now() + Math.random() };
-    setEditorials([...editorials, clonedEditorial]);
-    setActiveIndex(editorials.length);
-  };
-
   return (
     <div className="flex-1 space-y-4 p-8 pt-6">
       <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">
-          {isReviewMode ? 'Review Editorial' : isEditMode ? 'Edit Editorial' : 'Create Editorial'}
-        </h2>
-        {isEditMode && !isReviewMode && (
-          <div className="flex items-center space-x-2">
-            <Button onClick={handleCloneEditorial}>
-              <Copy className="mr-2 h-4 w-4" />Clone
-            </Button>
-            <Button onClick={handleAddEditorial}>
-              <Plus className="mr-2 h-4 w-4" />Add New
-            </Button>
-          </div>
-        )}
+        <div className="flex items-center gap-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate(-1)}
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
+          <h2 className="text-3xl font-bold tracking-tight">
+            {isReviewMode ? 'Review Editorial' : isEditMode ? 'Edit Editorial' : 'Create Editorial'}
+          </h2>
+        </div>
       </div>
 
       <div className="w-full h-full flex flex-col">
@@ -989,6 +983,7 @@ const CreateEditorialPage = () => {
             apiPageSizes={apiPageSizes}
             apiMediaTypes={apiMediaTypes}
             apiSentimentKeywords={apiSentimentKeywords}
+            apiReporters={apiReporters}
           />
         )}
       </div>
