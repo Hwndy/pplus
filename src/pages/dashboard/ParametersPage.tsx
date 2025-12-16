@@ -28,7 +28,6 @@ import {
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from '@/components/auth/AuthContext';
- // Adjust path if needed
 
 // -------------------- Types --------------------
 type CategoryValue = {
@@ -69,7 +68,6 @@ async function jsonFetch<T = any>(path: string, options: RequestInit = {}, token
     ...(options.headers || {}),
   };
 
-  // Add Authorization header if token exists
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
@@ -186,7 +184,7 @@ const ViewCategoryDetails: React.FC<{ category: Parameter; onCancel: () => void 
 // -------------------- Main Component --------------------
 const ParametersPage: React.FC = () => {
   const { toast } = useToast();
-  const { token } = useAuth(); // Get token from AuthContext
+  const { token } = useAuth();
 
   // table & query state
   const [data, setData] = useState<Parameter[]>([]);
@@ -218,9 +216,9 @@ const ParametersPage: React.FC = () => {
   const [isValueDialogOpen, setIsValueDialogOpen] = useState(false);
   const [editingValue, setEditingValue] = useState<{ id?: number | string; value: string; categoryName?: string } | null>(null);
 
-  // -------------------- Fetch categories --------------------
-  const fetchParameters = useCallback(
-    async (opts?: { resetPage?: boolean }) => {
+  // -------------------- Unified Data Fetching --------------------
+  useEffect(() => {
+    const fetchData = async () => {
       if (!token) {
         toast({ title: "Not authenticated", description: "Please log in again.", variant: "destructive" });
         return;
@@ -232,7 +230,9 @@ const ParametersPage: React.FC = () => {
         const categories: CategoryRaw[] = resp?.data?.data?.[0]?.categories ?? [];
 
         const filtered = categories.filter((c) =>
-          debouncedSearch ? String(c.name).toLowerCase().includes(String(debouncedSearch).toLowerCase()) : true
+          debouncedSearch
+            ? String(c.name).toLowerCase().includes(String(debouncedSearch).toLowerCase())
+            : true
         );
 
         const mapped: Parameter[] = filtered.map((c) => ({
@@ -247,27 +247,25 @@ const ParametersPage: React.FC = () => {
         }));
 
         setTotal(mapped.length);
-        const currentPage = opts?.resetPage ? 1 : page;
-        if (opts?.resetPage) setPage(1);
-        const start = (currentPage - 1) * pageSize;
-        const paginated = mapped.slice(start, start + pageSize);
+
+        const start = (page - 1) * pageSize;
+        const end = start + pageSize;
+        const paginated = mapped.slice(start, end);
+
         setData(paginated);
       } catch (err: any) {
-        toast({ title: "Failed to load parameters", description: err?.message || "Please try again", variant: "destructive" });
+        toast({
+          title: "Failed to load parameters",
+          description: err?.message || "Please try again",
+          variant: "destructive",
+        });
       } finally {
         setLoading(false);
       }
-    },
-    [debouncedSearch, page, pageSize, token, toast]
-  );
+    };
 
-  useEffect(() => {
-    fetchParameters({ resetPage: true });
-  }, [debouncedSearch, pageSize, fetchParameters]);
-
-  useEffect(() => {
-    fetchParameters();
-  }, [page, fetchParameters]);
+    fetchData();
+  }, [debouncedSearch, page, pageSize, token, toast]);
 
   // -------------------- Category CRUD --------------------
   const openCreateCategory = useCallback(() => {
@@ -344,14 +342,13 @@ const ParametersPage: React.FC = () => {
 
       setIsCategoryDialogOpen(false);
       setEditingCategory(null);
-      setPage(1);
-      await fetchParameters({ resetPage: true });
+      setPage(1); // Triggers refetch via useEffect
     } catch (err: any) {
       toast({ title: "Save failed", description: err.message || "Try again", variant: "destructive" });
     } finally {
       setSaving(false);
     }
-  }, [categoryForm, editingCategory, fetchParameters, token, toast]);
+  }, [categoryForm, editingCategory, token, toast]);
 
   const deleteCategory = useCallback(
     async (cat: Parameter) => {
@@ -359,12 +356,12 @@ const ParametersPage: React.FC = () => {
       try {
         await jsonFetch(`/data-parameters-category/delete/${cat._id}`, { method: "PUT" }, token);
         toast({ title: "Category deleted" });
-        await fetchParameters();
+        setPage(1); // Refresh from page 1
       } catch (err: any) {
         toast({ title: "Delete failed", description: err?.message || "Try again", variant: "destructive" });
       }
     },
-    [fetchParameters, token, toast]
+    [token, toast]
   );
 
   // -------------------- Value-level CRUD --------------------
@@ -384,11 +381,11 @@ const ParametersPage: React.FC = () => {
         }),
       }, token);
       toast({ title: "Value created" });
-      await fetchParameters();
+      setPage(1);
     } catch (err: any) {
       toast({ title: "Create value failed", description: err.message || "Try again", variant: "destructive" });
     }
-  }, [fetchParameters, token, toast]);
+  }, [token, toast]);
 
   const updateValue = useCallback(
     async (valueId: number | string, newValue: string) => {
@@ -405,12 +402,12 @@ const ParametersPage: React.FC = () => {
         toast({ title: "Value updated" });
         setIsValueDialogOpen(false);
         setEditingValue(null);
-        await fetchParameters();
+        setPage(1);
       } catch (err: any) {
         toast({ title: "Update failed", description: err?.message || "Try again", variant: "destructive" });
       }
     },
-    [fetchParameters, token, toast]
+    [token, toast]
   );
 
   const deleteValue = useCallback(
@@ -419,12 +416,12 @@ const ParametersPage: React.FC = () => {
       try {
         await jsonFetch(`/data-parameters-category-value/delete/${value.id}`, { method: "PUT" }, token);
         toast({ title: "Value deleted" });
-        await fetchParameters();
+        setPage(1);
       } catch (err: any) {
         toast({ title: "Delete failed", description: err?.message || "Try again", variant: "destructive" });
       }
     },
-    [fetchParameters, token, toast]
+    [token, toast]
   );
 
   // -------------------- Table columns --------------------
@@ -676,11 +673,11 @@ const ParametersPage: React.FC = () => {
       }
       setIsValueDialogOpen(false);
       setEditingValue(null);
-      await fetchParameters();
+      setPage(1);
     } catch (err: any) {
       toast({ title: "Value save failed", description: err.message || "Try again", variant: "destructive" });
     }
-  }, [editingValue, editingCategory, fetchParameters, token, toast]);
+  }, [editingValue, editingCategory, token, toast]);
 
   // -------------------- Render --------------------
   return (
@@ -689,7 +686,7 @@ const ParametersPage: React.FC = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Parameters</h1>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => fetchParameters({ resetPage: true })} disabled={loading}>
+          <Button variant="outline" onClick={() => setPage(1)} disabled={loading}>
             <Loader2 className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : 'hidden'}`} />
             Refresh
           </Button>
