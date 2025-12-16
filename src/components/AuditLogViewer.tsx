@@ -37,13 +37,18 @@ import { format, formatDistanceToNow, startOfDay, endOfDay, subDays, subMonths }
 import { cn } from '@/lib/utils';
 import { useAuditLogs, useAuditLogStats } from '@/hooks/useApi';
 import { apiService } from '@/services/apiService';
+import { toast } from 'sonner';
 
 interface AuditLogFilters {
   search?: string;
   action?: string | string[];
   resource?: string | string[];
+  resource_type?: string;
+  user_id?: string;
   userId?: string;
   severity?: string | string[];
+  date_from?: Date;
+  date_to?: Date
   startDate?: Date;
   endDate?: Date;
   page: number;
@@ -187,41 +192,94 @@ export function AuditLogViewer() {
     }
   };
 
+  const API_BASE_URL = 'https://pplus-5kdv.onrender.com'; // ← Change once, affects all
+
   const handleExport = async (format: 'json' | 'csv') => {
     setIsExporting(true);
     try {
       const queryParams = new URLSearchParams();
+
+      // === ONLY ALLOW THESE VALID FILTERS FOR AUDIT LOGS ===
+      const validAuditFilters: (keyof typeof filters)[] = [
+        'action',
+        'resource_type',
+        'user_id',
+        'severity',
+        'date_from',
+        'date_to'
+      ];
+
       Object.entries(filters).forEach(([key, value]) => {
-        if (value && key !== 'page' && key !== 'limit' && key !== 'sortBy' && key !== 'sortOrder') {
+        // Skip pagination/sorting and only include valid audit filters
+        if (
+          value &&
+          !['page', 'limit', 'sortBy', 'sortOrder'].includes(key) &&
+          validAuditFilters.includes(key as any)
+        ) {
           if (value instanceof Date) {
-            queryParams.append(key, value.toISOString());
+            queryParams.append(key, value.toISOString().split('T')[0]); // YYYY-MM-DD
           } else if (Array.isArray(value)) {
-            value.forEach(v => queryParams.append(key, v));
+            value.forEach(v => queryParams.append(key, String(v)));
           } else {
             queryParams.append(key, String(value));
           }
         }
       });
+
       queryParams.append('format', format);
 
-      const response = await fetch(`/api/audit-logs/export?${queryParams.toString()}`, {
+      const url = `${API_BASE_URL}/api/audit-logs/export?${queryParams.toString()}`;
+
+      const token = localStorage.getItem('token')
+
+      const response = await fetch(url, {
         method: 'GET',
-        credentials: 'include'
+        headers: {
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` }), // Add token if exists
+      },
       });
 
-      if (!response.ok) throw new Error('Export failed');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Export failed (${response.status})`);
+      }
 
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      const contentType = response.headers.get('content-type') || '';
+      const filename = `audit-logs-${new Date().toISOString().split('T')[0]}.${format}`;
+
+      let blob: Blob;
+
+      if (format === 'csv' || contentType.includes('text/csv')) {
+        const text = await response.text();
+        if (text.trim() === '' || text.includes('<!DOCTYPE html>')) {
+          throw new Error('Received HTML instead of file — check backend route');
+        }
+        blob = new Blob([text], { type: 'text/csv;charset=utf-8;' });
+      } else {
+        const json = await response.json();
+        const prettyJson = JSON.stringify(json, null, 2);
+        blob = new Blob([prettyJson], { type: 'application/json' });
+      }
+
+      // Trigger download
+      const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
-      a.download = `audit-logs-${Date.now()}.${format}`;
+      a.href = downloadUrl;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      a.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+
+      toast.success(`Audit logs exported as ${format.toUpperCase()} successfully`);
     } catch (error) {
-      console.error('Export failed:', error);
+      console.error('Audit logs export failed:', error);
+      toast.error(
+        error instanceof Error 
+          ? error.message 
+          : 'Failed to export audit logs'
+      );
     } finally {
       setIsExporting(false);
     }
@@ -490,8 +548,12 @@ export function AuditLogViewer() {
                         <SelectItem value="users">Users</SelectItem>
                         <SelectItem value="companies">Companies</SelectItem>
                         <SelectItem value="editorials">Editorials</SelectItem>
+                        <SelectItem value="social media mentions">Social Media Mentions</SelectItem>
+                        <SelectItem value="daily mentions">Daily Mentions</SelectItem>
+                        <SelectItem value="outcome and insights">Outcome and Insights</SelectItem>
+                        <SelectItem value="industry landscape overviews">Industry Landscape Overview</SelectItem>
+                        <SelectItem value="swot analysis">SWOT Analysis</SelectItem>
                         <SelectItem value="publications">Publications</SelectItem>
-                        <SelectItem value="data-entries">Data Entries</SelectItem>
                         <SelectItem value="auth">Authentication</SelectItem>
                       </SelectContent>
                     </Select>
