@@ -250,7 +250,7 @@ const BrandSentimentPage: React.FC = () => {
               {Array.isArray(data.key_brand_reputational_drivers.positive) ? (
                 data.key_brand_reputational_drivers.positive.length > 0 ? (
                   data.key_brand_reputational_drivers.positive.map((item, i) => (
-                    <li key={i} className="list-disc list-inside">• {item}</li>
+                    <li key={i} className="list-disc list-inside"> {item}</li>
                   ))
                 ) : (
                   <li className="italic text-gray-500">No positive drivers recorded</li>
@@ -268,7 +268,7 @@ const BrandSentimentPage: React.FC = () => {
               {Array.isArray(data.key_brand_reputational_drivers.negative) ? (
                 data.key_brand_reputational_drivers.negative.length > 0 ? (
                   data.key_brand_reputational_drivers.negative.map((item, i) => (
-                    <li key={i} className="list-disc list-inside">• {item}</li>
+                    <li key={i} className="list-disc list-inside"> {item}</li>
                   ))
                 ) : (
                   <li className="italic text-gray-500">No negative drivers recorded</li>
@@ -286,7 +286,7 @@ const BrandSentimentPage: React.FC = () => {
               {Array.isArray(data.key_brand_reputational_drivers.neutral) ? (
                 data.key_brand_reputational_drivers.neutral.length > 0 ? (
                   data.key_brand_reputational_drivers.neutral.map((item, i) => (
-                    <li key={i} className="list-disc list-inside">• {item}</li>
+                    <li key={i} className="list-disc list-inside"> {item}</li>
                   ))
                 ) : (
                   <li className="italic text-gray-500">No neutral drivers recorded</li>
