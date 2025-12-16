@@ -548,11 +548,11 @@ export function AuditLogViewer() {
                         <SelectItem value="users">Users</SelectItem>
                         <SelectItem value="companies">Companies</SelectItem>
                         <SelectItem value="editorials">Editorials</SelectItem>
-                        <SelectItem value="social media mentions">Social Media Mentions</SelectItem>
-                        <SelectItem value="daily mentions">Daily Mentions</SelectItem>
-                        <SelectItem value="outcome and insights">Outcome and Insights</SelectItem>
-                        <SelectItem value="industry landscape overviews">Industry Landscape Overview</SelectItem>
-                        <SelectItem value="swot analysis">SWOT Analysis</SelectItem>
+                        <SelectItem value="social_media_mentions">Social Media Mentions</SelectItem>
+                        <SelectItem value="daily_mentions">Daily Mentions</SelectItem>
+                        <SelectItem value="outcome_and_insights">Outcome and Insights</SelectItem>
+                        <SelectItem value="industry_landscape_overviews">Industry Landscape Overview</SelectItem>
+                        <SelectItem value="swot_analysis">SWOT Analysis</SelectItem>
                         <SelectItem value="publications">Publications</SelectItem>
                         <SelectItem value="auth">Authentication</SelectItem>
                       </SelectContent>
