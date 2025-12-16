@@ -35,7 +35,7 @@ import { apiService } from '@/services/apiService';
 import { toast } from 'sonner';
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Zod Schema — Fully aligned with backend expectation
+// Zod Schema — Conditional required + string supervisorId
 // ──────────────────────────────────────────────────────────────────────────────
 const subsidiaryMonitoringSchema = z.object({
   subsidiary_id: z.string().min(1, 'Subsidiary is required'),
@@ -61,10 +61,15 @@ const formSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
   confirmPassword: z.string(),
   company_monitorings: z.array(companyMonitoringSchema).optional(),
-}).refine((d) => d.password === d.confirmPassword, {
-  message: "Passwords don't match",
-  path: ['confirmPassword'],
-});
+})
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ['confirmPassword'],
+  })
+  .refine((data) => data.role !== 'Analyst' || (data.supervisorId && data.supervisorId.trim() !== ''), {
+    message: 'Supervisor is required for Analyst role',
+    path: ['supervisorId'],
+  });
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Types
@@ -136,11 +141,9 @@ export default function CreateUserForm({ onSave, onCancel }: CreateUserFormProps
         setRoles(Array.isArray(rolesRes.data) ? rolesRes.data : []);
         setSupervisors(Array.isArray(supervisorsRes.data) ? supervisorsRes.data : []);
 
-        // Companies
         const companiesData = companiesRes.data?.data ?? [];
         setCompanies(Array.isArray(companiesData) ? companiesData : []);
 
-        // Subsidiaries — now correctly maps id → company_name
         const subsData = subsidiariesRes.data?.data ?? subsidiariesRes.data ?? [];
         setSubsidiaries(
           Array.isArray(subsData)
@@ -151,7 +154,6 @@ export default function CreateUserForm({ onSave, onCancel }: CreateUserFormProps
             : []
         );
 
-        // Media prominence
         const mediaOpts = Array.isArray(mediaRes.data)
           ? mediaRes.data.flatMap((i: any) =>
               Array.isArray(i.categories)
@@ -201,7 +203,7 @@ export default function CreateUserForm({ onSave, onCancel }: CreateUserFormProps
   }, [selectedRole, form, companyFields.length, appendCompany]);
 
   // ────────────────────────────────────────────────────────────────────────
-  // Submit — Sends EXACT payload structure expected by backend
+  // Submit — Final fix: send supervisor_id as string only when Analyst
   // ────────────────────────────────────────────────────────────────────────
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (isSubmitting) return;
@@ -216,10 +218,15 @@ export default function CreateUserForm({ onSave, onCancel }: CreateUserFormProps
         mobile_number: values.mobile_number,
         role: values.role,
         active: true,
-        supervisor_id: values.supervisorId ? Number(values.supervisorId) : undefined,
         avatar,
       };
 
+      // Only add supervisor_id for Analyst, and as string (UUID)
+      if (values.role === 'Analyst' && values.supervisorId) {
+        payload.supervisor_id = values.supervisorId; // String UUID
+      }
+
+      // Client monitoring config
       if (values.role === 'Client' && values.company_monitorings?.length) {
         payload.company_monitorings = values.company_monitorings
           .filter(c =>
@@ -246,13 +253,16 @@ export default function CreateUserForm({ onSave, onCancel }: CreateUserFormProps
           }));
       }
 
+      // Optional: Remove in production
+      console.log('Final payload being sent:', payload);
+
       const res = await apiService.createUser(payload);
-      toast.success(res.message ?? 'Client created successfully');
+      toast.success(res.message ?? 'User created successfully');
       onSave(res.data);
       form.reset();
       onCancel();
     } catch (e: any) {
-      toast.error(e.response?.data?.message ?? 'Failed to create client');
+      toast.error(e.response?.data?.message ?? 'Failed to create user');
     } finally {
       setIsSubmitting(false);
     }
@@ -401,17 +411,17 @@ export default function CreateUserForm({ onSave, onCancel }: CreateUserFormProps
               name="supervisorId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Assign Supervisor</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormLabel>Assign Supervisor <span className="text-red-600">*</span></FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value || ''}>
                     <FormControl>
                       <SelectTrigger className="bg-gray-50 border-gray-200">
-                        <SelectValue placeholder="Choose supervisor" />
+                        <SelectValue placeholder="Select a supervisor (required)" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       {supervisors.map((s) => (
-                        <SelectItem key={s.id} value={s.id.toString()}>
-                          {s.username}
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.username} {s.email ? `(${s.email})` : ''}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -440,7 +450,6 @@ export default function CreateUserForm({ onSave, onCancel }: CreateUserFormProps
                     <Trash2 className="h-4 w-4" />
                   </Button>
 
-                  {/* Company Level Fields */}
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <FormField
                       control={form.control}
@@ -692,7 +701,7 @@ export default function CreateUserForm({ onSave, onCancel }: CreateUserFormProps
                   Creating...
                 </>
               ) : (
-                'Create Client'
+                'Create User'
               )}
             </Button>
           </div>

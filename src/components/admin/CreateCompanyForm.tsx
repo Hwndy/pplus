@@ -8,16 +8,22 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { X, Copy, Loader2, Plus, Minus } from 'lucide-react';
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from '@/components/ui/command';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import axios from 'axios';
+import { X, Copy, Loader2, Plus, Minus, Check, ChevronsUpDown } from 'lucide-react';
+import { cn } from '@/lib/utils'; // Ensure you have this utility (common in shadcn setups)
 
 interface Company {
   id: number;
@@ -56,6 +62,80 @@ interface CreateCompanyFormProps {
   initialValues?: CompanyFormData | null;
   isViewMode?: boolean;
 }
+
+// Reusable Searchable Combobox Component
+const SearchableCombobox: React.FC<{
+  options: { value: string; label: string }[];
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  searchPlaceholder?: string;
+  loading?: boolean;
+  disabled?: boolean;
+  emptyMessage?: string;
+}> = ({
+  options,
+  value,
+  onChange,
+  placeholder,
+  searchPlaceholder = 'Search...',
+  loading = false,
+  disabled = false,
+  emptyMessage = 'No options found.',
+}) => {
+  const [open, setOpen] = useState(false);
+
+  const selectedLabel = options.find((opt) => opt.value === value)?.label || '';
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between font-normal"
+          disabled={disabled || loading}
+        >
+          <span className="truncate">
+            {loading ? 'Loading options...' : selectedLabel || placeholder}
+          </span>
+          {loading ? (
+            <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin" />
+          ) : (
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-full p-0" align="start">
+        <Command>
+          <CommandInput placeholder={searchPlaceholder} autoFocus />
+          <CommandEmpty>{emptyMessage}</CommandEmpty>
+          <CommandGroup className="max-h-64 overflow-auto">
+            {options.map((option) => (
+              <CommandItem
+                key={option.value}
+                value={option.value}
+                onSelect={(currentValue) => {
+                  onChange(currentValue === value ? '' : currentValue);
+                  setOpen(false);
+                }}
+              >
+                <Check
+                  className={cn(
+                    'mr-2 h-4 w-4',
+                    value === option.value ? 'opacity-100' : 'opacity-0'
+                  )}
+                />
+                {option.label}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+};
 
 export default function CreateCompanyForm({
   onSave,
@@ -98,7 +178,6 @@ export default function CreateCompanyForm({
 
   const form = useForm<CompanyFormData>();
 
-  // Helper to extract string options from API response
   const extractStringOptions = (data: any): string[] => {
     try {
       const categories = data?.data?.[0]?.categories || [];
@@ -185,7 +264,7 @@ export default function CreateCompanyForm({
     fetchCeo();
   }, []);
 
-  // Handle initial values (edit/view mode)
+  // Handle initial values
   useEffect(() => {
     if (initialValues) {
       setCompanyForms([
@@ -369,47 +448,6 @@ export default function CreateCompanyForm({
 
   const isDisabled = isViewMode;
 
-  // Reusable Select component with loading state handled correctly
-  const DynamicSelect = ({
-    value,
-    onChange,
-    options,
-    placeholder,
-    loading,
-    disabled = false,
-  }: {
-    value: string;
-    onChange: (val: string) => void;
-    options: string[];
-    placeholder: string;
-    loading: boolean;
-    disabled?: boolean;
-  }) => (
-    <Select value={value} onValueChange={onChange} disabled={isDisabled || disabled || loading}>
-      <SelectTrigger>
-        <SelectValue placeholder={loading ? 'Loading options...' : placeholder} />
-      </SelectTrigger>
-      <SelectContent>
-        {loading ? (
-          <SelectItem value="loading" disabled>
-            <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
-            Loading...
-          </SelectItem>
-        ) : options.length === 0 ? (
-          <SelectItem value="empty" disabled>
-            No options available
-          </SelectItem>
-        ) : (
-          options.map((opt) => (
-            <SelectItem key={opt} value={opt}>
-              {opt}
-            </SelectItem>
-          ))
-        )}
-      </SelectContent>
-    </Select>
-  );
-
   return (
     <ScrollArea className="h-[calc(100vh-300px)]">
       <div className="p-1">
@@ -442,23 +480,27 @@ export default function CreateCompanyForm({
 
                   <div>
                     <FormLabel>Industry *</FormLabel>
-                    <DynamicSelect
+                    <SearchableCombobox
+                      options={industryOptions.map((opt) => ({ value: opt, label: opt }))}
                       value={companyForm.industry}
                       onChange={(val) => updateCompanyForm(formIndex, 'industry', val)}
-                      options={industryOptions}
-                      placeholder="Select industry"
+                      placeholder="Select or search industry..."
+                      searchPlaceholder="Search industries..."
                       loading={loadingIndustry}
+                      disabled={isDisabled}
                     />
                   </div>
 
                   <div>
                     <FormLabel>Sub-Industry *</FormLabel>
-                    <DynamicSelect
+                    <SearchableCombobox
+                      options={subIndustryOptions.map((opt) => ({ value: opt, label: opt }))}
                       value={companyForm.sub_industry}
                       onChange={(val) => updateCompanyForm(formIndex, 'sub_industry', val)}
-                      options={subIndustryOptions}
-                      placeholder="Select sub-industry"
+                      placeholder="Select or search sub-industry..."
+                      searchPlaceholder="Search sub-industries..."
                       loading={loadingSubIndustry}
+                      disabled={isDisabled}
                     />
                   </div>
 
@@ -515,12 +557,14 @@ export default function CreateCompanyForm({
 
                   <div>
                     <FormLabel>CEO *</FormLabel>
-                    <DynamicSelect
+                    <SearchableCombobox
+                      options={ceoOptions.map((opt) => ({ value: opt, label: opt }))}
                       value={companyForm.ceo}
                       onChange={(val) => updateCompanyForm(formIndex, 'ceo', val)}
-                      options={ceoOptions}
-                      placeholder="Select CEO"
+                      placeholder="Select or search CEO..."
+                      searchPlaceholder="Search CEOs..."
                       loading={loadingCeo}
+                      disabled={isDisabled}
                     />
                   </div>
 
@@ -619,33 +663,19 @@ export default function CreateCompanyForm({
                       <div key={subIndex} className="flex gap-4 items-end mb-4 p-3 border rounded-md">
                         <div className="flex-1">
                           <FormLabel>Subsidiary Company</FormLabel>
-                          <Select
+                          <SearchableCombobox
+                            options={apiCompanies.map((company) => ({
+                              value: company.id.toString(),
+                              label: company.company_name,
+                            }))}
                             value={sub.subsidiary_id ? sub.subsidiary_id.toString() : ''}
-                            onValueChange={(val) => handleSubsidiaryChange(formIndex, subIndex, val)}
-                            disabled={isDisabled || loadingCompanies}
-                          >
-                            <SelectTrigger>
-                              <SelectValue
-                                placeholder={loadingCompanies ? 'Loading companies...' : 'Select a company'}
-                              />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {loadingCompanies ? (
-                                <SelectItem value="loading" disabled>
-                                  <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
-                                  Loading companies...
-                                </SelectItem>
-                              ) : apiCompanies.length === 0 ? (
-                                <SelectItem value="empty" disabled>No companies available</SelectItem>
-                              ) : (
-                                apiCompanies.map((company) => (
-                                  <SelectItem key={company.id} value={company.id.toString()}>
-                                    {company.company_name}
-                                  </SelectItem>
-                                ))
-                              )}
-                            </SelectContent>
-                          </Select>
+                            onChange={(val) => handleSubsidiaryChange(formIndex, subIndex, val)}
+                            placeholder="Select or search company..."
+                            searchPlaceholder="Search companies..."
+                            loading={loadingCompanies}
+                            disabled={isDisabled}
+                            emptyMessage="No companies found"
+                          />
                         </div>
 
                         {!isViewMode && (

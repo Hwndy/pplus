@@ -460,7 +460,7 @@ class ApiService {
       // joinDate: data.joinDate ? new Date(data.joinDate).toISOString() : new Date().toISOString(),
       role: data.role,
       password: data.password,
-      supervisor_id: data.supervisor_id ? Number(data.supervisor_id) : undefined,
+      supervisor_id: data.supervisor_id ? String(data.supervisor_id) : undefined,
       company_monitorings: data.company_monitorings?.map(cm => ({
         company_id: Number(cm.company_id),
         competitor_company_ids: cm.competitor_company_ids.map(Number),
