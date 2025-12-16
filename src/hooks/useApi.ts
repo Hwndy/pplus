@@ -394,68 +394,6 @@ export function useDailyMention(id: string) {
   return useApiData(() => apiService.getDailyMentionById(id), [id]);
 }
 
-// Analytics hooks
-// export function useDashboardSummary(params?: Record<string, any>) {
-//   const deps = [
-//     String(params?.startDate || ''),
-//     String(params?.endDate || ''),
-//     String(params?.companyId || '')
-//   ];
-
-//   return useApiData(() => apiService.getDashboardSummary(params), deps, {
-//     enableAutoRefresh: false
-//   });
-// }
-
-// export function useMentionsTrend(params?: Record<string, any>) {
-//   const deps = [
-//     String(params?.startDate || ''),
-//     String(params?.endDate || ''),
-//     String(params?.companyId || ''),
-//     String(params?.period || '')
-//   ];
-
-//   return useApiData(() => apiService.getMentionsTrend(params), deps, {
-//     enableAutoRefresh: false
-//   });
-// }
-
-// export function useSentimentAnalysis(params?: Record<string, any>) {
-//   const deps = [
-//     String(params?.startDate || ''),
-//     String(params?.endDate || ''),
-//     String(params?.companyId || '')
-//   ];
-
-//   return useApiData(() => apiService.getSentimentAnalysis(params), deps, {
-//     enableAutoRefresh: false
-//   });
-// }
-
-// export function useMediaChannelAnalysis(params?: Record<string, any>) {
-//   const deps = [
-//     String(params?.startDate || ''),
-//     String(params?.endDate || ''),
-//     String(params?.companyId || '')
-//   ];
-
-//   return useApiData(() => apiService.getMediaChannelAnalysis(params), deps, {
-//     enableAutoRefresh: false
-//   });
-// }
-
-// export function useCompanyComparison(params?: QueryParams) {
-//   const deps = [
-//     String(params?.companyIds || ''),
-//     String(params?.startDate || ''),
-//     String(params?.endDate || '')
-//   ];
-
-//   return useApiData(() => apiService.getCompanyComparison(params), deps, {
-//     enableAutoRefresh: false
-//   });
-// }
-
 // File management hooks
 export function useFiles(params?: QueryParams) {
   const deps = [

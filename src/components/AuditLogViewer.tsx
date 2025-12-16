@@ -43,7 +43,7 @@ interface AuditLogFilters {
   search?: string;
   action?: string | string[];
   resource?: string | string[];
-  resource_type?: string;
+  resource_type?: string | string[];
   user_id?: string;
   userId?: string;
   severity?: string | string[];
@@ -192,14 +192,13 @@ export function AuditLogViewer() {
     }
   };
 
-  const API_BASE_URL = 'https://pplus-5kdv.onrender.com'; // ← Change once, affects all
+  const API_BASE_URL = 'https://pplus-5kdv.onrender.com';
 
   const handleExport = async (format: 'json' | 'csv') => {
     setIsExporting(true);
     try {
       const queryParams = new URLSearchParams();
 
-      // === ONLY ALLOW THESE VALID FILTERS FOR AUDIT LOGS ===
       const validAuditFilters: (keyof typeof filters)[] = [
         'action',
         'resource_type',
@@ -210,7 +209,6 @@ export function AuditLogViewer() {
       ];
 
       Object.entries(filters).forEach(([key, value]) => {
-        // Skip pagination/sorting and only include valid audit filters
         if (
           value &&
           !['page', 'limit', 'sortBy', 'sortOrder'].includes(key) &&
@@ -236,7 +234,7 @@ export function AuditLogViewer() {
         method: 'GET',
         headers: {
         'Content-Type': 'application/json',
-        ...(token && { 'Authorization': `Bearer ${token}` }), // Add token if exists
+        ...(token && { 'Authorization': `Bearer ${token}` }), 
       },
       });
 
@@ -297,7 +295,7 @@ export function AuditLogViewer() {
     return SEVERITY_CONFIG[severity as keyof typeof SEVERITY_CONFIG] || SEVERITY_CONFIG.INFO;
   };
 
-  const getResourceIcon = (resource: string) => {
+  const getResourceIcon = (resource_type: string) => {
     const iconMap: Record<string, any> = {
       users: Users,
       companies: Building2,
@@ -306,12 +304,12 @@ export function AuditLogViewer() {
       auth: Shield,
       audit_logs: History
     };
-    const Icon = iconMap[resource.toLowerCase()] || Database;
+    const Icon = iconMap[resource_type.toLowerCase()] || Database;
     return <Icon className="h-4 w-4" />;
   };
 
   const hasActiveFilters = useMemo(() => {
-    return !!(filters.search || filters.action || filters.resource || 
+    return !!(filters.search || filters.action || filters.resource_type || 
               filters.userId || filters.severity || filters.startDate || filters.endDate);
   }, [filters]);
 
@@ -537,8 +535,8 @@ export function AuditLogViewer() {
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-700">Resource</label>
                     <Select
-                      value={filters.resource as string || 'all'}
-                      onValueChange={(value) => handleFilterChange('resource', value === 'all' ? undefined : value)}
+                      value={filters.resource_type as string || 'all'}
+                      onValueChange={(value) => handleFilterChange('resource_type', value === 'all' ? undefined : value)}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="All resources" />
