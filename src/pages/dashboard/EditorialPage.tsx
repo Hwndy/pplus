@@ -100,17 +100,14 @@ const EditorialPage = () => {
       let meta = { total: 0, currentPage: 1, totalPage: 1, pageSize: 10 };
 
       if (result.success && result.data) {
-        // Case 1: Admin endpoint → { editorial: [...], meta: {} }
         if (Array.isArray(result.data.editorial)) {
           items = result.data.editorial;
           meta = result.data.meta || meta;
         }
-        // Case 2: Analyst/Supervisor → direct array in result.data
         else if (Array.isArray(result.data)) {
           items = result.data;
           meta = result.meta || meta;
         }
-        // Case 3: Some endpoints return { data: [...], meta: {} }
         else if (Array.isArray(result.data.data)) {
           items = result.data.data;
           meta = result.data.meta || meta;
@@ -122,7 +119,7 @@ const EditorialPage = () => {
       setTotalItems(meta.total || 0);
 
       if (items.length === 0 && currentPage > 1) {
-        setCurrentPage(1); // Reset to page 1 if current page is empty
+        setCurrentPage(1);
       }
 
     } catch (err: any) {
@@ -163,8 +160,59 @@ const EditorialPage = () => {
     }
   };
 
-  const handleEdit = (editorial: Editorial) => {
-    navigate('/dashboard/editorial/create', { state: { editorialData: editorial } });
+  // FIXED: Properly fetch full editorial data before navigating to edit
+  const handleEdit = async (id: number) => {
+    if (!token) {
+      toast.error("Authentication required");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_BASE}/editorials/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch editorial for editing");
+      }
+
+      const result = await response.json();
+
+      if (!result.success || !result.data) {
+        throw new Error("Invalid response from server");
+      }
+
+      const editorialData = result.data;
+
+      // Ensure the data has the expected structure with editorials array
+      const fullData = {
+        id: editorialData.id,
+        date: editorialData.date,
+        company_id: editorialData.company_id,
+        media_type: editorialData.media_type,
+        analyst_note: editorialData.analyst_note,
+        supervisor_note: editorialData.supervisor_note,
+        admin_note: editorialData.admin_note,
+        editorials: Array.isArray(editorialData.editorials)
+          ? editorialData.editorials
+          : editorialData.editorials
+          ? [editorialData.editorials]
+          : [],
+      };
+
+      navigate('/dashboard/editorial/create', {
+        state: { editorialData: fullData },
+      });
+
+    } catch (err: any) {
+      console.error("Edit fetch error:", err);
+      toast.error(err.message || "Could not load editorial for editing");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCreate = () => {
@@ -212,7 +260,7 @@ const EditorialPage = () => {
         const editorial = row.original;
         return (
           <div className="flex gap-2">
-            <Button variant="ghost" size="icon" onClick={() => handleEdit(editorial)}>
+            <Button variant="ghost" size="icon" onClick={() => handleEdit(editorial.id)}>
               <Pencil className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="icon" onClick={() => handleDelete(editorial.id)}>

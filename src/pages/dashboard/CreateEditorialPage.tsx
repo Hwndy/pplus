@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { Plus, Copy, Save, Send, Loader2, ArrowLeft, MinusCircle, ClipboardCopy } from 'lucide-react';
+import { Plus, ClipboardCopy, Save, Send, Loader2, ArrowLeft, MinusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/components/auth/AuthContext';
 
@@ -677,52 +677,97 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
 };
 
 // ──────────────────────────────────────────────────────────────────────
-// Main Page Component (with Back button)
+// Main Page Component (with Back button and proper edit handling)
 // ──────────────────────────────────────────────────────────────────────
 const CreateEditorialPage = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
-  const isEditMode = !!location.state?.editorialData;
   const searchParams = new URLSearchParams(location.search);
   const reviewId = searchParams.get('review');
   const isReviewMode = !!reviewId;
   const BASE_URL = 'https://pplus-5kdv.onrender.com/api';
   const { user, isSessionValidated } = useAuth();
 
-  const [editorials, setEditorials] = useState<Editorial[]>(
-    [isEditMode && location.state?.editorialData
-      ? Array.isArray(location.state.editorialData)
-        ? location.state.editorialData
-        : [location.state.editorialData]
-      : {
-          date: new Date().toISOString().split('T')[0],
-          online_channel: '',
-          source: '',
-          company_id: undefined,
-          media_type: '',
-          audience_reach: 0,
-          placement: '',
-          language: '',
-          ceo_thought_leadership: '',
-          title: '',
-          print_web_clips: '',
-          reporter: '',
-          country: '',
-          spokesperson: '',
-          activity: '',
-          sentiment: '',
-          sentiment_keyword_indicator_id: undefined,
-          advert_spend: 0,
-          circulation: 0,
-          page_size: '',
-          page_number: '',
-          analyst_note: '',
-          supervisor_note: '',
-          admin_note: '',
-        },
-    ].filter(Boolean)
-  );
+  // Safely extract navigation state
+  const locationState = location.state as { editorialData?: any } | null;
+  const isEditMode = !!locationState?.editorialData;
+
+  const [editorials, setEditorials] = useState<Editorial[]>(() => {
+    if (isEditMode && locationState?.editorialData) {
+      const data = locationState.editorialData;
+
+      // Preferred: API returns { editorials: [...] } array
+      if (Array.isArray(data.editorials) && data.editorials.length > 0) {
+        return data.editorials.map((e: any) => ({
+          ...e,
+          date: data.date || new Date().toISOString().split('T')[0],
+          company_id: data.company_id,
+          media_type: data.media_type || '',
+          analyst_note: data.analyst_note || '',
+          supervisor_note: data.supervisor_note || '',
+          admin_note: data.admin_note || '',
+        }));
+      }
+
+      // Fallback for legacy single object
+      return [{
+        ...data,
+        date: data.date || new Date().toISOString().split('T')[0],
+        online_channel: data.online_channel || '',
+        source: data.source || '',
+        company_id: data.company_id,
+        media_type: data.media_type || '',
+        audience_reach: data.audience_reach || 0,
+        placement: data.placement || '',
+        language: data.language || '',
+        ceo_thought_leadership: data.ceo_thought_leadership || '',
+        title: data.title || '',
+        print_web_clips: data.print_web_clips || '',
+        reporter: data.reporter || '',
+        country: data.country || '',
+        spokesperson: data.spokesperson || '',
+        activity: data.activity || '',
+        sentiment: data.sentiment || '',
+        sentiment_keyword_indicator_id: data.sentiment_keyword_indicator_id,
+        advert_spend: data.advert_spend || 0,
+        circulation: data.circulation || 0,
+        page_size: data.page_size || '',
+        page_number: data.page_number || '',
+        analyst_note: data.analyst_note || '',
+        supervisor_note: data.supervisor_note || '',
+        admin_note: data.admin_note || '',
+      }];
+    }
+
+    // Default new entry
+    return [{
+      date: new Date().toISOString().split('T')[0],
+      online_channel: '',
+      source: '',
+      company_id: undefined,
+      media_type: '',
+      audience_reach: 0,
+      placement: '',
+      language: '',
+      ceo_thought_leadership: '',
+      title: '',
+      print_web_clips: '',
+      reporter: '',
+      country: '',
+      spokesperson: '',
+      activity: '',
+      sentiment: '',
+      sentiment_keyword_indicator_id: undefined,
+      advert_spend: 0,
+      circulation: 0,
+      page_size: '',
+      page_number: '',
+      analyst_note: '',
+      supervisor_note: '',
+      admin_note: '',
+    }];
+  });
 
   const [activeIndex, setActiveIndex] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -847,15 +892,18 @@ const CreateEditorialPage = () => {
     });
   };
 
+  const currentEditorial = editorials[activeIndex];
+
   const handleSubmit = async (status: 'draft' | 'send') => {
-    const currentEditorial = editorials[activeIndex];
     const validationErrors = validateForm(currentEditorial);
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
     }
+
     setIsSubmitting(true);
     setSubmissionType(status);
+
     try {
       const payload = {
         date: editorials[activeIndex].date,
@@ -892,13 +940,16 @@ const CreateEditorialPage = () => {
         })),
       };
 
-      const response = isEditMode
-        ? await axios.put(`${BASE_URL}/editorials/update/${currentEditorial.id}`, payload)
-        : await axios.post(`${BASE_URL}/editorials/create`, payload);
+      if (isEditMode && currentEditorial.id) {
+        await axios.put(`${BASE_URL}/editorials/update/${currentEditorial.id}`, payload);
+        toast({ title: 'Success', description: 'Editorial updated successfully!' });
+      } else {
+        await axios.post(`${BASE_URL}/editorials/create`, payload);
+        toast({ title: 'Success', description: 'Editorial created successfully!' });
+      }
 
-      toast({ title: 'Success', description: `Editorial ${isEditMode ? 'updated' : 'created'} successfully!` });
       navigate('/dashboard/editorial');
-    } catch (err) {
+    } catch (err: any) {
       toast({
         title: 'Submission failed',
         description: Array.isArray(err.response?.data?.message)
@@ -912,7 +963,6 @@ const CreateEditorialPage = () => {
   };
 
   const handleReviewAction = async (action: 'approve' | 'reject') => {
-    const currentEditorial = editorials[activeIndex];
     setIsSubmitting(true);
     setSubmissionType(action);
     try {
@@ -920,7 +970,7 @@ const CreateEditorialPage = () => {
       await axios.patch(`${BASE_URL}/editorials/${currentEditorial.id}/status`, { status: newStatus });
       toast({ title: 'Success', description: `Editorial status updated to ${newStatus}.` });
       navigate('/editorials');
-    } catch (err) {
+    } catch (err: any) {
       toast({
         title: 'Failed to update status',
         description: Array.isArray(err.response?.data?.message)
