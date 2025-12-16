@@ -360,7 +360,7 @@ export function BrandMediaAnalysisPage() {
         </DataCard>
 
         {/* Weekly Trend */}
-        <DataCard title="Weekly Media Volume Trend" variant="glass" icon={<LineChartIcon className="text-emerald-600" />}>
+        <DataCard title="Weekly Media Volume Trend (Current Month)" variant="glass" icon={<LineChartIcon className="text-emerald-600" />}>
           <div className="h-80">
             <ResponsiveContainer>
               <AreaChart data={weeklyData}>
