@@ -75,7 +75,7 @@ const DEFAULT_DATA: AnalysisData = {
 };
 
 export function BrandMediaAnalysisPage() {
-  const { token, activePair } = useAuth(); // ← Now using activePair
+  const { token, activePair } = useAuth();
   const [filterValues, setFilterValues] = useState<FilterValues>({});
   const [data, setData] = useState<AnalysisData>(DEFAULT_DATA);
   const [loading, setLoading] = useState(true);
@@ -93,7 +93,7 @@ export function BrandMediaAnalysisPage() {
       const [startDate, endDate] = filterValues.dateRange as [string | null, string | null];
       if (!startDate || !endDate) {
         setLoading(false);
-        return; // Exit early if both dates aren't selected
+        return;
       }
 
       if (new Date(startDate) > new Date(endDate)) {
@@ -101,7 +101,7 @@ export function BrandMediaAnalysisPage() {
         setLoading(false);
         return;
       }
-      } else {
+    } else {
       setLoading(false);
       return;
     }
@@ -110,8 +110,6 @@ export function BrandMediaAnalysisPage() {
 
     try {
       const params = new URLSearchParams();
-
-      // Always send pair_id
       params.append('pair_id', String(activePair.pair_id));
 
       if (filterValues.dateRange) {
@@ -160,7 +158,6 @@ export function BrandMediaAnalysisPage() {
     }
   };
 
-  // Re-fetch when pair or month changes
   useEffect(() => {
     fetchData();
   }, [token, activePair, filterValues.dateRange]);
@@ -171,12 +168,23 @@ export function BrandMediaAnalysisPage() {
     return `${d.getDate()} ${d.toLocaleString('default', { month: 'short' })} ${d.getFullYear()}`;
   };
 
+  // Weekly trend data (unchanged)
   const weeklyData = useMemo(() => {
     const weeks = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
     return weeks.map((week, i) => ({
       week,
       printMedia: data.analysis.weekly_volume_trend.print.weekly_breakdown[i]?.count || 0,
       onlineMedia: data.analysis.weekly_volume_trend.online.weekly_breakdown[i]?.count || 0,
+    }));
+  }, [data]);
+
+  // New: Monthly trend data
+  const monthlyData = useMemo(() => {
+    return data.analysis.monthly_volume_trend.monthly_breakdown.map((item) => ({
+      month: item.month.replace('2025-', ''), // Formats "2025-03" → "03" for cleaner label (or keep full if preferred)
+      fullMonth: item.month, // Optional: for tooltip if needed
+      printMedia: item.print.count || 0,
+      onlineMedia: item.online.count || 0,
     }));
   }, [data]);
 
@@ -200,7 +208,7 @@ export function BrandMediaAnalysisPage() {
       label: 'Select Date Range',
       type: 'daterange',
       placeholder: 'Pick date range',
-      closeOnSelect: true,        // ← This makes the calendar close after ANY date selection
+      closeOnSelect: true,
     },
   ];
 
@@ -249,7 +257,7 @@ export function BrandMediaAnalysisPage() {
       {/* No Data Alert */}
       {!hasData && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-amber-800">
-          No media mentions found for {activePair?.base_company.company_name || 'your company'} in the selected month. Charts below show zero values.
+          No media mentions found for {activePair?.base_company.company_name || 'your company'} in the selected period. Charts below show zero values.
         </div>
       )}
 
@@ -365,11 +373,11 @@ export function BrandMediaAnalysisPage() {
             <ResponsiveContainer>
               <AreaChart data={weeklyData}>
                 <defs>
-                  <linearGradient id="online" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id="onlineWeekly" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#06B6D4" stopOpacity={0.8} />
                     <stop offset="95%" stopColor="#06B6D4" stopOpacity={0.1} />
                   </linearGradient>
-                  <linearGradient id="print" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id="printWeekly" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#10B981" stopOpacity={0.8} />
                     <stop offset="95%" stopColor="#10B981" stopOpacity={0.1} />
                   </linearGradient>
@@ -379,21 +387,60 @@ export function BrandMediaAnalysisPage() {
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Area type="monotone" dataKey="onlineMedia" name="Online" stroke="#06B6D4" fill="url(#online)" strokeWidth={2} />
-                <Area type="monotone" dataKey="printMedia" name="Print" stroke="#10B981" fill="url(#print)" strokeWidth={2} />
+                <Area type="monotone" dataKey="onlineMedia" name="Online" stroke="#06B6D4" fill="url(#onlineWeekly)" strokeWidth={2} />
+                <Area type="monotone" dataKey="printMedia" name="Print" stroke="#10B981" fill="url(#printWeekly)" strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </DataCard>
 
-        {/* Note: Monthly trend is currently single-month only */}
-        <DataCard title="Monthly Trend (Current Month)" variant="glass" icon={<LineChartIcon className="text-amber-600" />}>
-          <div className="flex items-center justify-center h-80 text-gray-500">
-            <div className="text-center">
-              <LineChartIcon size={48} className="mx-auto mb-3 opacity-40" />
-              <p className="text-sm">Monthly trend shows data for the selected month only</p>
-              <p className="text-xs mt-2">Multi-month comparison coming soon</p>
-            </div>
+        {/* Monthly Trend - NOW FULLY IMPLEMENTED */}
+        <DataCard title="Monthly Media Volume Trend" variant="glass" icon={<LineChartIcon className="text-amber-600" />}>
+          <div className="h-80">
+            {monthlyData.length > 0 ? (
+              <ResponsiveContainer>
+                <AreaChart data={monthlyData}>
+                  <defs>
+                    <linearGradient id="onlineMonthly" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="#F59E0B" stopOpacity={0.1} />
+                    </linearGradient>
+                    <linearGradient id="printMonthly" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#EF4444" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="#EF4444" stopOpacity={0.1} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="month" 
+                    tickFormatter={(value) => {
+                      // Convert "03" → "Mar", "04" → "Apr", etc.
+                      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                      const monthIndex = parseInt(value) - 1;
+                      return monthNames[monthIndex] || value;
+                    }}
+                  />
+                  <YAxis />
+                  <Tooltip 
+                    labelFormatter={(label) => {
+                      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                      const monthIndex = parseInt(label as string) - 1;
+                      return `2025 ${monthNames[monthIndex] || label}`;
+                    }}
+                  />
+                  <Legend />
+                  <Area type="monotone" dataKey="onlineMedia" name="Online" stroke="#F59E0B" fill="url(#onlineMonthly)" strokeWidth={2} />
+                  <Area type="monotone" dataKey="printMedia" name="Print" stroke="#EF4444" fill="url(#printMonthly)" strokeWidth={2} />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-400">
+                <div className="text-center">
+                  <LineChartIcon size={48} className="mx-auto mb-3 opacity-30" />
+                  <p>No monthly trend data available</p>
+                </div>
+              </div>
+            )}
           </div>
         </DataCard>
       </div>
