@@ -67,8 +67,8 @@ const DEFAULT_DATA: AnalysisData = {
     },
     brand_message_placement: { total_placements: 0, placements: [] },
     weekly_volume_trend: {
-      print: { weekly_breakdown: Array(4).fill({ week: '', count: 0 }) },
-      online: { weekly_breakdown: Array(4).fill({ week: '', count: 0 }) },
+      print: { weekly_breakdown: [] },
+      online: { weekly_breakdown: [] },
     },
     monthly_volume_trend: { monthly_breakdown: [] },
   },
@@ -89,19 +89,21 @@ export function BrandMediaAnalysisPage() {
       return;
     }
 
+    let shouldFetch = true;
+
     if (filterValues.dateRange) {
       const [startDate, endDate] = filterValues.dateRange as [string | null, string | null];
       if (!startDate || !endDate) {
-        setLoading(false);
-        return;
-      }
-
-      if (new Date(startDate) > new Date(endDate)) {
+        shouldFetch = false;
+      } else if (new Date(startDate) > new Date(endDate)) {
         toast.error('Start date must be before or equal to end date');
-        setLoading(false);
-        return;
+        shouldFetch = false;
       }
     } else {
+      shouldFetch = false;
+    }
+
+    if (!shouldFetch) {
       setLoading(false);
       return;
     }
@@ -112,11 +114,9 @@ export function BrandMediaAnalysisPage() {
       const params = new URLSearchParams();
       params.append('pair_id', String(activePair.pair_id));
 
-      if (filterValues.dateRange) {
-        const [startDate, endDate] = filterValues.dateRange as [string, string];
-        params.append('startDate', startDate);
-        params.append('endDate', endDate);
-      }
+      const [startDate, endDate] = filterValues.dateRange as [string, string];
+      params.append('startDate', startDate);
+      params.append('endDate', endDate);
 
       const url = `${API_URL}?${params.toString()}`;
       console.log('Fetching Brand Media Analysis →', url);
@@ -142,7 +142,7 @@ export function BrandMediaAnalysisPage() {
         setHasData(false);
 
         if (result.message?.includes('No editorials') || result.message?.includes('No data')) {
-          toast.info(`No media mentions found for ${activePair.base_company.company_name} this month`);
+          toast.info(`No media mentions found for ${activePair.base_company.company_name} in the selected period`);
         }
       }
     } catch (err) {
@@ -168,46 +168,67 @@ export function BrandMediaAnalysisPage() {
     return `${d.getDate()} ${d.toLocaleString('default', { month: 'short' })} ${d.getFullYear()}`;
   };
 
-  // Weekly trend data (unchanged)
+  // Weekly Trend: Use actual week labels from API (e.g., "Week 49")
   const weeklyData = useMemo(() => {
-    const weeks = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
-    return weeks.map((week, i) => ({
-      week,
-      printMedia: data.analysis.weekly_volume_trend.print.weekly_breakdown[i]?.count || 0,
-      onlineMedia: data.analysis.weekly_volume_trend.online.weekly_breakdown[i]?.count || 0,
-    }));
-  }, [data]);
+    const { print, online } = data.analysis.weekly_volume_trend;
 
-  // New: Monthly trend data
+    const allWeeks = new Set<string>();
+    print.weekly_breakdown.forEach((w) => allWeeks.add(w.week));
+    online.weekly_breakdown.forEach((w) => allWeeks.add(w.week));
+
+    return Array.from(allWeeks)
+      .sort((a, b) => {
+        const numA = parseInt(a.replace('Week ', ''));
+        const numB = parseInt(b.replace('Week ', ''));
+        return numA - numB;
+      })
+      .map((week) => ({
+        week,
+        printMedia:
+          print.weekly_breakdown.find((item) => item.week === week)?.count || 0,
+        onlineMedia:
+          online.weekly_breakdown.find((item) => item.week === week)?.count || 0,
+      }));
+  }, [data.analysis.weekly_volume_trend]);
+
+  // Monthly Trend: Format "2025-03" → "Mar"
   const monthlyData = useMemo(() => {
-    return data.analysis.monthly_volume_trend.monthly_breakdown.map((item) => ({
-      month: item.month.replace('2025-', ''), // Formats "2025-03" → "03" for cleaner label (or keep full if preferred)
-      fullMonth: item.month, // Optional: for tooltip if needed
-      printMedia: item.print.count || 0,
-      onlineMedia: item.online.count || 0,
-    }));
-  }, [data]);
+    return data.analysis.monthly_volume_trend.monthly_breakdown.map((item) => {
+      const monthNum = parseInt(item.month.split('-')[1]);
+      const monthName = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      ][monthNum - 1];
+
+      return {
+        month: monthName,
+        fullLabel: item.month,
+        printMedia: item.print.count || 0,
+        onlineMedia: item.online.count || 0,
+      };
+    });
+  }, [data.analysis.monthly_volume_trend]);
 
   const subsidiaryPieData = useMemo(() => {
     return data.analysis.brand_subsidiary_exposure.top_10.map((item) => ({
       name: item.brand,
       value: parseFloat(item.percentage) || 0,
     }));
-  }, [data]);
+  }, [data.analysis.brand_subsidiary_exposure.top_10]);
 
   const placementPieData = useMemo(() => {
     return data.analysis.brand_message_placement.placements.map((item) => ({
       name: item.placement,
       value: parseFloat(item.percentage) || 0,
     }));
-  }, [data]);
+  }, [data.analysis.brand_message_placement.placements]);
 
   const filterOptions = [
     {
       key: 'dateRange',
       label: 'Select Date Range',
       type: 'daterange',
-      placeholder: 'Pick date range',
+      placeholder: 'Pick start and end date',
       closeOnSelect: true,
     },
   ];
@@ -235,18 +256,16 @@ export function BrandMediaAnalysisPage() {
           <div>
             <h1 className="text-3xl font-bold mb-2 tracking-tight">Brand Media Analysis</h1>
             <p className="text-purple-100 text-lg">
-              {activePair?.base_company.company_name || 'Your Company'} • {data.period.start ? `${formatDate(data.period.start)} – ${formatDate(data.period.end)}` : 'Select a date range'}
+              {activePair?.base_company.company_name || 'Your Company'} •{' '}
+              {data.period.start ? `${formatDate(data.period.start)} – ${formatDate(data.period.end)}` : 'Select a date range'}
             </p>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="bg-white/20 backdrop-blur-sm rounded-full p-4">
-              <BarChart2 size={32} className="text-white" />
-            </div>
+          <div className="bg-white/20 backdrop-blur-sm rounded-full p-4">
+            <BarChart2 size={32} className="text-white" />
           </div>
         </div>
       </div>
 
-      {/* Filter */}
       <UniversalFilter
         filters={filterOptions}
         values={filterValues}
@@ -254,7 +273,6 @@ export function BrandMediaAnalysisPage() {
         onReset={() => setFilterValues({})}
       />
 
-      {/* No Data Alert */}
       {!hasData && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-amber-800">
           No media mentions found for {activePair?.base_company.company_name || 'your company'} in the selected period. Charts below show zero values.
@@ -326,7 +344,7 @@ export function BrandMediaAnalysisPage() {
               <div className="flex items-center justify-center h-full text-gray-400">
                 <div className="text-center">
                   <PieChartIcon size={48} className="mx-auto mb-3 opacity-30" />
-                  <p>No subsidiary exposure recorded</p>
+                  <p>{data.analysis.brand_subsidiary_exposure.note || 'No subsidiary exposure recorded'}</p>
                 </div>
               </div>
             )}
@@ -368,33 +386,42 @@ export function BrandMediaAnalysisPage() {
         </DataCard>
 
         {/* Weekly Trend */}
-        <DataCard title="Weekly Media Volume Trend (Current Month)" variant="glass" icon={<LineChartIcon className="text-emerald-600" />}>
+        <DataCard title="Weekly Media Volume Trend" variant="glass" icon={<LineChartIcon className="text-emerald-600" />}>
           <div className="h-80">
-            <ResponsiveContainer>
-              <AreaChart data={weeklyData}>
-                <defs>
-                  <linearGradient id="onlineWeekly" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#06B6D4" stopOpacity={0.8} />
-                    <stop offset="95%" stopColor="#06B6D4" stopOpacity={0.1} />
-                  </linearGradient>
-                  <linearGradient id="printWeekly" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10B981" stopOpacity={0.8} />
-                    <stop offset="95%" stopColor="#10B981" stopOpacity={0.1} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="week" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Area type="monotone" dataKey="onlineMedia" name="Online" stroke="#06B6D4" fill="url(#onlineWeekly)" strokeWidth={2} />
-                <Area type="monotone" dataKey="printMedia" name="Print" stroke="#10B981" fill="url(#printWeekly)" strokeWidth={2} />
-              </AreaChart>
-            </ResponsiveContainer>
+            {weeklyData.length > 0 ? (
+              <ResponsiveContainer>
+                <AreaChart data={weeklyData}>
+                  <defs>
+                    <linearGradient id="onlineWeekly" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#06B6D4" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="#06B6D4" stopOpacity={0.1} />
+                    </linearGradient>
+                    <linearGradient id="printWeekly" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10B981" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="#10B981" stopOpacity={0.1} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="week" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Area type="monotone" dataKey="onlineMedia" name="Online" stroke="#06B6D4" fill="url(#onlineWeekly)" strokeWidth={2} />
+                  <Area type="monotone" dataKey="printMedia" name="Print" stroke="#10B981" fill="url(#printWeekly)" strokeWidth={2} />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-400">
+                <div className="text-center">
+                  <LineChartIcon size={48} className="mx-auto mb-3 opacity-30" />
+                  <p>No weekly trend data available</p>
+                </div>
+              </div>
+            )}
           </div>
         </DataCard>
 
-        {/* Monthly Trend - NOW FULLY IMPLEMENTED */}
+        {/* Monthly Trend */}
         <DataCard title="Monthly Media Volume Trend" variant="glass" icon={<LineChartIcon className="text-amber-600" />}>
           <div className="h-80">
             {monthlyData.length > 0 ? (
@@ -411,23 +438,9 @@ export function BrandMediaAnalysisPage() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="month" 
-                    tickFormatter={(value) => {
-                      // Convert "03" → "Mar", "04" → "Apr", etc.
-                      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                      const monthIndex = parseInt(value) - 1;
-                      return monthNames[monthIndex] || value;
-                    }}
-                  />
+                  <XAxis dataKey="month" />
                   <YAxis />
-                  <Tooltip 
-                    labelFormatter={(label) => {
-                      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                      const monthIndex = parseInt(label as string) - 1;
-                      return `2025 ${monthNames[monthIndex] || label}`;
-                    }}
-                  />
+                  <Tooltip labelFormatter={(label) => `2025 ${label}`} />
                   <Legend />
                   <Area type="monotone" dataKey="onlineMedia" name="Online" stroke="#F59E0B" fill="url(#onlineMonthly)" strokeWidth={2} />
                   <Area type="monotone" dataKey="printMedia" name="Print" stroke="#EF4444" fill="url(#printMonthly)" strokeWidth={2} />

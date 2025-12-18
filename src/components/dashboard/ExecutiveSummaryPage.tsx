@@ -30,9 +30,37 @@ import { toast } from 'sonner';
 const COLORS = ['#4F46E5', '#06B6D4', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 const SENTIMENT_COLORS = ['#10B981', '#F59E0B', '#EF4444'];
 
+interface WeeklyBreakdown {
+  week: string;
+  count: number;
+  percentage: string;
+}
+
+interface WeeklyTrend {
+  print: {
+    total: number;
+    weekly_breakdown: WeeklyBreakdown[];
+  };
+  online: {
+    total: number;
+    weekly_breakdown: WeeklyBreakdown[];
+  };
+}
+
+interface CompetitiveShare {
+  company: string;
+  frequency: number;
+  percentage: string;
+}
+
+interface CompetitiveMediaShare {
+  total_mentions: number;
+  shares: CompetitiveShare[];
+}
+
 interface SummaryData {
   company: string;
-  period: { start: string; end: string; month: string };
+  period: { start: string; end: string; month?: string };
   summary: {
     totalMediaExposure: number;
     brandExposureInLocalMedia: number;
@@ -50,12 +78,14 @@ interface SummaryData {
       online: number;
       print: number;
     };
+    weeklyTrendOnBrandMediaExposure?: WeeklyTrend;
+    competitiveMediaShare?: CompetitiveMediaShare;
   };
 }
 
 const DEFAULT_ZERO_DATA: SummaryData = {
   company: 'Your Company',
-  period: { start: new Date().toISOString().split('T')[0], end: new Date().toISOString().split('T')[0], month: '' },
+  period: { start: new Date().toISOString().split('T')[0], end: new Date().toISOString().split('T')[0] },
   summary: {
     totalMediaExposure: 0,
     brandExposureInLocalMedia: 0,
@@ -66,11 +96,19 @@ const DEFAULT_ZERO_DATA: SummaryData = {
     brandMediaReputationScore: 0,
     language: { english: 0, otherLanguages: 0, breakdown: {} },
     mediaVehicle: { online: 0, print: 0 },
+    weeklyTrendOnBrandMediaExposure: {
+      online: { total: 0, weekly_breakdown: [] },
+      print: { total: 0, weekly_breakdown: [] },
+    },
+    competitiveMediaShare: {
+      total_mentions: 0,
+      shares: [],
+    },
   },
 };
 
 export function ExecutiveSummaryPage() {
-  const { token, activePair } = useAuth(); // ← Now using activePair
+  const { token, activePair } = useAuth();
   const [filterValues, setFilterValues] = useState<FilterValues>({});
   const [data, setData] = useState<SummaryData>(DEFAULT_ZERO_DATA);
   const [loading, setLoading] = useState(true);
@@ -84,21 +122,31 @@ export function ExecutiveSummaryPage() {
       return;
     }
 
+    let shouldFetch = true;
+
+    // Only proceed if we have a complete date range
     if (filterValues.dateRange) {
       const [startDate, endDate] = filterValues.dateRange as [string | null, string | null];
-      if (new Date(startDate) > new Date(endDate)) {
+
+      // If either date is missing → do NOT fetch yet
+      if (!startDate || !endDate) {
+        shouldFetch = false;
+      } else if (new Date(startDate) > new Date(endDate)) {
         toast.error('Start date must be before or equal to end date');
-        setLoading(false);
-        return; // Exit early if both dates aren't selected
+        shouldFetch = false;
       }
+    }
+
+    // If no complete valid date range, don't trigger fetch
+    if (!shouldFetch) {
+      setLoading(false);
+      return;
     }
 
     setLoading(true);
 
     try {
       const params = new URLSearchParams();
-
-      // Always send the active pair_id
       params.append('pair_id', String(activePair.pair_id));
 
       if (filterValues.dateRange) {
@@ -124,21 +172,15 @@ export function ExecutiveSummaryPage() {
         setHasData(true);
       } else {
         const companyName = activePair.base_company.company_name || 'Your Company';
-        const period = result.data?.period || DEFAULT_ZERO_DATA.period;
-
         setData({
           ...DEFAULT_ZERO_DATA,
           company: companyName,
-          period: {
-            start: period.start || DEFAULT_ZERO_DATA.period.start,
-            end: period.end || DEFAULT_ZERO_DATA.period.end,
-            month: period.month || '',
-          },
+          period: result.data?.period || DEFAULT_ZERO_DATA.period,
         });
         setHasData(false);
 
         if (result.message?.includes('No editorials') || result.message?.includes('No data')) {
-          toast.info(`No media mentions found for ${companyName} this month`);
+          toast.info(`No media mentions found for ${companyName} in the selected period`);
         }
       }
     } catch (err) {
@@ -152,15 +194,16 @@ export function ExecutiveSummaryPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, activePair, filterValues.dateRange]);
+  }, [token, activePair, filterValues.dateRange]); // ← Fixed: only depend on dateRange, not full filterValues
 
-  // Re-fetch when pair switches OR month changes
+  // Re-fetch when activePair changes or dateRange completes/changes
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  // Derived values — safe even with zero data
-  const totalMentions = data.summary.totalMediaExposure ||
+  // Derived values
+  const totalMentions =
+    data.summary.totalMediaExposure ||
     data.summary.positiveMediaExposure + data.summary.negativeMediaExposure + data.summary.neutralMediaExposure;
 
   const sentimentData = [
@@ -181,17 +224,58 @@ export function ExecutiveSummaryPage() {
     { name: 'Print', value: data.summary.mediaVehicle.print },
   ];
 
-  const weeklyTrendData = [
-    { week: 'Week 1', onlineMedia: 0, printMedia: 0 },
-    { week: 'Week 2', onlineMedia: 0, printMedia: 0 },
-    { week: 'Week 3', onlineMedia: 0, printMedia: 0 },
-    { week: 'Week 4', onlineMedia: 0, printMedia: 0 },
-  ];
+  // Weekly Trend Data — uses real data with fallback
+  const weeklyTrendData = useMemo(() => {
+    const trend = data.summary.weeklyTrendOnBrandMediaExposure;
+    if (!trend || (!trend.online.weekly_breakdown.length && !trend.print.weekly_breakdown.length)) {
+      return [
+        { week: 'Week 1', onlineMedia: 0, printMedia: 0 },
+        { week: 'Week 2', onlineMedia: 0, printMedia: 0 },
+        { week: 'Week 3', onlineMedia: 0, printMedia: 0 },
+        { week: 'Week 4', onlineMedia: 0, printMedia: 0 },
+      ];
+    }
 
-  const competitiveShareData = [
-    { name: data.company || 'Your Company', value: 100 },
-    { name: 'Others', value: 0 },
-  ];
+    const weeksMap = new Map<string, { onlineMedia: number; printMedia: number }>();
+
+    trend.online.weekly_breakdown.forEach((item) => {
+      weeksMap.set(item.week, { ...(weeksMap.get(item.week) || {}), onlineMedia: item.count });
+    });
+
+    trend.print.weekly_breakdown.forEach((item) => {
+      weeksMap.set(item.week, { ...(weeksMap.get(item.week) || {}), printMedia: item.count });
+    });
+
+    return Array.from(weeksMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([week, values]) => ({
+        week,
+        onlineMedia: values.onlineMedia ?? 0,
+        printMedia: values.printMedia ?? 0,
+      }));
+  }, [data.summary.weeklyTrendOnBrandMediaExposure]);
+
+  // Competitive Share — safe parsing
+  const competitiveShareData = useMemo(() => {
+    const share = data.summary.competitiveMediaShare;
+
+    if (!share || !share.shares || share.shares.length === 0) {
+      return [{ name: data.company?.trim() || 'Your Company', value: 100 }];
+    }
+
+    const parsed = share.shares
+      .map((item) => {
+        const percentage = parseFloat(item.percentage);
+        if (isNaN(percentage) || percentage < 0) return null;
+        return { name: item.company.trim(), value: percentage };
+      })
+      .filter((item): item is { name: string; value: number } => item !== null)
+      .sort((a, b) => b.value - a.value);
+
+    return parsed.length > 0
+      ? parsed
+      : [{ name: data.company?.trim() || 'Your Company', value: 100 }];
+  }, [data.summary.competitiveMediaShare, data.company]);
 
   const formatDate = (date: string) => {
     const d = new Date(date);
@@ -199,10 +283,10 @@ export function ExecutiveSummaryPage() {
   };
 
   const filterOptions = [
-    { 
-      key: 'dateRange', 
-      label: 'Select Month', 
-      type: 'daterange', 
+    {
+      key: 'dateRange',
+      label: 'Select Period',
+      type: 'daterange',
       placeholder: 'Select a date range',
       closeOnSelect: true,
     },
@@ -212,7 +296,9 @@ export function ExecutiveSummaryPage() {
     return (
       <div className="flex items-center justify-center h-96">
         <Loader2 className="w-10 h-10 animate-spin text-indigo-600" />
-        <span className="ml-4 text-lg">Loading executive summary for {activePair?.base_company.company_name || 'your company'}...</span>
+        <span className="ml-4 text-lg">
+          Loading executive summary for {activePair?.base_company.company_name || 'your company'}...
+        </span>
       </div>
     );
   }
@@ -222,15 +308,15 @@ export function ExecutiveSummaryPage() {
       const [start, end] = filterValues.dateRange as [string | null, string | null];
       if (start && end) return { start, end };
     }
-    
+
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
-    
+
     return {
-      start: `${year}-${month}-01`, 
-      end: `${year}-${month}-${day}`
+      start: `${year}-${month}-01`,
+      end: `${year}-${month}-${day}`,
     };
   };
 
@@ -256,7 +342,7 @@ export function ExecutiveSummaryPage() {
 
       {!hasData && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-amber-800 text-sm">
-          No media mentions found for {data.company} in the selected month. Showing zero values.
+          No media mentions found for {data.company} in the selected period. Showing zero values.
         </div>
       )}
 
@@ -293,15 +379,7 @@ export function ExecutiveSummaryPage() {
           <div className="h-80 relative p-2">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie
-                  data={sentimentData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius="50%"
-                  outerRadius="90%"
-                  dataKey="value"
-                  paddingAngle={3}
-                >
+                <Pie data={sentimentData} cx="50%" cy="50%" innerRadius="50%" outerRadius="90%" dataKey="value" paddingAngle={3}>
                   {sentimentData.map((_, i) => (
                     <Cell key={i} fill={SENTIMENT_COLORS[i]} />
                   ))}
@@ -339,9 +417,7 @@ export function ExecutiveSummaryPage() {
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
-              <div className="text-2xl font-bold text-cyan-600">
-                {data.summary.language.english}
-              </div>
+              <div className="text-2xl font-bold text-cyan-600">{data.summary.language.english}</div>
               <div className="text-xs text-gray-500">English</div>
             </div>
           </div>
@@ -369,9 +445,7 @@ export function ExecutiveSummaryPage() {
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
-              <div className="text-2xl font-bold text-emerald-600">
-                {data.summary.mediaVehicle.online}
-              </div>
+              <div className="text-2xl font-bold text-emerald-600">{data.summary.mediaVehicle.online}</div>
               <div className="text-xs text-gray-500">Online</div>
             </div>
           </div>
@@ -398,8 +472,8 @@ export function ExecutiveSummaryPage() {
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Area type="monotone" dataKey="onlineMedia" stroke="#4F46E5" fill="url(#onlineGrad)" />
-                <Area type="monotone" dataKey="printMedia" stroke="#10B981" fill="url(#printGrad)" />
+                <Area type="monotone" dataKey="onlineMedia" stroke="#4F46E5" fill="url(#onlineGrad)" name="Online" />
+                <Area type="monotone" dataKey="printMedia" stroke="#10B981" fill="url(#printGrad)" name="Print" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -410,12 +484,15 @@ export function ExecutiveSummaryPage() {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={competitiveShareData} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
-                <XAxis type="number" domain={[0, 100]} />
-                <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12 }} />
-                <Tooltip formatter={(v: number) => `${v}%`} />
-                <Bar dataKey="value" radius={[0, 8, 8, 0]} barSize={28}>
+                <XAxis type="number" domain={[0, 100]} ticks={[0, 20, 40, 60, 80, 100]} unit="%" />
+                <YAxis dataKey="name" type="category" width={160} tick={{ fontSize: 12 }} />
+                <Tooltip formatter={(value: number) => `${value.toFixed(2)}%`} />
+                <Bar dataKey="value" radius={[0, 8, 8, 0]} barSize={32}>
                   {competitiveShareData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={index === 0 ? '#8B5CF6' : '#e5e7eb'} />
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={entry.name.includes(data.company.trim()) ? '#8B5CF6' : COLORS[index % COLORS.length]}
+                    />
                   ))}
                 </Bar>
               </BarChart>

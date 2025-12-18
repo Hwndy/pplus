@@ -4,34 +4,65 @@ import { toast } from 'sonner';
 import { Heart, Loader2 } from 'lucide-react';
 import { UniversalFilter, FilterValues } from '@/components/ui/UniversalFilter';
 
-interface SentimentData {
+interface SentimentBreakdown {
+  strongly_positive: { count: number; percentage: number };
+  moderately_positive: { count: number; percentage: number };
   positive: { count: number; percentage: number };
-  negative: { count: number; percentage: number };
   neutral: { count: number; percentage: number };
-  total_categorized: number;
-  key_brand_reputational_drivers: {
-    positive: string[] | string;
-    negative: string[] | string;
-    neutral: string[] | string;
-  };
+  moderately_negative: { count: number; percentage: number };
+  negative: { count: number; percentage: number };
+  strongly_negative: { count: number; percentage: number };
 }
 
-const DEFAULT_ZERO_DATA: SentimentData = {
-  positive: { count: 0, percentage: 0 },
-  negative: { count: 0, percentage: 0 },
-  neutral: { count: 0, percentage: 0 },
+interface KeyDrivers {
+  strongly_positive: string[] | string;
+  positive: string[] | string;
+  moderately_positive: string[] | string;
+  neutral: string[] | string;
+  moderately_negative: string[] | string;
+  negative: string[] | string;
+  strongly_negative: string[] | string;
+}
+
+interface SentimentData {
+  sentiment_breakdown: SentimentBreakdown;
+  totals: {
+    total_categorized: number;
+    total_uncategorized: number;
+  };
+  key_brand_reputational_drivers: KeyDrivers;
+}
+
+const DEFAULT_ZERO_DATA: {
+  sentiment_breakdown: SentimentBreakdown;
+  key_brand_reputational_drivers: KeyDrivers;
+  total_categorized: number;
+} = {
+  sentiment_breakdown: {
+    strongly_positive: { count: 0, percentage: 0 },
+    moderately_positive: { count: 0, percentage: 0 },
+    positive: { count: 0, percentage: 0 },
+    neutral: { count: 0, percentage: 0 },
+    moderately_negative: { count: 0, percentage: 0 },
+    negative: { count: 0, percentage: 0 },
+    strongly_negative: { count: 0, percentage: 0 },
+  },
   total_categorized: 0,
   key_brand_reputational_drivers: {
-    positive: 'No positive coverage recorded this month',
-    negative: 'No negative coverage recorded this month',
-    neutral: 'No neutral coverage recorded this month',
+    strongly_positive: 'No strongly positive coverage recorded',
+    positive: 'No positive coverage recorded',
+    moderately_positive: 'No moderately positive coverage recorded',
+    neutral: 'No neutral coverage recorded',
+    moderately_negative: 'No moderately negative coverage recorded',
+    negative: 'No negative coverage recorded',
+    strongly_negative: 'No strongly negative coverage recorded',
   },
 };
 
 const BrandSentimentPage: React.FC = () => {
-  const { token, activePair } = useAuth(); // ← Now using activePair
+  const { token, activePair } = useAuth();
   const [filterValues, setFilterValues] = useState<FilterValues>({});
-  const [data, setData] = useState<SentimentData>(DEFAULT_ZERO_DATA);
+  const [data, setData] = useState<any>(DEFAULT_ZERO_DATA);
   const [companyName, setCompanyName] = useState<string>('Your Company');
   const [period, setPeriod] = useState<{ start: string; end: string }>({
     start: '',
@@ -48,24 +79,29 @@ const BrandSentimentPage: React.FC = () => {
       return;
     }
 
+    let shouldFetch = true;
+
     if (filterValues.dateRange) {
       const [startDate, endDate] = filterValues.dateRange as [string | null, string | null];
-      if (new Date(startDate) > new Date(endDate)) {
+      if (!startDate || !endDate) {
+        shouldFetch = false;
+      } else if (new Date(startDate) > new Date(endDate)) {
         toast.error('Start date must be before or equal to end date');
-        setLoading(false);
-        return;
+        shouldFetch = false;
       }
+    }
+
+    if (!shouldFetch) {
+      setLoading(false);
+      return;
     }
 
     setLoading(true);
 
     try {
       const params = new URLSearchParams();
-
-      // Always send pair_id
       params.append('pair_id', String(activePair.pair_id));
 
-      // Send month if selected
       if (filterValues.dateRange) {
         const [startDate, endDate] = filterValues.dateRange as [string, string];
         params.append('startDate', startDate);
@@ -94,9 +130,7 @@ const BrandSentimentPage: React.FC = () => {
         });
 
         setData({
-          positive: apiData.sentiment_breakdown.positive,
-          negative: apiData.sentiment_breakdown.negative,
-          neutral: apiData.sentiment_breakdown.neutral,
+          sentiment_breakdown: apiData.sentiment_breakdown,
           total_categorized: apiData.totals.total_categorized,
           key_brand_reputational_drivers: apiData.key_brand_reputational_drivers,
         });
@@ -109,7 +143,7 @@ const BrandSentimentPage: React.FC = () => {
         setHasData(false);
 
         if (result.message?.includes('No editorials') || result.message?.includes('No data')) {
-          toast.info(`No media mentions found for ${activePair.base_company.company_name} this month`);
+          toast.info(`No media mentions found for ${companyName} in the selected period`);
         }
       }
     } catch (err) {
@@ -123,7 +157,6 @@ const BrandSentimentPage: React.FC = () => {
     }
   };
 
-  // Re-fetch when pair or month changes
   useEffect(() => {
     fetchData();
   }, [token, activePair, filterValues.dateRange]);
@@ -134,24 +167,57 @@ const BrandSentimentPage: React.FC = () => {
     return `${d.getDate()} ${d.toLocaleString('default', { month: 'short' })} ${d.getFullYear()}`;
   };
 
+  // Aggregate for the main sentiment bar: Positive = strongly + moderately + positive
+  const totalPositivePercentage = useMemo(() => {
+    const sb = data.sentiment_breakdown;
+    return (
+      sb.strongly_positive.percentage +
+      sb.moderately_positive.percentage +
+      sb.positive.percentage
+    );
+  }, [data.sentiment_breakdown]);
+
+  const totalNegativePercentage = useMemo(() => {
+    const sb = data.sentiment_breakdown;
+    return (
+      sb.strongly_negative.percentage +
+      sb.negative.percentage +
+      sb.moderately_negative.percentage
+    );
+  }, [data.sentiment_breakdown]);
+
   const chartData = useMemo(() => {
-    if (!data) return [];
     return [
-      { label: 'Positive', value: data.positive.percentage, color: '#10B981' },
-      { label: 'Neutral', value: data.neutral.percentage, color: '#94a3b8' },
-      { label: 'Negative', value: data.negative.percentage, color: '#ef4444' },
+      { label: 'Positive', value: totalPositivePercentage, color: '#10B981' },
+      { label: 'Neutral', value: data.sentiment_breakdown.neutral.percentage, color: '#94a3b8' },
+      { label: 'Negative', value: totalNegativePercentage, color: '#ef4444' },
     ];
-  }, [data]);
+  }, [totalPositivePercentage, totalNegativePercentage, data.sentiment_breakdown.neutral.percentage]);
 
   const filterOptions = [
     {
       key: 'dateRange',
-      label: 'Select Month',
+      label: 'Select Period',
       type: 'daterange',
       placeholder: 'Select start and end date',
       closeOnSelect: true,
     },
   ];
+
+  const renderDriverList = (drivers: string[] | string) => {
+    if (Array.isArray(drivers)) {
+      return drivers.length > 0 ? (
+        drivers.map((item, i) => (
+          <li key={i} className="list-disc list-inside">
+            {item}
+          </li>
+        ))
+      ) : (
+        <li className="italic text-gray-500">No coverage recorded</li>
+      );
+    }
+    return <li className="italic">• {drivers}</li>;
+  };
 
   if (loading) {
     return (
@@ -186,7 +252,6 @@ const BrandSentimentPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Filter */}
       <UniversalFilter
         filters={filterOptions}
         values={filterValues}
@@ -194,16 +259,15 @@ const BrandSentimentPage: React.FC = () => {
         onReset={() => setFilterValues({})}
       />
 
-      {/* No Data Banner */}
       {!hasData && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-amber-800 text-sm">
-          No media mentions found for {companyName} in the selected month. Showing zero values.
+          No media mentions found for {companyName} in the selected period. Showing zero values.
         </div>
       )}
 
-      {/* Sentiment Bar */}
+      {/* Sentiment Distribution Bar */}
       <div className="mb-8">
-        <h3 className="text-xl font-bold mb-4 text-gray-800">Sentiment Distribution</h3>
+        <h3 className="text-xl font-bold mb-4 text-gray-800">Overall Sentiment Distribution</h3>
         <div className="flex h-12 w-full rounded-lg overflow-hidden border border-gray-200 shadow-sm">
           {chartData.map((segment, index) => (
             <div
@@ -225,10 +289,7 @@ const BrandSentimentPage: React.FC = () => {
         <div className="flex justify-center mt-5 gap-6 text-sm">
           {chartData.map((segment) => (
             <div key={segment.label} className="flex items-center gap-2">
-              <div
-                className="w-4 h-4 rounded"
-                style={{ backgroundColor: segment.color }}
-              />
+              <div className="w-4 h-4 rounded" style={{ backgroundColor: segment.color }} />
               <span className="font-medium text-gray-700">
                 {segment.label} ({segment.value.toFixed(1)}%)
               </span>
@@ -237,64 +298,68 @@ const BrandSentimentPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Key Drivers */}
+      {/* Detailed Key Brand Reputational Drivers */}
       <div>
-        <h3 className="text-xl font-bold mb-5 text-gray-800">
-          Key Brand Reputational Drivers
+        <h3 className="text-xl font-bold mb-6 text-gray-800">
+          Key Brand Reputational Drivers (Detailed Breakdown)
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {/* Positive */}
-          <div className="bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-200 p-6 rounded-xl shadow-sm">
-            <h4 className="font-bold text-emerald-800 mb-3 text-lg">Positive Drivers</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Strongly Positive */}
+          <div className="bg-gradient-to-br from-emerald-50 to-green-100 border border-emerald-300 p-5 rounded-xl shadow-sm">
+            <h4 className="font-bold text-emerald-800 mb-3 text-lg">Strongly Positive</h4>
             <ul className="space-y-2 text-sm text-emerald-700">
-              {Array.isArray(data.key_brand_reputational_drivers.positive) ? (
-                data.key_brand_reputational_drivers.positive.length > 0 ? (
-                  data.key_brand_reputational_drivers.positive.map((item, i) => (
-                    <li key={i} className="list-disc list-inside"> {item}</li>
-                  ))
-                ) : (
-                  <li className="italic text-gray-500">No positive drivers recorded</li>
-                )
-              ) : (
-                <li className="italic">• {data.key_brand_reputational_drivers.positive}</li>
-              )}
+              {renderDriverList(data.key_brand_reputational_drivers.strongly_positive)}
             </ul>
           </div>
 
-          {/* Negative */}
-          <div className="bg-gradient-to-br from-red-50 to-rose-50 border border-red-200 p-6 rounded-xl shadow-sm">
-            <h4 className="font-bold text-red-800 mb-3 text-lg">Negative Drivers</h4>
-            <ul className="space-y-2 text-sm text-red-700">
-              {Array.isArray(data.key_brand_reputational_drivers.negative) ? (
-                data.key_brand_reputational_drivers.negative.length > 0 ? (
-                  data.key_brand_reputational_drivers.negative.map((item, i) => (
-                    <li key={i} className="list-disc list-inside"> {item}</li>
-                  ))
-                ) : (
-                  <li className="italic text-gray-500">No negative drivers recorded</li>
-                )
-              ) : (
-                <li className="italic">• {data.key_brand_reputational_drivers.negative}</li>
-              )}
+          {/* Moderately Positive */}
+          <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-300 p-5 rounded-xl shadow-sm">
+            <h4 className="font-bold text-green-800 mb-3 text-lg">Moderately Positive</h4>
+            <ul className="space-y-2 text-sm text-green-700">
+              {renderDriverList(data.key_brand_reputational_drivers.moderately_positive)}
+            </ul>
+          </div>
+
+          {/* Positive */}
+          <div className="bg-gradient-to-br from-teal-50 to-cyan-50 border border-teal-300 p-5 rounded-xl shadow-sm">
+            <h4 className="font-bold text-teal-800 mb-3 text-lg">Positive</h4>
+            <ul className="space-y-2 text-sm text-teal-700">
+              {renderDriverList(data.key_brand_reputational_drivers.positive)}
             </ul>
           </div>
 
           {/* Neutral */}
-          <div className="bg-gradient-to-br from-slate-50 to-gray-100 border border-gray-300 p-6 rounded-xl shadow-sm">
-            <h4 className="font-bold text-gray-800 mb-3 text-lg">Neutral Drivers</h4>
+          <div className="bg-gradient-to-br from-slate-50 to-gray-100 border border-gray-300 p-5 rounded-xl shadow-sm">
+            <h4 className="font-bold text-gray-800 mb-3 text-lg">Neutral</h4>
             <ul className="space-y-2 text-sm text-gray-700">
-              {Array.isArray(data.key_brand_reputational_drivers.neutral) ? (
-                data.key_brand_reputational_drivers.neutral.length > 0 ? (
-                  data.key_brand_reputational_drivers.neutral.map((item, i) => (
-                    <li key={i} className="list-disc list-inside"> {item}</li>
-                  ))
-                ) : (
-                  <li className="italic text-gray-500">No neutral drivers recorded</li>
-                )
-              ) : (
-                <li className="italic">• {data.key_brand_reputational_drivers.neutral}</li>
-              )}
+              {renderDriverList(data.key_brand_reputational_drivers.neutral)}
             </ul>
+          </div>
+
+          {/* Moderately Negative */}
+          <div className="bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-300 p-5 rounded-xl shadow-sm">
+            <h4 className="font-bold text-orange-800 mb-3 text-lg">Moderately Negative</h4>
+            <ul className="space-y-2 text-sm text-orange-700">
+              {renderDriverList(data.key_brand_reputational_drivers.moderately_negative)}
+            </ul>
+          </div>
+
+          {/* Negative & Strongly Negative */}
+          <div className="bg-gradient-to-br from-red-50 to-rose-100 border border-red-300 p-5 rounded-xl shadow-sm col-span-1 md:col-span-2 lg:col-span-1">
+            <div className="grid grid-cols-1 gap-6">
+              <div>
+                <h4 className="font-bold text-red-800 mb-3 text-lg">Negative</h4>
+                <ul className="space-y-2 text-sm text-red-700">
+                  {renderDriverList(data.key_brand_reputational_drivers.negative)}
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-bold text-red-900 mb-3 text-lg">Strongly Negative</h4>
+                <ul className="space-y-2 text-sm text-red-800">
+                  {renderDriverList(data.key_brand_reputational_drivers.strongly_negative)}
+                </ul>
+              </div>
+            </div>
           </div>
         </div>
       </div>
