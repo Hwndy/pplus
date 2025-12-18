@@ -83,27 +83,17 @@ export function BrandMediaAnalysisPage() {
 
   const API_URL = 'https://pplus-5kdv.onrender.com/api/report/brand-media-analysis';
 
+  const getCurrentMonthRange = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const firstDay = `${year}-${month}-01`;
+    const lastDay = new Date(year, today.getMonth() + 1, 0).toISOString().slice(0, 10);
+    return { start: firstDay, end: lastDay };
+  };
+
   const fetchData = async () => {
     if (!token || !activePair) {
-      setLoading(false);
-      return;
-    }
-
-    let shouldFetch = true;
-
-    if (filterValues.dateRange) {
-      const [startDate, endDate] = filterValues.dateRange as [string | null, string | null];
-      if (!startDate || !endDate) {
-        shouldFetch = false;
-      } else if (new Date(startDate) > new Date(endDate)) {
-        toast.error('Start date must be before or equal to end date');
-        shouldFetch = false;
-      }
-    } else {
-      shouldFetch = false;
-    }
-
-    if (!shouldFetch) {
       setLoading(false);
       return;
     }
@@ -114,7 +104,32 @@ export function BrandMediaAnalysisPage() {
       const params = new URLSearchParams();
       params.append('pair_id', String(activePair.pair_id));
 
-      const [startDate, endDate] = filterValues.dateRange as [string, string];
+      let startDate: string;
+      let endDate: string;
+
+      // Use user-selected range if valid
+      if (filterValues.dateRange && Array.isArray(filterValues.dateRange)) {
+        const [selectedStart, selectedEnd] = filterValues.dateRange as [string | null, string | null];
+        if (selectedStart && selectedEnd) {
+          if (new Date(selectedStart) > new Date(selectedEnd)) {
+            toast.error('Start date must be before or equal to end date');
+            setLoading(false);
+            return;
+          }
+          startDate = selectedStart;
+          endDate = selectedEnd;
+        } else {
+          // Incomplete selection – wait for complete range
+          setLoading(false);
+          return;
+        }
+      } else {
+        // Default: current month (e.g., Dec 2025)
+        const { start, end } = getCurrentMonthRange();
+        startDate = start;
+        endDate = end;
+      }
+
       params.append('startDate', startDate);
       params.append('endDate', endDate);
 
@@ -134,14 +149,15 @@ export function BrandMediaAnalysisPage() {
         setData(result.data);
         setHasData(true);
       } else {
+        const fallbackPeriod = { start: startDate, end: endDate };
         setData({
           ...DEFAULT_DATA,
           company: activePair.base_company.company_name || 'Your Company',
-          period: result.data?.period || { start: '', end: '' },
+          period: fallbackPeriod,
         });
         setHasData(false);
 
-        if (result.message?.includes('No editorials') || result.message?.includes('No data')) {
+        if (result.message && (result.message.includes('No editorials') || result.message.includes('No data') || result.message.includes('No media'))) {
           toast.info(`No media mentions found for ${activePair.base_company.company_name} in the selected period`);
         }
       }
@@ -168,7 +184,7 @@ export function BrandMediaAnalysisPage() {
     return `${d.getDate()} ${d.toLocaleString('default', { month: 'short' })} ${d.getFullYear()}`;
   };
 
-  // Weekly Trend: Use actual week labels from API (e.g., "Week 49")
+  // Weekly Trend
   const weeklyData = useMemo(() => {
     const { print, online } = data.analysis.weekly_volume_trend;
 
@@ -184,14 +200,12 @@ export function BrandMediaAnalysisPage() {
       })
       .map((week) => ({
         week,
-        printMedia:
-          print.weekly_breakdown.find((item) => item.week === week)?.count || 0,
-        onlineMedia:
-          online.weekly_breakdown.find((item) => item.week === week)?.count || 0,
+        printMedia: print.weekly_breakdown.find((item) => item.week === week)?.count || 0,
+        onlineMedia: online.weekly_breakdown.find((item) => item.week === week)?.count || 0,
       }));
   }, [data.analysis.weekly_volume_trend]);
 
-  // Monthly Trend: Format "2025-03" → "Mar"
+  // Monthly Trend
   const monthlyData = useMemo(() => {
     return data.analysis.monthly_volume_trend.monthly_breakdown.map((item) => {
       const monthNum = parseInt(item.month.split('-')[1]);
@@ -257,7 +271,9 @@ export function BrandMediaAnalysisPage() {
             <h1 className="text-3xl font-bold mb-2 tracking-tight">Brand Media Analysis</h1>
             <p className="text-purple-100 text-lg">
               {activePair?.base_company.company_name || 'Your Company'} •{' '}
-              {data.period.start ? `${formatDate(data.period.start)} – ${formatDate(data.period.end)}` : 'Select a date range'}
+              {data.period.start
+                ? `${formatDate(data.period.start)} – ${formatDate(data.period.end)}`
+                : 'Current Month'}
             </p>
           </div>
           <div className="bg-white/20 backdrop-blur-sm rounded-full p-4">

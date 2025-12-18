@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/components/auth/AuthContext';
 import { toast } from 'sonner';
 import { BarChart2, Activity, Loader2 } from 'lucide-react';
-import { UniversalFilter, FilterOption, FilterValues } from '@/components/ui/UniversalFilter';
+import { UniversalFilter, FilterValues } from '@/components/ui/UniversalFilter';
 import { DataCard } from '@/components/ui/DataCard';
 import {
   BarChart as RechartsBarChart,
@@ -18,24 +18,31 @@ import {
 export function MediaDistributionPage() {
   const { token, activePair } = useAuth();
   const [filterValues, setFilterValues] = useState<FilterValues>({});
-  const [thematicData, setThematicData] = useState<any>(null);
+  const [thematicData, setThematicData] = useState<any>({
+    total_editorials: 0,
+    unique_activities: 0,
+    activities: [],
+  });
   const [loading, setLoading] = useState(false);
 
   const companyName = activePair?.base_company.company_name || 'Your Company';
 
-  const hasValidDateRange = filterValues.dateRange && Array.isArray(filterValues.dateRange) && filterValues.dateRange[0] && filterValues.dateRange[1];
-  const startDate = (hasValidDateRange ? filterValues.dateRange[0] : '') as string;
-  const endDate = (hasValidDateRange ? filterValues.dateRange[1] : '') as string;
+  const hasValidDateRange =
+    filterValues.dateRange &&
+    Array.isArray(filterValues.dateRange) &&
+    filterValues.dateRange[0] &&
+    filterValues.dateRange[1];
 
-  const filterOptions = [
+  const filterOptions: any[] = [
     {
       key: 'dateRange',
       label: 'Select Date Range',
       type: 'daterange',
       placeholder: 'Pick date range',
-      closeOnSelect: true,        // ← This makes the calendar close after ANY date selection
+      closeOnSelect: true,
     },
   ];
+
   const resetFilters = () => setFilterValues({});
 
   const formatDate = (date: string) => {
@@ -49,15 +56,15 @@ export function MediaDistributionPage() {
       const [start, end] = filterValues.dateRange as [string | null, string | null];
       if (start && end) return { start, end };
     }
-    
+
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
-    
+
     return {
       start: `${year}-${month}-01`,
-      end: `${year}-${month}-${day}`
+      end: `${year}-${month}-${day}`,
     };
   };
 
@@ -65,18 +72,28 @@ export function MediaDistributionPage() {
 
   const fetchThematicData = useCallback(async () => {
     if (!token || !activePair) {
-      setThematicData({ activities: [] });
+      setThematicData({ total_editorials: 0, unique_activities: 0, activities: [] });
       setLoading(false);
       return;
     }
 
+    let shouldFetch = true;
+
     if (filterValues.dateRange) {
       const [start, end] = filterValues.dateRange as [string | null, string | null];
-      if (new Date(start) > new Date(end)) {
-      toast.error('Start date must be before or equal to end date');
+      if (!start || !end) {
+        shouldFetch = false;
+      } else if (new Date(start!) > new Date(end!)) {
+        toast.error('Start date must be before or equal to end date');
+        shouldFetch = false;
+      }
+    } else {
+      shouldFetch = false;
+    }
+
+    if (!shouldFetch) {
       setLoading(false);
       return;
-      }
     }
 
     setLoading(true);
@@ -85,10 +102,9 @@ export function MediaDistributionPage() {
       const params = new URLSearchParams();
       params.append('pair_id', String(activePair.pair_id));
 
-      if (hasValidDateRange) {
-        params.append('startDate', startDate);
-        params.append('endDate', endDate);
-      }
+      const [startDate, endDate] = filterValues.dateRange as [string, string];
+      params.append('startDate', startDate);
+      params.append('endDate', endDate);
 
       const url = `https://pplus-5kdv.onrender.com/api/report/top-thematic-distribution-breakdown?${params.toString()}`;
       console.log('Fetching Media Distribution →', url);
@@ -102,26 +118,30 @@ export function MediaDistributionPage() {
 
       const result = await response.json();
 
-      if (response.ok && result.success && result.data?.activities) {
+      if (response.ok && result.success && result.data) {
         setThematicData(result.data);
       } else {
-        setThematicData({ activities: [] });
+        setThematicData({
+          total_editorials: 0,
+          unique_activities: 0,
+          activities: [],
+        });
         if (result.message && !result.message.includes('No')) {
           toast.info(result.message);
         }
       }
     } catch (err: any) {
       console.error('Error fetching thematic distribution:', err);
-      if (err.response?.status === 404 || err.message?.includes('No')) {
-        setThematicData({ activities: [] });
-      } else {
-        toast.error('Failed to load media distribution');
-        setThematicData({ activities: [] });
-      }
+      toast.error('Failed to load media distribution');
+      setThematicData({
+        total_editorials: 0,
+        unique_activities: 0,
+        activities: [],
+      });
     } finally {
       setLoading(false);
     }
-  }, [token, activePair, filterValues.dateRange, hasValidDateRange, startDate, endDate]);
+  }, [token, activePair, filterValues.dateRange]);
 
   useEffect(() => {
     fetchThematicData();
@@ -137,6 +157,7 @@ export function MediaDistributionPage() {
     frequency: item.frequency,
     percentage: parseFloat(item.percentage),
     fill: colors[index % colors.length],
+    sample_editorials: item.sample_editorials || [],
   })) || [];
 
   const chartHeight = Math.max(400, chartData.length * 50 + 60);
@@ -148,7 +169,7 @@ export function MediaDistributionPage() {
         <div className="bg-white p-4 rounded-lg shadow-lg border border-gray-200">
           <p className="font-semibold text-gray-800">{data.activity}</p>
           <p className="text-sm text-gray-600 mt-1">Frequency: {data.frequency}</p>
-          <p className="text-xs text-gray-500 mt-1">Percentage: {data.percentage}%</p>
+          <p className="text-xs text-gray-500 mt-1">Percentage: {data.percentage.toFixed(2)}%</p>
         </div>
       );
     }
@@ -191,13 +212,15 @@ export function MediaDistributionPage() {
             <div className="bg-white/20 backdrop-blur-sm rounded-full p-4">
               <Activity size={32} className="text-white" />
             </div>
-            {thematicData?.total_editorials !== undefined && (
-              <div className="text-right">
-                <div className="text-sm text-orange-100">Total Editorials</div>
-                <div className="text-2xl font-bold text-white">{thematicData.total_editorials}</div>
-                <div className="text-sm text-orange-200">{thematicData.unique_activities || 0} unique activities</div>
+            <div className="text-right">
+              <div className="text-sm text-orange-100">Total Editorials</div>
+              <div className="text-2xl font-bold text-white">
+                {thematicData?.total_editorials || 0}
               </div>
-            )}
+              <div className="text-sm text-orange-200">
+                {thematicData?.unique_activities || 0} unique activities
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -248,9 +271,9 @@ export function MediaDistributionPage() {
           )}
         </DataCard>
 
-        {/* Thematic Breakdown List */}
+        {/* Thematic Breakdown List with Sample Editorials */}
         <DataCard title="Thematic Distribution Breakdown" variant="glass" icon={<BarChart2 size={24} />}>
-          <div className="p-4 space-y-4">
+          <div className="p-4 space-y-6">
             {chartData.length > 0 ? (
               chartData.map((item: any, index: number) => (
                 <div key={item.activity} className="border rounded-lg overflow-hidden shadow-sm">
@@ -262,11 +285,26 @@ export function MediaDistributionPage() {
                       {String(index + 1).padStart(2, '0')}
                     </div>
                     <div className="p-4 bg-gray-50 flex-1">
-                      <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center justify-between mb-2">
                         <h3 className="text-lg font-semibold text-gray-900">{item.activity}</h3>
-                        <span className="text-sm font-medium text-gray-600">{item.percentage}%</span>
+                        <span className="text-sm font-medium text-gray-600">{item.percentage.toFixed(2)}%</span>
                       </div>
-                      <p className="text-sm text-gray-600">Frequency: {item.frequency} occurrences</p>
+                      <p className="text-sm text-gray-600 mb-3">Frequency: {item.frequency} occurrences</p>
+
+                      {/* Sample Editorials */}
+                      {item.sample_editorials && item.sample_editorials.length > 0 && (
+                        <div className="mt-4">
+                          <p className="text-xs font-medium text-gray-700 mb-2">Sample Headlines:</p>
+                          <ul className="space-y-2 text-xs text-gray-600">
+                            {item.sample_editorials.map((editorial: any, i: number) => (
+                              <li key={i} className="pl-4 relative">
+                                <span className="absolute left-0 top-1.5 w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+                                {editorial.title}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

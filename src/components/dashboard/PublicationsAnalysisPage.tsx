@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/components/auth/AuthContext';
 import { toast } from 'sonner';
-import { Newspaper, Users, FileText, Globe, User, Quote, Loader2 } from 'lucide-react';
+import { Newspaper, Users, FileText, Globe, User, Quote, Loader2, Trophy } from 'lucide-react';
 import { UniversalFilter, FilterOption, FilterValues } from '@/components/ui/UniversalFilter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -160,6 +160,15 @@ export function PublicationsAnalysisPage() {
     name: r.reporter,
     value: r.count,
     percentage: parseFloat(r.percentage) || 0,
+  })) || [];
+
+  // NEW: Top 3 Reporters Overall for summary
+  const top3Reporters = analysisData?.analysis?.top_3_reporters_overall?.reporters?.map((r: any, index: number) => ({
+    rank: index + 1,
+    name: r.reporter,
+    count: r.count,
+    percentage: parseFloat(r.percentage),
+    mediaType: r.media_types?.includes('print') ? (r.media_types.includes('online') ? 'Print & Online' : 'Print') : 'Online',
   })) || [];
 
   return (
@@ -433,6 +442,33 @@ export function PublicationsAnalysisPage() {
                       {analysisData.analysis?.online_reporters?.unique_reporters || 0}
                     </p>
                   </div>
+
+                  {/* Top 3 Reporters Overall - NEW */}
+                  {top3Reporters.length > 0 && (
+                    <div className="bg-gradient-to-br from-amber-50 to-orange-100 rounded-lg p-5 shadow-sm border border-amber-200">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Trophy className="w-5 h-5 text-amber-700" />
+                        <p className="font-semibold text-gray-800">Top 3 Reporters Overall</p>
+                      </div>
+                      <div className="space-y-3">
+                        {top3Reporters.map((reporter) => (
+                          <div key={reporter.rank} className="flex items-center justify-between py-2">
+                            <div className="flex items-center gap-3 flex-1">
+                              <span className="text-lg font-bold text-amber-700 w-6">#{reporter.rank}</span>
+                              <div>
+                                <p className="text-sm font-medium text-gray-800 truncate max-w-[180px]">{reporter.name}</p>
+                                <p className="text-xs text-gray-500">{reporter.mediaType}</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-bold text-gray-800">{reporter.count}</p>
+                              <p className="text-xs text-gray-600">{reporter.percentage.toFixed(2)}%</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </>
               ) : (
                 <p className="text-gray-500 text-center">
