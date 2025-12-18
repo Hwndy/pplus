@@ -43,6 +43,7 @@ const UsersPage = () => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const searchTimeout = useRef<NodeJS.Timeout>();
+  const [isExporting, setIsExporting] = useState(false);
 
   const usersPerPage = 10;
 
@@ -82,11 +83,65 @@ const UsersPage = () => {
   };
 
   const handleExport = async () => {
+    setIsExporting(true);
     try {
-      await apiService.exportUsers({ format: 'csv' });
-      toast.success('Export started. You will receive a download link shortly.');
-    } catch {
-      toast.error('Failed to export users');
+      const API_BASE_URL = `https://pplus-5kdv.onrender.com`;
+      const token = localStorage.getItem('token');
+
+      const queryParams = new URLSearchParams();
+      queryParams.append('format', 'csv'); 
+
+      const url = `${API_BASE_URL}/api/export/users?${queryParams.toString()}`;
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Export failed (${response.status})`);
+      }
+
+      const contentType = response.headers.get('content-type') || '';
+      const filename = `users-export-${new Date().toISOString().split('T')[0]}.csv`;
+
+      let blob: Blob;
+
+      if (contentType.includes('text/csv') || contentType.includes('application/csv')) {
+        const text = await response.text();
+        if (text.trim() === '' || text.includes('<!DOCTYPE html>')) {
+          throw new Error('Received invalid response — check backend route');
+        }
+        blob = new Blob([text], { type: 'text/csv;charset=utf-8;' });
+      } else {
+        // Fallback: treat as JSON (in case backend sends JSON for CSV format)
+        const json = await response.json();
+        const csvText = typeof json === 'string' ? json : JSON.stringify(json, null, 2);
+        blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
+      }
+
+      // Trigger immediate download
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+
+      toast.success('Users exported successfully as CSV');
+    } catch (error) {
+      console.error('Users export failed:', error);
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to export users'
+      );
+    } finally {
+      setIsExporting(false);
     }
   };
 
