@@ -160,7 +160,7 @@ const EditorialPage = () => {
     }
   };
 
-  // FIXED: Properly fetch full editorial data before navigating to edit
+  // UPDATED: Properly map single editorial data for edit mode
   const handleEdit = async (id: number) => {
     if (!token) {
       toast.error("Authentication required");
@@ -185,26 +185,56 @@ const EditorialPage = () => {
         throw new Error("Invalid response from server");
       }
 
-      const editorialData = result.data;
+      const data = result.data;
 
-      // Ensure the data has the expected structure with editorials array
-      const fullData = {
-        id: editorialData.id,
-        date: editorialData.date,
-        company_id: editorialData.company_id,
-        media_type: editorialData.media_type,
-        analyst_note: editorialData.analyst_note,
-        supervisor_note: editorialData.supervisor_note,
-        admin_note: editorialData.admin_note,
-        editorials: Array.isArray(editorialData.editorials)
-          ? editorialData.editorials
-          : editorialData.editorials
-          ? [editorialData.editorials]
-          : [],
+      // Map the nested response to the structure expected by CreateEditorialPage
+      const mappedEditorial = {
+        id: data.id,
+        date: data.date ? new Date(data.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        company_id: data.company?.id, // Extract from nested company object
+        media_type: data.media_type || '',
+        online_channel: data.online_channel || '',
+        source: data.source || '',
+        audience_reach: data.audience_reach || 0,
+        placement: data.placement || '',
+        title: data.title || '',
+        print_web_clips: data.print_web_clips || '',
+        reporter: data.reporter || '',
+        country: data.country || '',
+        spokesperson: data.spokesperson || '',
+        activity: data.activity || '',
+        sentiment: data.sentiment || '',
+        sentiment_keyword_indicator_id: data.sentiment_keyword_indicator?.id, // Extract from nested
+        advert_spend: data.advert_spend || 0,
+        circulation: data.circulation || 0,
+        page_size: data.page_size || '',
+        page_number: data.page_number || '',
+        language: data.language || '',
+        ceo_thought_leadership: data.ceo_thought_leadership || '',
+        analyst_note: data.analyst_note || '',
+        supervisor_note: data.supervisor_note || '',
+        admin_note: data.admin_note || '',
+        filename: data.filename,
+        original_name: data.original_name,
+        file_path: data.file_path,
+        file_size: data.file_size,
+        mime_type: data.mime_type,
+        file_type: data.file_type,
       };
 
+      // Pass as a single-item batch to trigger the preferred branch in Create page
       navigate('/dashboard/editorial/create', {
-        state: { editorialData: fullData },
+        state: {
+          editorialData: {
+            date: mappedEditorial.date,
+            company_id: mappedEditorial.company_id,
+            media_type: mappedEditorial.media_type,
+            analyst_note: mappedEditorial.analyst_note,
+            supervisor_note: mappedEditorial.supervisor_note,
+            admin_note: mappedEditorial.admin_note,
+            editorials: [mappedEditorial], // Wrap in array
+          }
+        }
       });
 
     } catch (err: any) {

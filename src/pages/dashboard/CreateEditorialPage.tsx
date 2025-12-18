@@ -710,13 +710,13 @@ const CreateEditorialPage = () => {
         }));
       }
 
-      // Fallback for legacy single object
+      // FIXED: Fallback for single editorial object from GET /editorials/:id
       return [{
-        ...data,
-        date: data.date || new Date().toISOString().split('T')[0],
+        id: data.id,
+        date: data.date ? new Date(data.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         online_channel: data.online_channel || '',
         source: data.source || '',
-        company_id: data.company_id,
+        company_id: data.company?.id ?? data.company_id, // Extract from nested company object
         media_type: data.media_type || '',
         audience_reach: data.audience_reach || 0,
         placement: data.placement || '',
@@ -729,7 +729,7 @@ const CreateEditorialPage = () => {
         spokesperson: data.spokesperson || '',
         activity: data.activity || '',
         sentiment: data.sentiment || '',
-        sentiment_keyword_indicator_id: data.sentiment_keyword_indicator_id,
+        sentiment_keyword_indicator_id: data.sentiment_keyword_indicator?.id ?? data.sentiment_keyword_indicator_id,
         advert_spend: data.advert_spend || 0,
         circulation: data.circulation || 0,
         page_size: data.page_size || '',
@@ -737,6 +737,13 @@ const CreateEditorialPage = () => {
         analyst_note: data.analyst_note || '',
         supervisor_note: data.supervisor_note || '',
         admin_note: data.admin_note || '',
+        is_deleted: data.is_deleted,
+        filename: data.filename,
+        original_name: data.original_name,
+        file_path: data.file_path,
+        file_size: data.file_size,
+        mime_type: data.mime_type,
+        file_type: data.file_type,
       }];
     }
 
