@@ -17,6 +17,7 @@ import {
   Edit,
   Trash2,
   RefreshCw,
+  Globe,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -81,11 +82,9 @@ function PaginationControls({
         </Button>
 
         {start > 1 && (
-          <>
-            <Button size="sm" variant="ghost" disabled>
-              ...
-            </Button>
-          </>
+          <Button size="sm" variant="ghost" disabled>
+            ...
+          </Button>
         )}
 
         {pages.map((page) => (
@@ -100,11 +99,9 @@ function PaginationControls({
         ))}
 
         {end < totalPages && (
-          <>
-            <Button size="sm" variant="ghost" disabled>
-              ...
-            </Button>
-          </>
+          <Button size="sm" variant="ghost" disabled>
+            ...
+          </Button>
         )}
 
         <Button
@@ -128,12 +125,11 @@ function PaginationControls({
   );
 }
 
-
 // API Base
 const API_BASE = 'https://pplus-alde.onrender.com/api';
 const PAGE_SIZE = 10;
 
-// Generic Entry Interface (unchanged)
+// Generic Entry Interface
 interface GenericEntry {
   id: string;
   title: string;
@@ -146,11 +142,11 @@ interface GenericEntry {
   comments?: string;
   reviewedBy?: string;
   reviewedAt?: string;
-  industry?: { headline: string; content: string; reporter: string | null; source: string; sentiment: string; urls: string[]; page?: string; publication_date?: string }[];
-  competitors?: { headline: string; content: string; reporter: string | null; source: string; sentiment: string; urls: string[]; page?: string; publication_date?: string }[];
-  subsidiaries?: { headline: string; content: string; reporter: string | null; source: string; sentiment: string; urls: string[]; page?: string; publication_date?: string }[];
-  passive?: { headline: string; content: string; reporter: string | null; source: string; sentiment: string; urls: string[]; page?: string; publication_date?: string }[];
-  advert?: { headline: string; content: string; reporter: string | null; source: string; sentiment: string; urls: string[]; page?: string; publication_date?: string }[];
+  industry?: any[];
+  competitors?: any[];
+  subsidiaries?: any[];
+  passive?: any[];
+  advert?: any[];
   metrics?: any[];
   strengths?: any[];
   weaknesses?: any[];
@@ -201,7 +197,6 @@ const contentTypes = {
   editorials: {
     endpoint: '/editorials',
     updateEndpoint: '/editorials/update',
-    //deleteEndpoint: '/editorials///delete',
     statusEndpoint: '/editorials/:id/status',
     displayName: 'Editorial Content',
     icon: <Newspaper className="h-4 w-4" />,
@@ -209,7 +204,6 @@ const contentTypes = {
   dailyMentions: {
     endpoint: '/daily-mentions',
     updateEndpoint: '/daily-mentions/update',
-    //deleteEndpoint: '/daily-mentions///delete',
     statusEndpoint: '/daily-mentions/:id/status',
     displayName: 'Daily Mentions Content',
     icon: <FileText className="h-4 w-4" />,
@@ -217,7 +211,6 @@ const contentTypes = {
   swotAnalysis: {
     endpoint: '/swot-analysis',
     updateEndpoint: '/swot-analysis/update',
-    //deleteEndpoint: '/swot-analysis///delete',
     statusEndpoint: '/swot-analysis/:id/status',
     displayName: 'Swot Analysis Content',
     icon: <Target className="h-4 w-4" />,
@@ -225,7 +218,6 @@ const contentTypes = {
   outcomeInsights: {
     endpoint: '/outcome-insights',
     updateEndpoint: '/outcome-insights/update',
-    //deleteEndpoint: '/outcome-insights///delete',
     statusEndpoint: '/outcome-insights/:id/status',
     displayName: 'Outcome Insights Content',
     icon: <LineChart className="h-4 w-4" />,
@@ -233,10 +225,16 @@ const contentTypes = {
   socialMediaMentions: {
     endpoint: '/social-media-mentions',
     updateEndpoint: '/social-media-mentions/update',
-    //deleteEndpoint: '/social-media-mentions///delete',
     statusEndpoint: '/social-media-mentions/:id/status',
     displayName: 'Social Media Mentions Content',
     icon: <MessageCircle className="h-4 w-4" />,
+  },
+  industryLandscapeOverview: {
+    endpoint: '/industry-landscape-overview',
+    updateEndpoint: '/industry-landscape-overview/update',
+    statusEndpoint: '/industry-landscape-overview/:id/status',
+    displayName: 'Industry Landscape Overview',
+    icon: <Globe className="h-4 w-4" />,
   },
 } as const;
 
@@ -249,6 +247,7 @@ const SUPERVISOR_ENDPOINTS = {
   swotAnalysis: '/swot-analysis/supervisor-dashboard',
   outcomeInsights: '/outcome-insights/supervisor-dashboard',
   socialMediaMentions: '/social-media-mentions/supervisor-dashboard',
+  industryLandscapeOverview: '/industry-landscape-overview/supervisor-dashboard',
 } as const;
 
 // Status Badge Component
@@ -298,6 +297,7 @@ export function SupervisorDashboard() {
     swotAnalysis: { currentPage: 1, totalPages: 1, total: 0, pageSize: PAGE_SIZE },
     outcomeInsights: { currentPage: 1, totalPages: 1, total: 0, pageSize: PAGE_SIZE },
     socialMediaMentions: { currentPage: 1, totalPages: 1, total: 0, pageSize: PAGE_SIZE },
+    industryLandscapeOverview: { currentPage: 1, totalPages: 1, total: 0, pageSize: PAGE_SIZE },
   });
   const [activeTab, setActiveTab] = useState<ContentTypeKey>('editorials');
   const [loading, setLoading] = useState(true);
@@ -316,10 +316,9 @@ export function SupervisorDashboard() {
     }
   }, [isAuthenticated, token, user, navigate]);
 
-  // Transform API data to GenericEntry (unchanged)
+  // Transform API data to GenericEntry
   const transformToGenericEntry = (type: ContentTypeKey, rawEntry: any): GenericEntry => {
     const getCompanyName = () => {
-      // Try multiple possible paths (covers all your current backend responses)
       return (
         rawEntry.company?.company_name ||
         rawEntry.company?.name ||
@@ -331,6 +330,7 @@ export function SupervisorDashboard() {
     };
 
     const companyName = getCompanyName();
+
     if (type === 'editorials') {
       return {
         id: rawEntry.id.toString(),
@@ -431,7 +431,22 @@ export function SupervisorDashboard() {
         reviewedAt: rawEntry.updatedAt,
         metrics: rawEntry.metrics || [],
       };
+    } else if (type === 'industryLandscapeOverview') {
+      return {
+        id: rawEntry.id.toString(),
+        title: rawEntry.title || rawEntry.overview_title || rawEntry.analyst_note?.slice(0, 50) || 'Untitled',
+        content: rawEntry.analyst_note || rawEntry.overview_content || '',
+        status: rawEntry.status || 'pending',
+        createdAt: rawEntry.date || rawEntry.createdAt || new Date().toISOString(),
+        updatedAt: rawEntry.updatedAt,
+        authorName: rawEntry.creator_data?.username || rawEntry.analyst?.username || 'Unknown',
+        companyName: rawEntry.company_data?.company_name || rawEntry.company?.company_name || rawEntry.company?.name || 'Unknown',
+        comments: rawEntry.supervisor_note || '',
+        reviewedBy: rawEntry.approver_data?.username || rawEntry.approved_by?.username || 'Unknown',
+        reviewedAt: rawEntry.updatedAt,
+      };
     }
+
     return {
       id: rawEntry.id?.toString() || '',
       title: rawEntry.title || rawEntry.headline || 'Untitled',
@@ -447,7 +462,7 @@ export function SupervisorDashboard() {
     };
   };
 
-  // Fetch Stats
+  // Fetch Stats (unchanged)
   const fetchStats = async () => {
     if (!token || !user?.id) return;
 
@@ -473,6 +488,7 @@ export function SupervisorDashboard() {
               SwotAnalyses: 'swotAnalysis',
               OutcomeInsights: 'outcomeInsights',
               SocialMediaMentions: 'socialMediaMentions',
+              IndustryLandscapeOverview: 'industryLandscapeOverview',
             };
             const frontendKey = tableKeyMap[item.table] || item.table;
             acc[frontendKey] = {
@@ -496,7 +512,6 @@ export function SupervisorDashboard() {
           });
         }
       } else if (isSupervisor) {
-        // Fetch from active tab to get stats
         const url = `${API_BASE}${SUPERVISOR_ENDPOINTS[activeTab]}?page=1&limit=${PAGE_SIZE}`;
         const res = await fetch(url, { headers });
         if (!res.ok) throw new Error('Failed to fetch supervisor stats');
@@ -534,10 +549,9 @@ export function SupervisorDashboard() {
     }
   };
 
-  // Fetch Entries for Type
+  // Fetch Entries for Type — Fixed Pagination
   const fetchEntries = async (type: ContentTypeKey, page: number = 1) => {
     if (!token || !user?.id) return;
-    if (data[type]?.length > 0 && pagination[type].currentPage === page) return;
 
     setTableLoading(true);
     try {
@@ -555,7 +569,6 @@ export function SupervisorDashboard() {
 
       if (json.success) {
         if (isSupervisor) {
-          // === DYNAMIC KEY MAPPING ===
           const keyMap: Record<ContentTypeKey, {
             recentKey: string;
             totalKey: string;
@@ -598,6 +611,13 @@ export function SupervisorDashboard() {
               approvedKey: 'approved_mentions',
               rejectedKey: 'rejected_mentions',
             },
+            industryLandscapeOverview: {
+              recentKey: 'recent_overviews',
+              totalKey: 'total_overviews',
+              pendingKey: 'pending_overviews',
+              approvedKey: 'approved_overviews',
+              rejectedKey: 'rejected_overviews',
+            },
           };
 
           const keys = keyMap[type];
@@ -613,7 +633,6 @@ export function SupervisorDashboard() {
             pageSize: PAGE_SIZE,
           };
 
-          // Update stats correctly for this type
           setStats(prev => ({
             ...prev,
             pending: stats[keys.pendingKey] ?? prev.pending,
@@ -634,23 +653,14 @@ export function SupervisorDashboard() {
             },
           }));
         } else {
-          if (type === 'editorials') {
-            entries = Array.isArray(json.data?.editorial) ? json.data.editorial : [];
-            paginationData = {
-              currentPage: json.data?.meta?.currentPage || page,
-              totalPages: json.data?.meta?.totalPage || 1,
-              total: json.data?.meta?.total || 0,
-              pageSize: json.data?.meta?.pageSize || PAGE_SIZE,
-            };
-          } else {
-            entries = Array.isArray(json.data?.data) ? json.data.data : (Array.isArray(json.data) ? json.data : []);
-            paginationData = {
-              currentPage: json.data?.pagination?.page || json.pagination?.page || page,
-              totalPages: json.data?.pagination?.totalPages || json.pagination?.totalPages || 1,
-              total: json.data?.pagination?.total || json.pagination?.total || 0,
-              pageSize: json.data?.pagination?.limit || json.pagination?.limit || PAGE_SIZE,
-            };
-          }
+          // Admin/general endpoints
+          entries = Array.isArray(json.data?.data) ? json.data.data : (Array.isArray(json.data) ? json.data : []);
+          paginationData = {
+            currentPage: json.data?.pagination?.page || json.pagination?.page || page,
+            totalPages: json.data?.pagination?.totalPages || json.pagination?.totalPages || 1,
+            total: json.data?.pagination?.total || json.pagination?.total || 0,
+            pageSize: json.data?.pagination?.limit || json.pagination?.limit || PAGE_SIZE,
+          };
         }
       }
 
@@ -674,13 +684,14 @@ export function SupervisorDashboard() {
       swotAnalysis: { currentPage: 1, totalPages: 1, total: 0, pageSize: PAGE_SIZE },
       outcomeInsights: { currentPage: 1, totalPages: 1, total: 0, pageSize: PAGE_SIZE },
       socialMediaMentions: { currentPage: 1, totalPages: 1, total: 0, pageSize: PAGE_SIZE },
+      industryLandscapeOverview: { currentPage: 1, totalPages: 1, total: 0, pageSize: PAGE_SIZE },
     });
     fetchStats();
     fetchEntries(activeTab, 1);
     toast.success('Data refreshed');
   };
 
-  // Update Entry Status
+  // Update Entry Status (unchanged)
   const updateStatus = async (entry: GenericEntry, newStatus: 'approved' | 'rejected', comments?: string) => {
     if (!token || !user?.id || !currentEntry) return;
 
@@ -715,21 +726,6 @@ export function SupervisorDashboard() {
   const submitRejection = () => { if (rejectReason.trim() && currentEntry) updateStatus(currentEntry, 'rejected', rejectReason); setShowRejectDialog(false); };
   const openDetailsDialog = (entry: GenericEntry) => { setCurrentEntry(entry); setShowDetailsDialog(true); };
 
-  // const handle//delete = async (entry: GenericEntry) => {
-  //   if (!confirm('Are you sure you want to //delete this entry?')) return;
-  //   const type = activeTab;
-  //   const endpoint = `${API_BASE}${contentTypes[type].//deleteEndpoint}/${entry.id}`;
-  //   try {
-  //     const res = await fetch(endpoint, { method: 'PUT', headers });
-  //     if (!res.ok) throw new Error();
-  //     toast.success('Entry //deleted');
-  //     setData(prev => ({ ...prev, [type]: prev[type].filter(e => e.id !== entry.id) }));
-  //     fetchStats();
-  //   } catch (error) {
-  //     toast.error('Failed to //delete');
-  //   }
-  // };
-
   const getColumns = (type: ContentTypeKey): ColumnDef<GenericEntry>[] => [
     {
       accessorKey: 'title',
@@ -760,9 +756,6 @@ export function SupervisorDashboard() {
                 </Button>
               </>
             )}
-            {/* <Button size="sm" variant="outline" className="text-red-600 border-red-600" onClick={() => handle//delete(entry)}>
-              <Trash2 className="mr-2 h-4 w-4" /> //delete
-            </Button> */}
           </div>
         );
       },
@@ -774,7 +767,9 @@ export function SupervisorDashboard() {
   }, [isAuthenticated, token, user, isAdmin, isSupervisor]);
 
   useEffect(() => {
-    if (isAuthenticated && token && user?.id) fetchEntries(activeTab, pagination[activeTab].currentPage);
+    if (isAuthenticated && token && user?.id) {
+      fetchEntries(activeTab, pagination[activeTab].currentPage);
+    }
   }, [activeTab, isAuthenticated, token, user]);
 
   if (loading) {
@@ -817,7 +812,7 @@ export function SupervisorDashboard() {
       </div>
 
       {/* Content Type Breakdown */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-6">
         {Object.entries(stats.byType).map(([key, typeStats]) => (
           <DataCard key={key} title={typeStats.displayName} variant="glass" icon={contentTypes[key as ContentTypeKey]?.icon || <FileText size={20} />}>
             <Stat label="Pending Review" value={typeStats.pending} subtitle={typeStats.displayName} />
@@ -826,58 +821,56 @@ export function SupervisorDashboard() {
       </div>
 
       {/* Tabs for Content Types */}
-<Tabs value={activeTab} onValueChange={(value: ContentTypeKey) => setActiveTab(value)}>
-  <TabsList className="grid w-full grid-cols-5">
-    {Object.entries(contentTypes).map(([key, config]) => (
-      <TabsTrigger key={key} value={key as ContentTypeKey}>
-        {config.displayName.split(' ')[0]} ({stats.byType[key]?.pending || 0})
-      </TabsTrigger>
-    ))}
-  </TabsList>
+      <Tabs value={activeTab} onValueChange={(value: ContentTypeKey) => setActiveTab(value)}>
+        <TabsList className="grid w-full grid-cols-6">
+          {Object.entries(contentTypes).map(([key, config]) => (
+            <TabsTrigger key={key} value={key as ContentTypeKey}>
+              {config.displayName.split(' ')[0]} ({stats.byType[key]?.pending || 0})
+            </TabsTrigger>
+          ))}
+        </TabsList>
 
-  {Object.entries(contentTypes).map(([key, config]) => {
-    const typeKey = key as ContentTypeKey;
-    const pag = pagination[typeKey];
+        {Object.entries(contentTypes).map(([key, config]) => {
+          const typeKey = key as ContentTypeKey;
+          const pag = pagination[typeKey];
 
-    return (
-      <TabsContent key={key} value={typeKey}>
-        <Card>
-          <CardHeader>
-            <CardTitle>{config.displayName}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <DataTable
-              columns={getColumns(typeKey)}
-              data={data[typeKey] || []}
-              searchPlaceholder={`Search ${config.displayName.toLowerCase()}...`}
-              loading={tableLoading}
-              pagination={{
-                currentPage: pag.currentPage,
-                totalPages: pag.totalPages,
-                onPageChange: (page: number) => fetchEntries(typeKey, page),
-              }}
-            />
+          return (
+            <TabsContent key={key} value={typeKey}>
+              <Card>
+                <CardHeader>
+                  <CardTitle>{config.displayName}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <DataTable
+                    columns={getColumns(typeKey)}
+                    data={data[typeKey] || []}
+                    searchPlaceholder={`Search ${config.displayName.toLowerCase()}...`}
+                    loading={tableLoading}
+                    pagination={{
+                      currentPage: pag.currentPage,
+                      totalPages: pag.totalPages,
+                      onPageChange: (page: number) => {
+                        fetchEntries(typeKey, page);
+                      },
+                    }}
+                  />
 
-            {pag.totalPages > 1 && (
-              <PaginationControls
-                currentPage={pag.currentPage}
-                totalPages={pag.totalPages}
-                onPageChange={(page: number) => fetchEntries(typeKey, page)}
-              />
-            )}
+                  {pag.totalPages > 1 && (
+                    <PaginationControls
+                      currentPage={pag.currentPage}
+                      totalPages={pag.totalPages}
+                      onPageChange={(page: number) => fetchEntries(typeKey, page)}
+                    />
+                  )}
 
-            {pag.total > 0 && (
-              <div className="mt-2 text-sm text-muted-foreground">
-                Showing {(pag.currentPage - 1) * pag.pageSize + 1} to{' '}
-                {Math.min(pag.currentPage * pag.pageSize, pag.total)} of {pag.total} entries
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </TabsContent>
-    );
-  })}
-</Tabs>
+                  {/* Removed duplicate "Showing X to Y of Z" — DataTable already handles it */}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          );
+        })}
+      </Tabs>
+
       {/* Reject Dialog */}
       <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
         <DialogContent>

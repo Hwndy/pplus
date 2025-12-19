@@ -3,7 +3,7 @@ import { useAuth } from '@/components/auth/AuthContext';
 import { DataCard } from '@/components/ui/DataCard';
 import { DataTable } from '@/components/ui/DataTable';
 import { ColumnDef } from '@tanstack/react-table';
-import { CheckCircle, XCircle, AlertCircle, Save, FileEdit, Newspaper, FileText, Target, Share2, LineChart, ClipboardList, ChevronDown, Eye, Calendar, User, MessageCircle } from 'lucide-react';
+import { CheckCircle, XCircle, AlertCircle, Save, FileEdit, Newspaper, FileText, Target, Share2, LineChart, ClipboardList, ChevronDown, Eye, Calendar, User, MessageCircle, Globe } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -22,7 +22,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Link, useNavigate } from 'react-router-dom'; // Added useNavigate
+import { Link, useNavigate } from 'react-router-dom';
 
 // Base URL for API
 const BASE_URL = 'https://pplus-alde.onrender.com/api';
@@ -146,7 +146,7 @@ function ViewDetailsDialog({ open, onClose, entry, type }: { open: boolean; onCl
 
 export function AnalystDashboard() {
   const { user } = useAuth();
-  const navigate = useNavigate(); // Added for programmatic navigation
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('all');
   const [viewDetailsDialog, setViewDetailsDialog] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<Submission | null>(null);
@@ -158,6 +158,7 @@ export function AnalystDashboard() {
   const [swotAnalysis, setSwotAnalysis] = useState<Submission[]>([]);
   const [socialMentions, setSocialMentions] = useState<Submission[]>([]);
   const [outcomeInsights, setOutcomeInsights] = useState<Submission[]>([]);
+  const [industryLandscape, setIndustryLandscape] = useState<Submission[]>([]); // NEW
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -188,13 +189,16 @@ export function AnalystDashboard() {
           { url: `${BASE_URL}/swot-analysis/my-analysis`, setter: setSwotAnalysis, name: 'SWOT Analysis', type: 'SWOT Analysis' },
           { url: `${BASE_URL}/social-media-mentions/my-social-media-mentions`, setter: setSocialMentions, name: 'Social Media Mentions', type: 'Social Media Mention' },
           { url: `${BASE_URL}/outcome-insights/my-insights`, setter: setOutcomeInsights, name: 'Outcome Insights', type: 'Outcome Insight' },
+          { url: `${BASE_URL}/industry-landscape-overview/my-overview`, setter: setIndustryLandscape, name: 'Industry Landscape', type: 'Industry Landscape' }, // NEW
         ];
 
-        const responses = await Promise.all(
+        await Promise.all(
           endpoints.map(async ({ url, setter, name, type }) => {
             const res = await fetch(url, { headers });
             if (!res.ok) {
-              throw new Error(`${name} fetch failed: ${res.status} ${res.statusText}`);
+              console.warn(`${name} fetch failed: ${res.status} ${res.statusText}`);
+              setter([]);
+              return;
             }
             const data = await res.json();
 
@@ -229,19 +233,20 @@ export function AnalystDashboard() {
                           item.insights?.[0]?.category ||
                           item.analyst_note?.slice(0, 60) ||
                           'Untitled Outcome Insight';
+                } else if (type === 'Industry Landscape') {
+                  title = item.overview_title || item.title || 'Untitled Industry Landscape Overview';
                 }
 
                 return {
                   id: item.id?.toString() || `temp-${Math.random().toString(36).substring(2)}`,
-                  rawData: item, // Keep raw for editing
+                  rawData: item,
                   type,
                   title,
                   content: item.analyst_note ||
                           item.content ||
                           item.description ||
                           item.supervisor_note ||
-                          item.insights?.map((i: any) => i.analysis).join('; ') ||
-                          item.strengths?.map((s: any) => s.analysis).join('; ') ||
+                          item.overview_content ||
                           'No content',
                   createdAt: item.createdAt || item.date || new Date().toISOString(),
                   status: typeof item.status === 'string' && item.status.trim() !== '' ? item.status : 'pending',
@@ -250,17 +255,10 @@ export function AnalystDashboard() {
                 };
               });
 
-            if (normalizedData.length === 0) {
-              console.warn(`No valid data returned for ${name}`);
-            }
             setter(normalizedData);
-            return normalizedData;
           })
         );
 
-        if (responses.every(arr => arr.length === 0)) {
-          setError('No submissions found.');
-        }
       } catch (err: any) {
         console.error('Error fetching data:', err);
         setError(err.message || 'Failed to load submissions');
@@ -280,6 +278,7 @@ export function AnalystDashboard() {
     ...swotAnalysis,
     ...socialMentions,
     ...outcomeInsights,
+    ...industryLandscape, // INCLUDED
   ];
 
   // Filter by status for stats
@@ -432,7 +431,7 @@ export function AnalystDashboard() {
                     size="sm"
                     asChild
                   >
-                    <Link to={`/dashboard/${entry.type.toLowerCase().replace(' ', '-')}/edit/${entry.id}`}>
+                    <Link to={`/dashboard/${entry.type.toLowerCase().replace(/ /g, '-')}/edit/${entry.id}`}>
                       <FileEdit className="h-4 w-4 mr-1" />
                       {status.toLowerCase() === 'draft' ? 'Edit' : 'Revise'}
                     </Link>
@@ -445,6 +444,15 @@ export function AnalystDashboard() {
       },
     },
   ];
+
+  // Reusable Empty State Component
+  const EmptyState = ({ message }: { message: string }) => (
+    <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+      <div className="bg-gray-200 border-2 border-dashed rounded-xl w-24 h-24 mb-6" />
+      <h3 className="text-lg font-medium text-gray-900 mb-2">No submissions yet</h3>
+      <p className="text-sm text-gray-500 max-w-sm">{message}</p>
+    </div>
+  );
 
   if (loading) {
     return (
@@ -505,6 +513,12 @@ export function AnalystDashboard() {
                   New Outcome & Insight
                 </Link>
               </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/dashboard/industry-landscape-overview/create" className="w-full cursor-pointer flex items-center text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700">
+                  <Globe className="mr-2 h-4 w-4" />
+                  New Industry Landscape
+                </Link>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -540,13 +554,14 @@ export function AnalystDashboard() {
 
       {/* Tabs for different submission types */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-6 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-7 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
           <TabsTrigger value="all" className="text-sm">All</TabsTrigger>
           <TabsTrigger value="editorials" className="text-sm">Editorials</TabsTrigger>
           <TabsTrigger value="daily-mentions" className="text-sm">Daily Mentions</TabsTrigger>
           <TabsTrigger value="swot" className="text-sm">SWOT Analysis</TabsTrigger>
           <TabsTrigger value="social" className="text-sm">Social Media</TabsTrigger>
           <TabsTrigger value="insights" className="text-sm">Outcome Insights</TabsTrigger>
+          <TabsTrigger value="industry" className="text-sm">Industry Landscape</TabsTrigger>
         </TabsList>
 
         <TabsContent value="all" className="mt-6">
@@ -554,7 +569,7 @@ export function AnalystDashboard() {
             {allSubmissions.length > 0 ? (
               <DataTable columns={getColumns('All')} data={allSubmissions} searchPlaceholder="Search all submissions..." />
             ) : (
-              <div className="text-center p-4 text-gray-500">No submissions available.</div>
+              <EmptyState message="You haven't created any submissions yet. Click 'Create New' to get started!" />
             )}
           </DataCard>
         </TabsContent>
@@ -564,7 +579,7 @@ export function AnalystDashboard() {
             {editorials.length > 0 ? (
               <DataTable columns={getColumns('Editorial')} data={editorials} searchPlaceholder="Search editorials..." />
             ) : (
-              <div className="text-center p-4 text-gray-500">No editorial submissions available.</div>
+              <EmptyState message="No editorial submissions available. Create one using the button above." />
             )}
           </DataCard>
         </TabsContent>
@@ -574,7 +589,7 @@ export function AnalystDashboard() {
             {dailyMentions.length > 0 ? (
               <DataTable columns={getColumns('Daily Mention')} data={dailyMentions} searchPlaceholder="Search daily mentions..." />
             ) : (
-              <div className="text-center p-4 text-gray-500">No daily mentions available.</div>
+              <EmptyState message="No daily mentions recorded yet." />
             )}
           </DataCard>
         </TabsContent>
@@ -584,7 +599,7 @@ export function AnalystDashboard() {
             {swotAnalysis.length > 0 ? (
               <DataTable columns={getColumns('SWOT Analysis')} data={swotAnalysis} searchPlaceholder="Search SWOT analysis..." />
             ) : (
-              <div className="text-center p-4 text-gray-500">No SWOT analysis submissions available.</div>
+              <EmptyState message="No SWOT analysis submissions available." />
             )}
           </DataCard>
         </TabsContent>
@@ -594,7 +609,7 @@ export function AnalystDashboard() {
             {socialMentions.length > 0 ? (
               <DataTable columns={getColumns('Social Media Mention')} data={socialMentions} searchPlaceholder="Search social mentions..." />
             ) : (
-              <div className="text-center p-4 text-gray-500">No social media mentions available.</div>
+              <EmptyState message="No social media mentions recorded yet." />
             )}
           </DataCard>
         </TabsContent>
@@ -604,7 +619,17 @@ export function AnalystDashboard() {
             {outcomeInsights.length > 0 ? (
               <DataTable columns={getColumns('Outcome Insight')} data={outcomeInsights} searchPlaceholder="Search insights..." />
             ) : (
-              <div className="text-center p-4 text-gray-500">No outcome insights available.</div>
+              <EmptyState message="No outcome insights submitted yet." />
+            )}
+          </DataCard>
+        </TabsContent>
+
+        <TabsContent value="industry" className="mt-6">
+          <DataCard title="Industry Landscape" description="Manage your industry landscape overviews" variant="glass">
+            {industryLandscape.length > 0 ? (
+              <DataTable columns={getColumns('Industry Landscape')} data={industryLandscape} searchPlaceholder="Search industry landscape..." />
+            ) : (
+              <EmptyState message="No industry landscape overviews available yet." />
             )}
           </DataCard>
         </TabsContent>
