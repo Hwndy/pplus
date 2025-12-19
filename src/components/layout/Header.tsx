@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Bell, Search, Settings, User, LogOut, Clock, CheckCircle } from 'lucide-react';
+import { Bell, Settings, User, LogOut, Clock, CheckCircle } from 'lucide-react';
 import { ReactNode, useState } from 'react';
 
 interface HeaderProps {
@@ -103,14 +103,14 @@ export function Header({ children }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-4">
-        <div className="hidden md:flex relative">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+        {/* <div className="hidden md:flex relative"> */}
+          {/* <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <input
             type="search"
             placeholder="Search..."
-            className="rounded-md border border-input bg-background pl-8 pr-3 py-2 text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          />
-        </div>
+            className="rounded-md border border-input bg-background pl-8 pr-3 py-2 text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" */}
+          {/* /> */}
+        {/* </div> */}
 
         {/* Notifications */}
         <DropdownMenu>
