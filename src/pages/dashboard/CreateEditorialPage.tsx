@@ -901,6 +901,7 @@ const CreateEditorialPage = () => {
 
   const currentEditorial = editorials[activeIndex];
 
+  // FIXED: Correct payload structure for create vs update
   const handleSubmit = async (status: 'draft' | 'send') => {
     const validationErrors = validateForm(currentEditorial);
     if (Object.keys(validationErrors).length > 0) {
@@ -912,48 +913,91 @@ const CreateEditorialPage = () => {
     setSubmissionType(status);
 
     try {
-      const payload = {
+      const basePayload = {
         date: editorials[activeIndex].date,
         company_id: editorials[activeIndex].company_id,
         media_type: editorials[activeIndex].media_type,
         ...(user?.role === 'Analyst' && { analyst_note: editorials[activeIndex].analyst_note || '' }),
         ...(user?.role === 'Supervisor' && { supervisor_note: editorials[activeIndex].supervisor_note || '' }),
         ...(user?.role === 'Admin' && { admin_note: editorials[activeIndex].admin_note || '' }),
-        editorials: editorials.map((e) => ({
-          online_channel: e.online_channel,
-          source: e.source,
-          audience_reach: e.audience_reach,
-          placement: e.placement,
-          title: e.title,
-          reporter: e.reporter,
-          country: e.country,
-          spokesperson: e.spokesperson,
-          activity: e.activity,
-          sentiment: e.sentiment,
-          sentiment_keyword_indicator_id: e.sentiment_keyword_indicator_id,
-          advert_spend: e.advert_spend,
-          circulation: e.circulation,
-          page_size: e.page_size,
-          page_number: e.page_number,
-          language: e.language,
-          ceo_thought_leadership: e.ceo_thought_leadership,
-          print_web_clips: e.print_web_clips,
-          filename: e.filename,
-          original_name: e.original_name,
-          file_path: e.file_path,
-          file_size: e.file_size,
-          mime_type: e.mime_type,
-          file_type: e.file_type,
-        })),
       };
 
+      let payload;
+      let url;
+      let method;
+
       if (isEditMode && currentEditorial.id) {
-        await axios.put(`${BASE_URL}/editorials/update/${currentEditorial.id}`, payload);
-        toast({ title: 'Success', description: 'Editorial updated successfully!' });
+        // UPDATE: Send flat fields only (no 'editorials' array)
+        url = `${BASE_URL}/editorials/update/${currentEditorial.id}`;
+        method = 'PUT';
+
+        payload = {
+          ...basePayload,
+          online_channel: currentEditorial.online_channel,
+          source: currentEditorial.source,
+          audience_reach: currentEditorial.audience_reach,
+          placement: currentEditorial.placement,
+          title: currentEditorial.title,
+          reporter: currentEditorial.reporter,
+          country: currentEditorial.country,
+          spokesperson: currentEditorial.spokesperson,
+          activity: currentEditorial.activity,
+          sentiment: currentEditorial.sentiment,
+          sentiment_keyword_indicator_id: currentEditorial.sentiment_keyword_indicator_id,
+          advert_spend: currentEditorial.advert_spend,
+          circulation: currentEditorial.circulation,
+          page_size: currentEditorial.page_size,
+          page_number: currentEditorial.page_number,
+          language: currentEditorial.language,
+          ceo_thought_leadership: currentEditorial.ceo_thought_leadership,
+          print_web_clips: currentEditorial.print_web_clips,
+        };
       } else {
-        await axios.post(`${BASE_URL}/editorials/create`, payload);
-        toast({ title: 'Success', description: 'Editorial created successfully!' });
+        // CREATE: Send batch format with 'editorials' array
+        url = `${BASE_URL}/editorials/create`;
+        method = 'POST';
+
+        payload = {
+          ...basePayload,
+          editorials: editorials.map((e) => ({
+            online_channel: e.online_channel,
+            source: e.source,
+            audience_reach: e.audience_reach,
+            placement: e.placement,
+            title: e.title,
+            reporter: e.reporter,
+            country: e.country,
+            spokesperson: e.spokesperson,
+            activity: e.activity,
+            sentiment: e.sentiment,
+            sentiment_keyword_indicator_id: e.sentiment_keyword_indicator_id,
+            advert_spend: e.advert_spend,
+            circulation: e.circulation,
+            page_size: e.page_size,
+            page_number: e.page_number,
+            language: e.language,
+            ceo_thought_leadership: e.ceo_thought_leadership,
+            print_web_clips: e.print_web_clips,
+            filename: e.filename,
+            original_name: e.original_name,
+            file_path: e.file_path,
+            file_size: e.file_size,
+            mime_type: e.mime_type,
+            file_type: e.file_type,
+          })),
+        };
       }
+
+      await axios({
+        method,
+        url,
+        data: payload,
+      });
+
+      toast({
+        title: 'Success',
+        description: isEditMode ? 'Editorial updated successfully!' : 'Editorial created successfully!',
+      });
 
       navigate('/dashboard/editorial');
     } catch (err: any) {

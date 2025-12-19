@@ -22,7 +22,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom'; // Added useNavigate
 
 // Base URL for API
 const BASE_URL = 'https://pplus-alde.onrender.com/api';
@@ -146,6 +146,7 @@ function ViewDetailsDialog({ open, onClose, entry, type }: { open: boolean; onCl
 
 export function AnalystDashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate(); // Added for programmatic navigation
   const [activeTab, setActiveTab] = useState('all');
   const [viewDetailsDialog, setViewDetailsDialog] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<Submission | null>(null);
@@ -196,14 +197,14 @@ export function AnalystDashboard() {
               throw new Error(`${name} fetch failed: ${res.status} ${res.statusText}`);
             }
             const data = await res.json();
-            // Normalize and validate data
 
-            const normalizedData = (Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : [])
+            const normalizedData = (Array.isArray(data.data?.editorial) ? data.data.editorial : 
+                                   Array.isArray(data.data) ? data.data : 
+                                   Array.isArray(data) ? data : [])
               .filter(item => item && typeof item === 'object')
               .map((item: any) => {
                 let title = 'Untitled';
 
-                // Type-specific title extraction
                 if (type === 'Editorial') {
                   title = item.title || 'Untitled Editorial';
                 } else if (type === 'Daily Mention') {
@@ -232,6 +233,7 @@ export function AnalystDashboard() {
 
                 return {
                   id: item.id?.toString() || `temp-${Math.random().toString(36).substring(2)}`,
+                  rawData: item, // Keep raw for editing
                   type,
                   title,
                   content: item.analyst_note ||
@@ -256,7 +258,6 @@ export function AnalystDashboard() {
           })
         );
 
-        // Check if all responses are empty
         if (responses.every(arr => arr.length === 0)) {
           setError('No submissions found.');
         }
@@ -290,6 +291,77 @@ export function AnalystDashboard() {
   });
 
   const allCounts = getStatusCounts(allSubmissions);
+
+  // Handle Edit/Revise for Editorials specifically
+  const handleEditEditorial = async (entry: any) => {
+    if (!token) {
+      toast.error("Authentication required");
+      return;
+    }
+
+    try {
+      const response = await fetch(`${BASE_URL}/editorials/${entry.id}`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+
+      if (!response.ok) throw new Error("Failed to fetch editorial details");
+
+      const result = await response.json();
+      if (!result.success || !result.data) throw new Error("Invalid response");
+
+      const data = result.data;
+
+      const mappedEditorial = {
+        id: data.id,
+        date: data.date ? new Date(data.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        company_id: data.company?.id,
+        media_type: data.media_type || '',
+        online_channel: data.online_channel || '',
+        source: data.source || '',
+        audience_reach: data.audience_reach || 0,
+        placement: data.placement || '',
+        title: data.title || '',
+        print_web_clips: data.print_web_clips || '',
+        reporter: data.reporter || '',
+        country: data.country || '',
+        spokesperson: data.spokesperson || '',
+        activity: data.activity || '',
+        sentiment: data.sentiment || '',
+        sentiment_keyword_indicator_id: data.sentiment_keyword_indicator?.id,
+        advert_spend: data.advert_spend || 0,
+        circulation: data.circulation || 0,
+        page_size: data.page_size || '',
+        page_number: data.page_number || '',
+        language: data.language || '',
+        ceo_thought_leadership: data.ceo_thought_leadership || '',
+        analyst_note: data.analyst_note || '',
+        supervisor_note: data.supervisor_note || '',
+        admin_note: data.admin_note || '',
+        filename: data.filename,
+        original_name: data.original_name,
+        file_path: data.file_path,
+        file_size: data.file_size,
+        mime_type: data.mime_type,
+        file_type: data.file_type,
+      };
+
+      navigate('/dashboard/editorial/create', {
+        state: {
+          editorialData: {
+            date: mappedEditorial.date,
+            company_id: mappedEditorial.company_id,
+            media_type: mappedEditorial.media_type,
+            analyst_note: mappedEditorial.analyst_note,
+            supervisor_note: mappedEditorial.supervisor_note,
+            admin_note: mappedEditorial.admin_note,
+            editorials: [mappedEditorial],
+          }
+        }
+      });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to load editorial for editing");
+    }
+  };
 
   // Generic columns for tables
   const getColumns = (type: string): ColumnDef<Submission>[] => [
@@ -326,32 +398,47 @@ export function AnalystDashboard() {
       header: 'Actions',
       cell: ({ row }) => {
         const status = row.getValue('status') as string;
-        const entryType = row.original.type.toLowerCase().replace(' ', '-');
+        const entry = row.original;
+        const isEditable = status.toLowerCase() === 'draft' || status.toLowerCase() === 'rejected';
+
         return (
           <div className="flex space-x-2">
             <Button 
               variant="ghost" 
               size="sm"
               onClick={() => {
-                setSelectedEntry(row.original);
-                setSelectedType(row.original.type);
+                setSelectedEntry(entry);
+                setSelectedType(entry.type);
                 setViewDetailsDialog(true);
               }}
             >
               <Eye className="h-4 w-4 mr-1" />
               View
             </Button>
-            {(status.toLowerCase() === 'draft' || status.toLowerCase() === 'rejected') && (
-              <Button 
-                variant="outline" 
-                size="sm"
-                asChild
-              >
-                <Link to={`/dashboard/${entryType}/edit/${row.original.id}`}>
-                  <FileEdit className="h-4 w-4 mr-1" />
-                  {status.toLowerCase() === 'draft' ? 'Edit' : 'Revise'}
-                </Link>
-              </Button>
+            {isEditable && (
+              <>
+                {entry.type === 'Editorial' ? (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => handleEditEditorial(entry)}
+                  >
+                    <FileEdit className="h-4 w-4 mr-1" />
+                    {status.toLowerCase() === 'draft' ? 'Edit' : 'Revise'}
+                  </Button>
+                ) : (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    asChild
+                  >
+                    <Link to={`/dashboard/${entry.type.toLowerCase().replace(' ', '-')}/edit/${entry.id}`}>
+                      <FileEdit className="h-4 w-4 mr-1" />
+                      {status.toLowerCase() === 'draft' ? 'Edit' : 'Revise'}
+                    </Link>
+                  </Button>
+                )}
+              </>
             )}
           </div>
         );
