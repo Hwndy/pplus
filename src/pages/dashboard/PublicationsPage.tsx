@@ -70,7 +70,7 @@ const PublicationsPage: React.FC = () => {
       };
 
       const response = await fetch(
-        `https://pplus-5kdv.onrender.com/api/data-parameters/category/Publications?page=${page}&limit=${pageSize}&search=${encodeURIComponent(search)}`,
+        `https://pplus-alde.onrender.com/api/data-parameters/category/Publications?page=${page}&limit=${pageSize}&search=${encodeURIComponent(search)}`,
         { headers }
       );
 
@@ -121,7 +121,7 @@ const PublicationsPage: React.FC = () => {
 
     try {
       setDeletingId(id);
-      const response = await fetch(`https://pplus-5kdv.onrender.com/api/data-parameters/value/delete/${id}`, {
+      const response = await fetch(`https://pplus-alde.onrender.com/api/data-parameters/value/delete/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -152,7 +152,7 @@ const PublicationsPage: React.FC = () => {
     try {
       setLoading(true);
 
-      const response = await fetch('https://pplus-5kdv.onrender.com/api/data-parameters', {
+      const response = await fetch('https://pplus-alde.onrender.com/api/data-parameters', {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -172,8 +172,8 @@ const PublicationsPage: React.FC = () => {
       if (!publicationsCategory) throw new Error('Publications category not found');
 
       const url = editingPublication
-        ? `https://pplus-5kdv.onrender.com/api/data-parameters/value/update/${editingPublication.id}`
-        : `https://pplus-5kdv.onrender.com/api/data-parameters/value/create`;
+        ? `https://pplus-alde.onrender.com/api/data-parameters/value/update/${editingPublication.id}`
+        : `https://pplus-alde.onrender.com/api/data-parameters/value/create`;
 
       const payload = editingPublication
         ? { value: publicationData.name }

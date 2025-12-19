@@ -25,7 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Link } from 'react-router-dom';
 
 // Base URL for API
-const BASE_URL = 'https://pplus-5kdv.onrender.com/api';
+const BASE_URL = 'https://pplus-alde.onrender.com/api';
 
 // Interface for normalized submission data
 interface Submission {

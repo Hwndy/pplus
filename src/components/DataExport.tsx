@@ -29,7 +29,7 @@ type ExportType =
   | 'outcome-insights'
   | 'social-media-mentions';
 
-const API_BASE_URL = 'https://pplus-5kdv.onrender.com/api/export';
+const API_BASE_URL = 'https://pplus-alde.onrender.com/api/export';
 
 export function DataExport() {
   const { token } = useAuth();

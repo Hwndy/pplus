@@ -68,10 +68,10 @@ export function SwotMentionsPage() {
       const role = user?.role?.name;
 
       const endpoint = role === 'Supervisor'
-        ? 'https://pplus-5kdv.onrender.com/api/swot-analysis/supervisor-mentions'
+        ? 'https://pplus-alde.onrender.com/api/swot-analysis/supervisor-mentions'
         : role === 'Analyst'
-        ? 'https://pplus-5kdv.onrender.com/api/swot-analysis/my-analysis'
-        : 'https://pplus-5kdv.onrender.com/api/swot-analysis';
+        ? 'https://pplus-alde.onrender.com/api/swot-analysis/my-analysis'
+        : 'https://pplus-alde.onrender.com/api/swot-analysis';
 
       const url = `${endpoint}?page=${page}&limit=10`;
 
@@ -141,7 +141,7 @@ export function SwotMentionsPage() {
     if (!window.confirm(`Delete SWOT analysis for ${swot.company.company_name}?`)) return;
 
     try {
-      const response = await fetch(`https://pplus-5kdv.onrender.com/api/swot-analysis/delete/${swot.id}`, {
+      const response = await fetch(`https://pplus-alde.onrender.com/api/swot-analysis/delete/${swot.id}`, {
         method: 'PUT',
         headers: getAuthHeaders(),
       });

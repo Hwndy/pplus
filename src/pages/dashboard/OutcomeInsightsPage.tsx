@@ -228,7 +228,7 @@ export default function OutcomeInsightsPage() {
     totalPages: 0,
   });
 
-  const BASE_URL = 'https://pplus-5kdv.onrender.com/api';
+  const BASE_URL = 'https://pplus-alde.onrender.com/api';
 
   const fetchOutcomeInsights = async (page = 1, limit = 10) => {
     if (!user || !token) {

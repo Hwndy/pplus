@@ -101,7 +101,7 @@ export function PublicationsAnalysisPage() {
         params.append('endDate', endDate);
       }
 
-      const url = `https://pplus-5kdv.onrender.com/api/report/publication-reporter-spokesperson-analysis?${params.toString()}`;
+      const url = `https://pplus-alde.onrender.com/api/report/publication-reporter-spokesperson-analysis?${params.toString()}`;
       console.log('Fetching Publications Analysis →', url);
 
       const response = await fetch(url, {
