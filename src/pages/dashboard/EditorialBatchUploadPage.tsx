@@ -25,6 +25,7 @@ const EditorialBatchUploadPage = () => {
     if (e.target.files && e.target.files[0]) {
       setUploadFile(e.target.files[0]);
       setUploadSuccess(false);
+      setUploadStats(null);
     }
   };
 
@@ -42,17 +43,37 @@ const EditorialBatchUploadPage = () => {
 
       setIsUploading(false);
       setUploadSuccess(true);
+
+      // Correctly extract stats from backend response structure
+      const summary = response.data?.summary || {};
+
       setUploadStats({
-        total: response.data?.total || 0,
-        processed: response.data?.processed || 0,
-        errors: response.data?.errors || 0
+        total: summary.total_rows_processed || 0,
+        processed: summary.successful_imports || 0,
+        errors: summary.failed_imports || 0,
       });
 
-      toast.success(`File ${uploadFile.name} processed successfully`);
-    } catch (error) {
+      // Better success message
+      if (summary.failed_imports > 0) {
+        toast.success(
+          `${summary.successful_imports} records imported successfully, ${summary.failed_imports} failed`
+        );
+      } else {
+        toast.success(
+          `Upload successful! All ${summary.successful_imports} records processed.`
+        );
+      }
+    } catch (error: any) {
       console.error('Batch upload error:', error);
       setIsUploading(false);
-      toast.error('Failed to process file. Please check the format and try again.');
+      setUploadSuccess(false);
+
+      const errorMessage =
+        Array.isArray(error.response?.data?.message)
+          ? error.response.data.message.map((m: any) => m.message || m).join('; ')
+          : error.response?.data?.message || error.message || 'Unknown error occurred';
+
+      toast.error(`Upload failed: ${errorMessage}`);
     }
   };
 
@@ -86,6 +107,13 @@ const EditorialBatchUploadPage = () => {
   // View processed data
   const handleViewData = () => {
     navigate('/dashboard/editorial');
+  };
+
+  // Reset upload form
+  const handleUploadAnother = () => {
+    setUploadFile(null);
+    setUploadSuccess(false);
+    setUploadStats(null);
   };
 
   return (
@@ -130,28 +158,28 @@ const EditorialBatchUploadPage = () => {
             </CardHeader>
             <CardContent>
               {uploadStats && (
-                <div className="grid grid-cols-3 gap-4 text-center">
+                <div className="grid grid-cols-3 gap-8 text-center">
                   <div className="space-y-1">
                     <p className="text-sm text-muted-foreground">Total Records</p>
-                    <p className="text-2xl font-bold">{uploadStats.total}</p>
+                    <p className="text-3xl font-bold">{uploadStats.total.toLocaleString()}</p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">Processed</p>
-                    <p className="text-2xl font-bold text-green-600">{uploadStats.processed}</p>
+                    <p className="text-sm text-muted-foreground">Successfully Processed</p>
+                    <p className="text-3xl font-bold text-green-600">
+                      {uploadStats.processed.toLocaleString()}
+                    </p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-sm text-muted-foreground">Errors</p>
-                    <p className="text-2xl font-bold text-red-500">{uploadStats.errors}</p>
+                    <p className="text-3xl font-bold text-red-600">
+                      {uploadStats.errors.toLocaleString()}
+                    </p>
                   </div>
                 </div>
               )}
             </CardContent>
-            <CardFooter className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => {
-                setUploadFile(null);
-                setUploadSuccess(false);
-                setUploadStats(null);
-              }}>
+            <CardFooter className="flex justify-end gap-3">
+              <Button variant="outline" onClick={handleUploadAnother}>
                 Upload Another File
               </Button>
               <Button onClick={handleViewData}>
@@ -174,14 +202,20 @@ const EditorialBatchUploadPage = () => {
               <CardContent>
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="file-upload">Select Excel File</Label>
-                    <div className="flex items-center gap-2">
+                    <Label htmlFor="file-upload">Select File (.xlsx, .xls, .csv)</Label>
+                    <div className="flex items-center gap-3">
                       <Input
                         id="file-upload"
                         type="file"
                         accept=".xlsx,.xls,.csv"
                         onChange={handleFileChange}
+                        disabled={isUploading}
                       />
+                      {uploadFile && (
+                        <p className="text-sm text-muted-foreground truncate max-w-xs">
+                          Selected: {uploadFile.name}
+                        </p>
+                      )}
                     </div>
                     <p className="text-xs text-muted-foreground">
                       Accepted formats: Excel (.xlsx, .xls) or CSV (.csv)
@@ -190,14 +224,14 @@ const EditorialBatchUploadPage = () => {
                 </div>
               </CardContent>
               <CardFooter className="flex justify-between">
-                <Button variant="outline" onClick={handleDownloadTemplate}>
+                <Button variant="outline" onClick={handleDownloadTemplate} disabled={isUploading}>
                   <Download className="mr-2 h-4 w-4" />
                   Download Template
                 </Button>
                 <Button
                   onClick={handleBatchUpload}
                   disabled={!uploadFile || isUploading}
-                  className="bg-indigo-950"
+                  className="bg-indigo-950 hover:bg-indigo-800"
                 >
                   {isUploading ? (
                     <>
@@ -222,58 +256,60 @@ const EditorialBatchUploadPage = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-sm space-y-4">
+                <div className="text-sm space-y-6">
                   <div>
                     <p className="font-medium mb-2">Required Columns:</p>
                     <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
                       <li>date (YYYY-MM-DD format)</li>
                       <li>company (Company name)</li>
-                      <li>industry (Industry category)</li>
-                      <li>brand (Brand name)</li>
-                      <li>publication (Publication name)</li>
+                      <li>source (Publication name)</li>
                       <li>title (Editorial title)</li>
-                      <li>mediaType (Print or Online)</li>
+                      <li>media type (Print or Online)</li>
                       <li>sentiment (Positive, Negative, or Neutral)</li>
                     </ul>
                   </div>
-                  
+
                   <div>
                     <p className="font-medium mb-2">Optional Columns:</p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-1">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2">
                       <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                        <li>subSector (Sub-sector within industry)</li>
-                        <li>placement (Headline, Photo, etc.)</li>
-                        <li>page (Page number)</li>
-                        <li>link (URL for online content)</li>
+                        <li>placement (Headline, Front Page, etc.)</li>
                         <li>reporter (Reporter name)</li>
                         <li>country (Country name)</li>
-                      </ul>
-                      <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                        <li>language (Language)</li>
                         <li>spokesperson (Spokesperson name)</li>
                         <li>activity (Activity type)</li>
-                        <li>onlineChannel (For online media type)</li>
-                        <li>mediaSentimentIndex (Numeric value)</li>
-                        <li>advertSpend (Numeric value)</li>
+                        <li>online channel (For online media)</li>
                       </ul>
                       <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                        <li>circulation (Numeric value)</li>
-                        <li>audienceReach (Numeric value)</li>
-                        <li>pageSize (Full Page, Half Page, etc.)</li>
-                        <li>analystNote (Text)</li>
+                        <li>advert spend (Numeric)</li>
+                        <li>circulation (Numeric)</li>
+                        <li>audience reach (Numeric)</li>
+                        <li>page size (Full Page, Half Page, etc.)</li>
+                        <li>page number</li>
+                        <li>language</li>
+                      </ul>
+                      <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+                        <li>ceo thought leadership (Yes/No)</li>
+                        <li>print web clips (URL)</li>
+                        <li>sentiment keyword indicator</li>
+                        <li>analyst note</li>
+                        <li>supervisor note</li>
+                        <li>admin note</li>
                       </ul>
                     </div>
                   </div>
-                  
-                  <div className="bg-amber-50 p-4 rounded-md border border-amber-200">
-                    <p className="font-medium text-amber-800 mb-2">Tips for successful upload:</p>
-                    <ul className="list-disc pl-5 space-y-1 text-amber-700">
-                      <li>Make sure your file has a header row with the column names</li>
-                      <li>Dates should be in YYYY-MM-DD format (e.g., 2023-05-15)</li>
-                      <li>Use consistent naming for companies, publications, etc.</li>
-                      <li>For mediaType, use only "Print" or "Online"</li>
-                      <li>For sentiment, use only "Positive", "Negative", or "Neutral"</li>
-                      <li>CSV files should use comma separators</li>
+
+                  <div className="bg-amber-50 dark:bg-amber-950 p-4 rounded-md border border-amber-200 dark:border-amber-800">
+                    <p className="font-medium text-amber-800 dark:text-amber-300 mb-2">
+                      Tips for successful upload:
+                    </p>
+                    <ul className="list-disc pl-5 space-y-1 text-amber-700 dark:text-amber-400">
+                      <li>First row must be headers matching column names exactly (case-insensitive)</li>
+                      <li>Dates must be in YYYY-MM-DD format</li>
+                      <li>Media Type: use only "Print" or "Online"</li>
+                      <li>Sentiment: use only "Positive", "Negative", or "Neutral"</li>
+                      <li>Ensure company names match exactly as in the system</li>
+                      <li>CSV files should use comma as separator</li>
                     </ul>
                   </div>
                 </div>
