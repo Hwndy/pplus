@@ -122,46 +122,7 @@ export function AdminDashboard() {
           >
             Overview
           </button>
-          {/* <button
-            className={`px-4 py-2 rounded-md transition-colors ${
-              selectedSection === 'users'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground'
-            }`}
-            onClick={() => setSelectedSection('users')}
-          >
-            Users
-          </button> */}
-          {/* <button
-            className={`px-4 py-2 rounded-md transition-colors ${
-              selectedSection === 'parameters'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground'
-            }`}
-            onClick={() => setSelectedSection('parameters')}
-          >
-            Parameters
-          </button> */}
-          {/* <button
-            className={`px-4 py-2 rounded-md transition-colors ${
-              selectedSection === 'content-review'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground'
-            }`}
-            onClick={() => setSelectedSection('content-review')}
-          >
-            Content Review
-          </button> */}
-          {/* <button
-            className={`px-4 py-2 rounded-md transition-colors ${
-              selectedSection === 'data-entry'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground'
-            }`}
-            onClick={() => setSelectedSection('data-entry')}
-          >
-            Data Entry
-          </button> */}
+          
           <button
             className={`px-4 py-2 rounded-md transition-colors ${
               selectedSection === 'export'
@@ -194,6 +155,14 @@ export function AdminDashboard() {
                 label="All Registered Users"
                 value={auditStatsLoading ? 'Loading...' : auditStats?.total_users ?? 0}
                 subtitle="Across all roles"
+              />
+            </DataCard>
+
+            <DataCard title="Admins" variant="glass" icon={<CheckCircle size={24} />}>
+              <Stat
+                label="Admins"
+                value={auditStatsLoading ? 'Loading...' : auditStats?.total_admins ?? 0}
+                subtitle="Content reviewers & managers"
               />
             </DataCard>
 
