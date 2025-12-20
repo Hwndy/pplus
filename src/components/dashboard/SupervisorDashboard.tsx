@@ -434,8 +434,8 @@ export function SupervisorDashboard() {
     } else if (type === 'industryLandscapeOverview') {
       return {
         id: rawEntry.id.toString(),
-        title: rawEntry.title || rawEntry.overview_title || rawEntry.analyst_note?.slice(0, 50) || 'Untitled',
-        content: rawEntry.analyst_note || rawEntry.overview_content || '',
+        title: rawEntry.sector || rawEntry.title || 'Untitled Industry Overview',
+        content: rawEntry.highlights?.join('\n') || rawEntry.analyst_note || 'No highlights available',
         status: rawEntry.status || 'pending',
         createdAt: rawEntry.date || rawEntry.createdAt || new Date().toISOString(),
         updatedAt: rawEntry.updatedAt,
@@ -462,7 +462,7 @@ export function SupervisorDashboard() {
     };
   };
 
-  // Fetch Stats (unchanged)
+  // Fetch Stats
   const fetchStats = async () => {
     if (!token || !user?.id) return;
 
@@ -520,19 +520,19 @@ export function SupervisorDashboard() {
         const s = json.data?.stats || {};
         setStats(prev => ({
           ...prev,
-          pending: s.pending_editorials ?? 0,
-          approved: s.approved_editorials ?? 0,
-          rejected: s.rejected_editorials ?? 0,
-          total: s.total_editorials ?? 0,
+          pending: s.pending_insights ?? 0,
+          approved: s.approved_insights ?? 0,
+          rejected: s.rejected_insights ?? 0,
+          total: s.total_insights ?? 0,
           approvedToday: s.approved_today ?? 0,
           rejectedToday: s.rejected_today ?? 0,
           byType: {
             ...prev.byType,
             [activeTab]: {
-              pending: s.pending_editorials ?? 0,
-              approved: s.approved_editorials ?? 0,
-              rejected: s.rejected_editorials ?? 0,
-              total: s.total_editorials ?? 0,
+              pending: s.pending_insights ?? 0,
+              approved: s.approved_insights ?? 0,
+              rejected: s.rejected_insights ?? 0,
+              total: s.total_insights ?? 0,
               displayName: contentTypes[activeTab].displayName,
             },
           },
@@ -549,7 +549,7 @@ export function SupervisorDashboard() {
     }
   };
 
-  // Fetch Entries for Type — Fixed Pagination
+  // Fetch Entries for Type — Fixed for Industry Landscape
   const fetchEntries = async (type: ContentTypeKey, page: number = 1) => {
     if (!token || !user?.id) return;
 
@@ -612,11 +612,11 @@ export function SupervisorDashboard() {
               rejectedKey: 'rejected_mentions',
             },
             industryLandscapeOverview: {
-              recentKey: 'recent_overviews',
-              totalKey: 'total_overviews',
-              pendingKey: 'pending_overviews',
-              approvedKey: 'approved_overviews',
-              rejectedKey: 'rejected_overviews',
+              recentKey: 'recent_insights', // ← FIXED: Backend uses 'recent_insights'
+              totalKey: 'total_insights',
+              pendingKey: 'pending_insights',
+              approvedKey: 'approved_insights',
+              rejectedKey: 'rejected_insights',
             },
           };
 
@@ -653,7 +653,6 @@ export function SupervisorDashboard() {
             },
           }));
         } else {
-          // Admin/general endpoints
           entries = Array.isArray(json.data?.data) ? json.data.data : (Array.isArray(json.data) ? json.data : []);
           paginationData = {
             currentPage: json.data?.pagination?.page || json.pagination?.page || page,
@@ -691,7 +690,7 @@ export function SupervisorDashboard() {
     toast.success('Data refreshed');
   };
 
-  // Update Entry Status (unchanged)
+  // Update Entry Status
   const updateStatus = async (entry: GenericEntry, newStatus: 'approved' | 'rejected', comments?: string) => {
     if (!token || !user?.id || !currentEntry) return;
 
@@ -862,8 +861,6 @@ export function SupervisorDashboard() {
                       onPageChange={(page: number) => fetchEntries(typeKey, page)}
                     />
                   )}
-
-                  {/* Removed duplicate "Showing X to Y of Z" — DataTable already handles it */}
                 </CardContent>
               </Card>
             </TabsContent>
