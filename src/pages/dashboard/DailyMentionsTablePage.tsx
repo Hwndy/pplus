@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Eye, Edit, Trash2, Filter, X, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom'; // Added useLocation
 import { DataTable } from '@/components/ui/DataTable';
 import { ColumnDef } from '@tanstack/react-table';
 import { useToast } from '@/hooks/use-toast';
@@ -86,6 +86,7 @@ const ITEMS_PER_PAGE = 10;
 
 const DailyMentionsTablePage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation(); // Added for dashboard navigation fix
   const { toast } = useToast();
   const { user, token } = useAuth();
 
@@ -113,6 +114,13 @@ const DailyMentionsTablePage: React.FC = () => {
 
   const [companies, setCompanies] = useState<Company[]>([]);
   const [publications, setPublications] = useState<Publication[]>([]);
+
+  // === FIX: Auto-open edit modal when navigated from Analyst Dashboard ===
+  useEffect(() => {
+    if (location.state?.editId) {
+      handleEdit(location.state.editId);
+    }
+  }, [location.state]);
 
   // === URL Validation ===
   const isValidUrl = (url: string): boolean => {

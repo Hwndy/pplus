@@ -37,6 +37,7 @@ interface Submission {
   status: string;
   comments?: string;
   author?: string;
+  rawData: any; // Keep raw data for mapping
 }
 
 // Status badge component
@@ -165,6 +166,15 @@ export function AnalystDashboard() {
   // Get token from localStorage
   const token = localStorage.getItem('token');
 
+  // Route map for non-editorial types
+  const routeMap: Record<string, string> = {
+    'Daily Mention': '/dashboard/daily-mentions',
+    'SWOT Analysis': '/dashboard/swot-mentions',
+    'Social Media Mention': '/dashboard/social-media-mentions',
+    'Outcome Insight': '/dashboard/outcome-insights',
+    'Industry Landscape': '/dashboard/industry-landscape-overview',
+  };
+
   // Fetch all data
   useEffect(() => {
     if (!token || !user) {
@@ -291,7 +301,7 @@ export function AnalystDashboard() {
 
   const allCounts = getStatusCounts(allSubmissions);
 
-  // Handle Edit/Revise for Editorials specifically
+  // Combined Handle Edit for Editorial
   const handleEditEditorial = async (entry: any) => {
     if (!token) {
       toast.error("Authentication required");
@@ -362,6 +372,42 @@ export function AnalystDashboard() {
     }
   };
 
+  // Unified Edit Handler - Works with ALL current page implementations
+  const handleEdit = (entry: Submission) => {
+    const data = entry.rawData;
+
+    let targetPath = '';
+    let stateData: any = {};
+
+    switch (entry.type) {
+      case 'Daily Mention':
+        targetPath = '/dashboard/daily-mentions';
+        stateData = { editId: entry.id }; // Page will use useEffect to call handleEdit(id)
+        break;
+      case 'SWOT Analysis':
+        targetPath = '/dashboard/swot-mentions';
+        stateData = { editData: data }; // Page will use useEffect to set selectedSwot and open dialog
+        break;
+      case 'Social Media Mention':
+        targetPath = '/dashboard/social-media-mentions';
+        stateData = { editingMention: data }; // Page will use useEffect to setEditingMention
+        break;
+      case 'Outcome Insight':
+        targetPath = '/dashboard/outcome-insights';
+        stateData = { editData: data }; // Page will use useEffect to set selectedOutcome and isEditMode
+        break;
+      case 'Industry Landscape':
+        targetPath = '/dashboard/industry-landscape-overview';
+        stateData = { editingItem: data }; // Page will use useEffect to setEditingItem and open dialog
+        break;
+      default:
+        toast.error('Unsupported type');
+        return;
+    }
+
+    navigate(targetPath, { state: stateData });
+  };
+
   // Generic columns for tables
   const getColumns = (type: string): ColumnDef<Submission>[] => [
     {
@@ -399,6 +445,7 @@ export function AnalystDashboard() {
         const status = row.getValue('status') as string;
         const entry = row.original;
         const isEditable = status.toLowerCase() === 'draft' || status.toLowerCase() === 'rejected';
+        const buttonText = status.toLowerCase() === 'draft' ? 'Edit' : 'Revise';
 
         return (
           <div className="flex space-x-2">
@@ -415,29 +462,20 @@ export function AnalystDashboard() {
               View
             </Button>
             {isEditable && (
-              <>
-                {entry.type === 'Editorial' ? (
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleEditEditorial(entry)}
-                  >
-                    <FileEdit className="h-4 w-4 mr-1" />
-                    {status.toLowerCase() === 'draft' ? 'Edit' : 'Revise'}
-                  </Button>
-                ) : (
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    asChild
-                  >
-                    <Link to={`/dashboard/${entry.type.toLowerCase().replace(/ /g, '-')}/edit/${entry.id}`}>
-                      <FileEdit className="h-4 w-4 mr-1" />
-                      {status.toLowerCase() === 'draft' ? 'Edit' : 'Revise'}
-                    </Link>
-                  </Button>
-                )}
-              </>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  if (entry.type === 'Editorial') {
+                    handleEditEditorial(entry);
+                  } else {
+                    handleEdit(entry);
+                  }
+                }}
+              >
+                <FileEdit className="h-4 w-4 mr-1" />
+                {buttonText}
+              </Button>
             )}
           </div>
         );

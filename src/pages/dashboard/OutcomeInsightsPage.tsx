@@ -43,6 +43,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/components/auth/AuthContext';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { useLocation } from 'react-router-dom'; // ← Added for dashboard fix
 
 interface InsightItem {
   category: string;
@@ -213,6 +214,8 @@ function ViewOutcomeModal({
 /* ------------------------------------------------------------------ */
 export default function OutcomeInsightsPage() {
   const { user, token } = useAuth();
+  const location = useLocation(); // ← Added to detect navigation from dashboard
+
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedOutcome, setSelectedOutcome] = useState<OutcomeInsight | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -229,6 +232,15 @@ export default function OutcomeInsightsPage() {
   });
 
   const BASE_URL = 'https://pplus-alde.onrender.com/api';
+
+  // === FIX: Auto-open edit modal when navigated from Analyst Dashboard ===
+  useEffect(() => {
+    if (location.state?.editData) {
+      setSelectedOutcome(location.state.editData);
+      setIsEditMode(true);
+      setIsCreateOpen(true);
+    }
+  }, [location.state]);
 
   const fetchOutcomeInsights = async (page = 1, limit = 10) => {
     if (!user || !token) {

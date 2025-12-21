@@ -43,6 +43,7 @@ import { useAuth } from '@/components/auth/AuthContext';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useLocation } from 'react-router-dom'; // ← Added for dashboard fix
 
 interface Company {
   id: number;
@@ -355,6 +356,8 @@ function ViewModal({ item, onClose }: { item: IndustryLandscape; onClose: () => 
 /* ====================== MAIN PAGE ====================== */
 export default function IndustryLandscapeOverviewPage() {
   const { token } = useAuth();
+  const location = useLocation(); // ← Added to detect navigation from dashboard
+
   const [items, setItems] = useState<IndustryLandscape[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -368,6 +371,14 @@ export default function IndustryLandscapeOverviewPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<IndustryLandscape | null>(null);
   const [viewingItem, setViewingItem] = useState<IndustryLandscape | null>(null);
+
+  // === FIX: Auto-open edit dialog when navigated from Analyst Dashboard ===
+  useEffect(() => {
+    if (location.state?.editingItem) {
+      setEditingItem(location.state.editingItem);
+      setIsCreateOpen(true);
+    }
+  }, [location.state]);
 
   const fetchData = async (page = 1) => {
     if (!token) return;

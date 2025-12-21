@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth } from '@/components/auth/AuthContext';
+import { useLocation } from 'react-router-dom'; // Added for dashboard navigation fix
 
 interface SwotAnalysis {
   id: number;
@@ -41,6 +42,7 @@ interface Pagination {
 
 export function SwotMentionsPage() {
   const { user, token } = useAuth();
+  const location = useLocation(); // Added to detect navigation from dashboard
   const [currentDate] = useState(new Date());
   const [swotData, setSwotData] = useState<SwotAnalysis[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
@@ -51,6 +53,14 @@ export function SwotMentionsPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedSwot, setSelectedSwot] = useState<SwotAnalysis | null>(null);
+
+  // === FIX: Auto-open edit dialog when navigated from Analyst Dashboard ===
+  useEffect(() => {
+    if (location.state?.editData) {
+      setSelectedSwot(location.state.editData);
+      setEditDialogOpen(true);
+    }
+  }, [location.state]);
 
   const getAuthHeaders = () => ({
     'Content-Type': 'application/json',

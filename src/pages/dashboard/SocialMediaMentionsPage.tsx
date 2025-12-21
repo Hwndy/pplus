@@ -11,6 +11,7 @@ import { SocialMediaMentionForm } from '../dashboard/components/SocialMediaMenti
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useAuth } from '@/components/auth/AuthContext';
+import { useLocation } from 'react-router-dom'; // ← Added for dashboard fix
 
 const API_BASE = 'https://pplus-alde.onrender.com/api';
 
@@ -46,6 +47,7 @@ interface Pagination {
 
 export default function SocialMediaMentionsPage() {
   const { user, token } = useAuth();
+  const location = useLocation(); // ← Added to read navigation state from dashboard
 
   const [loading, setLoading] = useState(true);
   const [mentions, setMentions] = useState<SocialMediaMention[]>([]);
@@ -58,6 +60,13 @@ export default function SocialMediaMentionsPage() {
   const [error, setError] = useState<string | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingMention, setEditingMention] = useState<SocialMediaMention | null>(null);
+
+  // === FIX: Auto-open edit modal when navigated from Analyst Dashboard ===
+  useEffect(() => {
+    if (location.state?.editingMention) {
+      setEditingMention(location.state.editingMention);
+    }
+  }, [location.state]);
 
   const fetchMentions = async (page = 1, limit = 10) => {
     if (!user || !token) {
