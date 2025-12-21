@@ -204,7 +204,7 @@ export default function IndustryLandscapePage() {
       )}
 
       {/* Header */}
-      <div className="bg-gradient-to-r from-teal-600 via-emerald-600 to-green-600 rounded-2xl p-8 text-white relative overflow-hidden">
+      <div className="bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 rounded-2xl p-8 text-white relative overflow-hidden">
         <div className="absolute inset-0 bg-black/10"></div>
         <div className="relative z-10 flex items-center justify-between">
           <div>
