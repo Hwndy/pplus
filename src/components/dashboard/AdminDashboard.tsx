@@ -149,7 +149,7 @@ export function AdminDashboard() {
       {selectedSection === 'overview' && (
         <div className="space-y-6">
           <h2 className="text-xl font-semibold mt-8">User Breakdown</h2>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
             <DataCard title="Total Users" variant="glass" icon={<Users size={24} />}>
               <Stat
                 label="All Registered Users"
