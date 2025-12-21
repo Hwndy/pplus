@@ -35,7 +35,7 @@ export function DataExport() {
   const { token } = useAuth();
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState<ExportFilters>({
-    format: 'json',
+    format: 'csv',
   });
 
   const handleExport = async (exportType: ExportType) => {
