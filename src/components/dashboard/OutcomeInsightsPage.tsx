@@ -224,9 +224,9 @@ export default function OutcomeInsightsPage() {
         <div className="relative z-10 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold mb-2 tracking-tight">Outcome Insights</h1>
-            <p className="text-amber-100 text-lg">Strategic insights and recommendations</p>
+            <p className="text-white text-lg">Strategic insights and recommendations</p>
             {activePair && (
-              <p className="text-amber-200 text-sm mt-1">Currently viewing: <strong>{activePair.base_company.company_name}</strong></p>
+              <p className="text-white text-sm mt-1">Currently viewing: <strong>{activePair.base_company.company_name}</strong></p>
             )}
           </div>
           <div className="flex items-center gap-4">
@@ -234,9 +234,9 @@ export default function OutcomeInsightsPage() {
               <Lightbulb size={32} className="text-white" />
             </div>
             <div className="text-right">
-              <div className="text-sm text-amber-100">Total Insights</div>
+              <div className="text-sm text-white">Total Insights</div>
               <div className="text-2xl font-bold text-white">{totalCount}</div>
-              <div className="text-sm text-amber-200">{unreadCount} unread</div>
+              <div className="text-sm text-white">{unreadCount} unread</div>
             </div>
           </div>
         </div>

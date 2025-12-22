@@ -324,11 +324,11 @@ export function ExecutiveSummaryPage() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-blue-500 text-transparent bg-clip-text">
+      <div className="flex justify-between items-center bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 rounded-2xl p-8 text-white relative overflow-hidden">
+        <h2 className="text-2xl font-bold text-white bg-clip-text">
           Executive Summary - {data.company}
         </h2>
-        <div className="text-sm text-gray-500">
+        <div className="text-sm text-white">
           {formatDate(displayDates.start)} – {formatDate(displayDates.end)}
         </div>
       </div>

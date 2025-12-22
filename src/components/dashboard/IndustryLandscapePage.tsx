@@ -209,9 +209,9 @@ export default function IndustryLandscapePage() {
         <div className="relative z-10 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold mb-2 tracking-tight">Industry Landscape</h1>
-            <p className="text-teal-100 text-lg">Sector updates and market insights</p>
+            <p className="text-white text-lg">Sector updates and market insights</p>
             {activePair && (
-              <p className="text-teal-200 text-sm mt-1">Currently viewing: <strong>{activePair.base_company.company_name}</strong></p>
+              <p className="text-white text-sm mt-1">Currently viewing: <strong>{activePair.base_company.company_name}</strong></p>
             )}
           </div>
           <div className="flex items-center gap-4">
@@ -219,9 +219,9 @@ export default function IndustryLandscapePage() {
               <TrendingUp size={32} className="text-white" />
             </div>
             <div className="text-right">
-              <div className="text-sm text-teal-100">Total Updates</div>
+              <div className="text-sm text-white">Total Updates</div>
               <div className="text-2xl font-bold text-white">{totalCount}</div>
-              <div className="text-sm text-teal-200">{unreadCount} unread</div>
+              <div className="text-sm text-white">{unreadCount} unread</div>
             </div>
           </div>
         </div>

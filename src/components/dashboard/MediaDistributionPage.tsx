@@ -203,9 +203,9 @@ export function MediaDistributionPage() {
         <div className="relative z-10 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold mb-2 tracking-tight">Distribution of Media Activities</h1>
-            <p className="text-orange-100 text-lg">Thematic analysis and media activity breakdown</p>
+            <p className="text-white text-lg">Thematic analysis and media activity breakdown</p>
             {activePair && (
-              <p className="text-orange-200 text-sm mt-1">Currently viewing: <strong>{activePair.base_company.company_name}</strong></p>
+              <p className="text-white text-sm mt-1">Currently viewing: <strong>{activePair.base_company.company_name}</strong></p>
             )}
           </div>
           <div className="flex items-center gap-4">
@@ -213,11 +213,11 @@ export function MediaDistributionPage() {
               <Activity size={32} className="text-white" />
             </div>
             <div className="text-right">
-              <div className="text-sm text-orange-100">Total Editorials</div>
+              <div className="text-sm text-white">Total Editorials</div>
               <div className="text-2xl font-bold text-white">
                 {thematicData?.total_editorials || 0}
               </div>
-              <div className="text-sm text-orange-200">
+              <div className="text-sm text-white">
                 {thematicData?.unique_activities || 0} unique activities
               </div>
             </div>

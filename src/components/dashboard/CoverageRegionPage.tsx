@@ -212,9 +212,9 @@ export function CoverageRegionPage() {
         <div className="relative z-10 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold mb-2 tracking-tight">Coverage by Region</h1>
-            <p className="text-green-100 text-lg">Regional media coverage and social media analytics</p>
+            <p className="text-white text-lg">Regional media coverage and social media analytics</p>
             {activePair && (
-              <p className="text-green-200 text-sm mt-1">Currently viewing: <strong>{activePair.base_company.company_name}</strong></p>
+              <p className="text-white text-sm mt-1">Currently viewing: <strong>{activePair.base_company.company_name}</strong></p>
             )}
           </div>
           <div className="flex items-center gap-4">

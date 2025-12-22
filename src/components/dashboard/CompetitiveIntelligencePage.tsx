@@ -153,10 +153,12 @@ export function CompetitiveIntelligencePage() {
   // No date selected yet
   if (!displayDates) {
     return (
-      <div className="space-y-6 animate-fade-in">
-        <h2 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 text-transparent bg-clip-text">
+      <div className="space-y-6 animate-fade-in ">
+        <div className="bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 rounded-2xl p-8 text-white relative overflow-hidden">
+          <h2 className="text-2xl font-bold text-white text-transparent bg-clip-text">
           Competitive Intelligence - {activePair?.base_company.company_name || 'Your Company'} ({industryName} Industry)
         </h2>
+        </div>
 
         <UniversalFilter
           filters={filterOptions}

@@ -191,9 +191,12 @@ export function CompetitiveSentimentPage() {
   if (!displayDates) {
     return (
       <div className="space-y-6 animate-fade-in">
-        <h2 className="text-3xl font-bold bg-gradient-to-r from-teal-600 to-emerald-600 text-transparent bg-clip-text">
-          Competitive Sentiment Intelligence
-        </h2>
+        <div className="bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 rounded-2xl p-8 text-white relative overflow-hidden">
+            <h2 className="text-3xl font-bold bg-gradient-to-r text-white text-transparent bg-clip-text">
+              Competitive Sentiment Intelligence
+            </h2>
+        </div>
+
 
         <UniversalFilter
           filters={filterOptions}
@@ -202,10 +205,10 @@ export function CompetitiveSentimentPage() {
           onReset={() => setFilterValues({})}
         />
 
-        <div className="bg-teal-50 border border-teal-200 rounded-lg p-8 text-center text-teal-800">
-          <TrendingUp className="w-16 h-16 mx-auto mb-4 text-teal-500" />
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center text-blue-800">
+          <TrendingUp className="w-16 h-16 mx-auto mb-4 text-blue-500" />
           <p className="text-lg font-medium">Select a date range to view sentiment analysis</p>
-          <p className="text-sm mt-2 text-teal-600">
+          <p className="text-sm mt-2 text-blue-600">
             Compare media tone and public perception across competitors
           </p>
         </div>
