@@ -170,11 +170,6 @@ export function CompetitiveSentimentPage() {
   // Sort by sentiment score descending
   const sortedSentimentData = [...aggregatedSentiment].sort((a, b) => b.score - a.score);
 
-  const totalMentions = aggregatedSentiment.reduce((sum, d) => sum + d.total, 0);
-  const overallSentimentScore = aggregatedSentiment.length > 0
-    ? aggregatedSentiment.reduce((sum, d) => sum + d.score, 0) / aggregatedSentiment.length
-    : 0;
-
   // Loading state
   if (loading) {
     return (
@@ -232,11 +227,6 @@ export function CompetitiveSentimentPage() {
               <div className="font-medium">
                 {formatDate(displayDates.start)} – {formatDate(displayDates.end)}
               </div>
-              {hasData && sortedSentimentData.length > 0 && (
-                <div className="text-xs text-cyan-200 mt-2">
-                  {totalMentions.toLocaleString()} total mentions • Avg Sentiment: {overallSentimentScore.toFixed(3)}
-                </div>
-              )}
             </div>
           </div>
         </div>

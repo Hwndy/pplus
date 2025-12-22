@@ -158,8 +158,8 @@ export function CompetitivePRDriversPage() {
       })()
     : [];
 
-  const totalHoldings = companiesWithDrivers.length;
-  const totalPRDrivers = companiesWithDrivers.reduce((sum, c) => sum + c.drivers.length, 0);
+  // const totalHoldings = companiesWithDrivers.length;
+  // const totalPRDrivers = companiesWithDrivers.reduce((sum, c) => sum + c.drivers.length, 0);
 
   // Loading state
   if (loading) {
@@ -222,11 +222,11 @@ export function CompetitivePRDriversPage() {
               <div className="text-2xl font-semibold">
                 {formatDate(displayDates.start)} – {formatDate(displayDates.end)}
               </div>
-              {hasData && totalPRDrivers > 0 && (
+              {/* {hasData && totalPRDrivers > 0 && (
                 <div className="text-sm text-purple-200 mt-4">
                   {totalHoldings} holdings • {totalPRDrivers} PR drivers identified
                 </div>
-              )}
+              )} */}
             </div>
           </div>
         </div>

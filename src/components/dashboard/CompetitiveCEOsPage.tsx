@@ -180,13 +180,6 @@ export function CompetitiveCEOsPage() {
       })()
     : [];
 
-  const totalEditorials = hasData
-    ? Object.values(data.competitive_intelligence || {}).reduce(
-        (sum: number, sector: any) => sum + (sector.total_editorials || 0),
-        0
-      )
-    : 0;
-
   // Loading state
   if (loading) {
     return (
@@ -245,11 +238,6 @@ export function CompetitiveCEOsPage() {
               <div className="font-medium">
                 {formatDate(displayDates.start)} – {formatDate(displayDates.end)}
               </div>
-              {hasData && totalEditorials > 0 && (
-                <div className="text-xs text-indigo-200 mt-2">
-                  {totalEditorials.toLocaleString()} editorials analyzed
-                </div>
-              )}
             </div>
           </div>
         </div>

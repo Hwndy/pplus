@@ -259,11 +259,6 @@ export function CompetitiveIntelligencePage() {
               <div className="font-medium">
                 {formatDate(displayDates.start)} – {formatDate(displayDates.end)}
               </div>
-              {hasData && (
-                <div className="text-xs text-indigo-200 mt-2">
-                  {totalEditorials} editorials • {uniqueActivities} unique activities
-                </div>
-              )}
             </div>
           </div>
         </div>
