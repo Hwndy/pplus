@@ -3,8 +3,8 @@ import axios from 'axios';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Eye, Edit, Trash2, Filter, X, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom'; // Added useLocation
+import { Plus, Eye, Edit, Trash2, Filter, X, Loader2, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { DataTable } from '@/components/ui/DataTable';
 import { ColumnDef } from '@tanstack/react-table';
 import { useToast } from '@/hooks/use-toast';
@@ -86,7 +86,7 @@ const ITEMS_PER_PAGE = 10;
 
 const DailyMentionsTablePage: React.FC = () => {
   const navigate = useNavigate();
-  const location = useLocation(); // Added for dashboard navigation fix
+  const location = useLocation();
   const { toast } = useToast();
   const { user, token } = useAuth();
 
@@ -115,6 +115,11 @@ const DailyMentionsTablePage: React.FC = () => {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [publications, setPublications] = useState<Publication[]>([]);
 
+  // === FILTER STATES ===
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
+
   // === FIX: Auto-open edit modal when navigated from Analyst Dashboard ===
   useEffect(() => {
     if (location.state?.editId) {
@@ -129,7 +134,7 @@ const DailyMentionsTablePage: React.FC = () => {
     return pattern.test(url);
   };
 
-  // === Fetch Daily Mentions ===
+  // === Fetch Daily Mentions WITH FILTERS ===
   const fetchDailyMentions = useCallback(async () => {
     if (!token || !user) {
       toast({ title: 'Error', description: 'Please login', variant: 'destructive' });
@@ -146,9 +151,21 @@ const DailyMentionsTablePage: React.FC = () => {
           ? `${BASE_URL}/daily-mentions/my-mentions`
           : `${BASE_URL}/daily-mentions/`;
 
-      const response = await axios.get(endpoint, {
-        params: { page: currentPage, limit: ITEMS_PER_PAGE },
-      });
+      const params = new URLSearchParams();
+      params.append('page', currentPage.toString());
+      params.append('limit', ITEMS_PER_PAGE.toString());
+
+      if (statusFilter && statusFilter !== 'all') {
+        params.append('status', statusFilter);
+      }
+      if (dateFrom) {
+        params.append('date_from', dateFrom);
+      }
+      if (dateTo) {
+        params.append('date_to', dateTo);
+      }
+
+      const response = await axios.get(`${endpoint}?${params.toString()}`);
 
       let mentions: DailyMention[] = [];
       let pagination = { total: 0, totalPages: 1 };
@@ -211,13 +228,14 @@ const DailyMentionsTablePage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, user, token, navigate, toast]);
+  }, [currentPage, user, token, navigate, toast, statusFilter, dateFrom, dateTo]);
 
+  // Fetch when page or filters change
   useEffect(() => {
     fetchDailyMentions();
   }, [fetchDailyMentions]);
 
-  // === Fetch Companies & Publications (FIXED) ===
+  // === Fetch Companies & Publications ===
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -226,11 +244,9 @@ const DailyMentionsTablePage: React.FC = () => {
           axios.get(`${BASE_URL}/publications`),
         ]);
 
-        // Companies - support both data.data.data and data.data
         const compData = compRes.data?.data?.data || compRes.data?.data || [];
         setCompanies(Array.isArray(compData) ? compData : []);
 
-        // Publications - API returns data.publication array
         const pubArray = pubRes.data?.data?.publication || pubRes.data?.data || [];
         setPublications(Array.isArray(pubArray) ? pubArray : []);
       } catch (err) {
@@ -445,6 +461,14 @@ const DailyMentionsTablePage: React.FC = () => {
     }
   };
 
+  // === Clear Filters ===
+  const handleResetFilters = () => {
+    setStatusFilter('all');
+    setDateFrom('');
+    setDateTo('');
+    setCurrentPage(1);
+  };
+
   // === Columns ===
   const columns: ColumnDef<TableRow>[] = useMemo(() => [
     { accessorKey: 'companyName', header: 'Company' },
@@ -488,7 +512,10 @@ const DailyMentionsTablePage: React.FC = () => {
           <p className="text-gray-600">Manage all media mentions</p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline"><Filter className="mr-2 h-4 w-4" /> Filter</Button>
+          <Button variant="outline" onClick={fetchDailyMentions} disabled={loading}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
           <Dialog open={createModalOpen} onOpenChange={setCreateModalOpen}>
             <DialogTrigger asChild>
               <Button onClick={handleCreateNew}>
@@ -553,6 +580,55 @@ const DailyMentionsTablePage: React.FC = () => {
           </Dialog>
         </div>
       </div>
+
+      {/* FILTER SECTION */}
+      <Card className="mb-6">
+        <CardContent className="pt-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <Label htmlFor="status">Status</Label>
+              <Select value={statusFilter} onValueChange={(value) => { setStatusFilter(value); setCurrentPage(1); }}>
+                <SelectTrigger id="status">
+                  <SelectValue placeholder="All statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="dateFrom">Date From</Label>
+              <Input
+                id="dateFrom"
+                type="date"
+                value={dateFrom}
+                onChange={(e) => { setDateFrom(e.target.value); setCurrentPage(1); }}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="dateTo">Date To</Label>
+              <Input
+                id="dateTo"
+                type="date"
+                value={dateTo}
+                onChange={(e) => { setDateTo(e.target.value); setCurrentPage(1); }}
+              />
+            </div>
+
+            <div className="flex items-end">
+              <Button variant="outline" onClick={handleResetFilters} className="w-full">
+                <Filter className="mr-2 h-4 w-4" />
+                Clear Filters
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Table */}
       <Card>

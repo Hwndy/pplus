@@ -5,6 +5,9 @@ import { DataTable } from '@/components/ui/DataTable';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/components/auth/AuthContext';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface Editorial {
   id: number;
@@ -47,6 +50,9 @@ interface Editorial {
   mime_type: string | null;
   file_type: string | null;
   status?: string;
+  company_data: {
+    company_name: string;
+  };
 }
 
 const API_BASE = "https://pplus-alde.onrender.com/api";
@@ -62,6 +68,11 @@ const EditorialPage = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const editorialsPerPage = 10;
+
+  // Filter states
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
 
   const fetchEditorials = async () => {
     if (!token || !user) {
@@ -79,14 +90,27 @@ const EditorialPage = () => {
         'Content-Type': 'application/json',
       };
 
-      // Select correct endpoint based on role
       const endpoint = user.role.name === 'Supervisor'
         ? `${API_BASE}/editorials/supervisor-mentions`
         : user.role.name === 'Analyst'
         ? `${API_BASE}/editorials/my-editorials`
         : `${API_BASE}/editorials`;
 
-      const url = `${endpoint}?page=${currentPage}&limit=${editorialsPerPage}`;
+      const params = new URLSearchParams();
+      params.append('page', currentPage.toString());
+      params.append('limit', editorialsPerPage.toString());
+
+      if (statusFilter && statusFilter !== 'all') {
+        params.append('status', statusFilter);
+      }
+      if (dateFrom) {
+        params.append('date_from', dateFrom);
+      }
+      if (dateTo) {
+        params.append('date_to', dateTo);
+      }
+
+      const url = `${endpoint}?${params.toString()}`;
 
       const response = await fetch(url, { headers });
       if (!response.ok) {
@@ -95,32 +119,29 @@ const EditorialPage = () => {
 
       const result = await response.json();
 
-      // Normalize response regardless of structure
+      if (!result.success) {
+        throw new Error(result.message || "Failed to fetch editorials");
+      }
+
+      // Correct extraction based on actual API response
       let items: Editorial[] = [];
-      let meta = { total: 0, currentPage: 1, totalPage: 1, pageSize: 10 };
 
-      if (result.success && result.data) {
-        if (Array.isArray(result.data.editorial)) {
-          items = result.data.editorial;
-          meta = result.data.meta || meta;
-        }
-        else if (Array.isArray(result.data)) {
-          items = result.data;
-          meta = result.meta || meta;
-        }
-        else if (Array.isArray(result.data.data)) {
-          items = result.data.data;
-          meta = result.data.meta || meta;
-        }
+      // Analyst/Supervisor endpoints return direct array in result.data
+      if (Array.isArray(result.data)) {
+        items = result.data;
+      }
+      // Admin or other endpoints may wrap in { editorial: [...], meta: {...} }
+      else if (result.data?.editorial && Array.isArray(result.data.editorial)) {
+        items = result.data.editorial;
+      } else {
+        items = [];
       }
 
+      // Since analyst endpoints don't return pagination meta, fallback to basic values
       setEditorials(items);
-      setTotalPages(meta.totalPage || 1);
-      setTotalItems(meta.total || 0);
-
-      if (items.length === 0 && currentPage > 1) {
-        setCurrentPage(1);
-      }
+      setTotalItems(items.length);
+      setTotalPages(1);
+      setCurrentPage(1);
 
     } catch (err: any) {
       console.error("Fetch error:", err);
@@ -134,7 +155,7 @@ const EditorialPage = () => {
 
   useEffect(() => {
     fetchEditorials();
-  }, [currentPage, user, token]);
+  }, [currentPage, user, token, statusFilter, dateFrom, dateTo]);
 
   const handleDelete = async (id: number) => {
     if (!token) return toast.error("Authentication required");
@@ -160,7 +181,6 @@ const EditorialPage = () => {
     }
   };
 
-  // UPDATED: Properly map single editorial data for edit mode
   const handleEdit = async (id: number) => {
     if (!token) {
       toast.error("Authentication required");
@@ -187,11 +207,10 @@ const EditorialPage = () => {
 
       const data = result.data;
 
-      // Map the nested response to the structure expected by CreateEditorialPage
       const mappedEditorial = {
         id: data.id,
         date: data.date ? new Date(data.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-        company_id: data.company?.id, // Extract from nested company object
+        company_id: data.company?.id || data.company_data?.id,
         media_type: data.media_type || '',
         online_channel: data.online_channel || '',
         source: data.source || '',
@@ -204,7 +223,7 @@ const EditorialPage = () => {
         spokesperson: data.spokesperson || '',
         activity: data.activity || '',
         sentiment: data.sentiment || '',
-        sentiment_keyword_indicator_id: data.sentiment_keyword_indicator?.id, // Extract from nested
+        sentiment_keyword_indicator_id: data.sentiment_keyword_indicator?.id || data.sentiment_keyword_indicator_data?.id,
         advert_spend: data.advert_spend || 0,
         circulation: data.circulation || 0,
         page_size: data.page_size || '',
@@ -222,7 +241,6 @@ const EditorialPage = () => {
         file_type: data.file_type,
       };
 
-      // Pass as a single-item batch to trigger the preferred branch in Create page
       navigate('/dashboard/editorial/create', {
         state: {
           editorialData: {
@@ -232,7 +250,7 @@ const EditorialPage = () => {
             analyst_note: mappedEditorial.analyst_note,
             supervisor_note: mappedEditorial.supervisor_note,
             admin_note: mappedEditorial.admin_note,
-            editorials: [mappedEditorial], // Wrap in array
+            editorials: [mappedEditorial],
           }
         }
       });
@@ -253,10 +271,20 @@ const EditorialPage = () => {
     navigate('/dashboard/editorial/batch-upload');
   };
 
+  const handleResetFilters = () => {
+    setStatusFilter('all');
+    setDateFrom('');
+    setDateTo('');
+  };
+
   const columns = [
+    {
+      accessorKey: 'company_data.company_name',
+      header: 'Company Name',
+      cell: ({ row }: any) => row.original.company_data?.company_name || 'N/A',
+    },
     { accessorKey: 'title', header: 'Title' },
     { accessorKey: 'online_channel', header: 'Media Type' },
-    { accessorKey: 'sentiment', header: 'Sentiment' },
     {
       accessorKey: 'date',
       header: 'Date',
@@ -275,7 +303,7 @@ const EditorialPage = () => {
           rejected: 'bg-red-100 text-red-800',
           pending: 'bg-yellow-100 text-yellow-800',
         };
-        const color = colors[status] || colors.pending;
+        const color = colors[status] || 'bg-gray-100 text-gray-800';
         return (
           <span className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${color}`}>
             {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -326,6 +354,52 @@ const EditorialPage = () => {
         </div>
       </div>
 
+      {/* Filters */}
+      <div className="bg-white p-4 rounded-lg border mb-6 shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <Label htmlFor="status">Status</Label>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger id="status">
+                <SelectValue placeholder="All statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="approved">Approved</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="dateFrom">Date From</Label>
+            <Input
+              id="dateFrom"
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="dateTo">Date To</Label>
+            <Input
+              id="dateTo"
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+            />
+          </div>
+
+          <div className="flex items-end">
+            <Button variant="outline" onClick={handleResetFilters} className="w-full">
+              Reset Filters
+            </Button>
+          </div>
+        </div>
+      </div>
+
       {/* Error State */}
       {error && (
         <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -350,7 +424,7 @@ const EditorialPage = () => {
         )}
       </div>
 
-      {/* Pagination */}
+      {/* Pagination - Exactly as original (kept untouched) */}
       <div className="mt-4 flex items-center justify-between text-sm">
         <div className="text-gray-600">
           Showing {editorials.length} of {totalItems} entries

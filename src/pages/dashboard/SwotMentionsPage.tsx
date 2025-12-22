@@ -1,7 +1,7 @@
 // SwotMentionsPage.tsx
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { ThumbsUp, ThumbsDown, ArrowUpRight, AlertTriangle, Plus, Edit, Trash2, Eye, MoreHorizontal, ChevronLeft, ChevronRight } from "lucide-react";
+import { ThumbsUp, ThumbsDown, ArrowUpRight, AlertTriangle, Plus, Edit, Trash2, Eye, MoreHorizontal, ChevronLeft, ChevronRight, RefreshCw, Filter } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { SwotMentionForm } from '../../components/admin/SwotMentionForm';
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
@@ -11,7 +11,10 @@ import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth } from '@/components/auth/AuthContext';
-import { useLocation } from 'react-router-dom'; // Added for dashboard navigation fix
+import { useLocation } from 'react-router-dom';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface SwotAnalysis {
   id: number;
@@ -42,7 +45,7 @@ interface Pagination {
 
 export function SwotMentionsPage() {
   const { user, token } = useAuth();
-  const location = useLocation(); // Added to detect navigation from dashboard
+  const location = useLocation();
   const [currentDate] = useState(new Date());
   const [swotData, setSwotData] = useState<SwotAnalysis[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
@@ -53,6 +56,11 @@ export function SwotMentionsPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedSwot, setSelectedSwot] = useState<SwotAnalysis | null>(null);
+
+  // === FILTER STATES ===
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
 
   // === FIX: Auto-open edit dialog when navigated from Analyst Dashboard ===
   useEffect(() => {
@@ -83,7 +91,22 @@ export function SwotMentionsPage() {
         ? 'https://pplus-alde.onrender.com/api/swot-analysis/my-analysis'
         : 'https://pplus-alde.onrender.com/api/swot-analysis';
 
-      const url = `${endpoint}?page=${page}&limit=10`;
+      // Build query parameters with filters
+      const params = new URLSearchParams();
+      params.append('page', page.toString());
+      params.append('limit', '10');
+
+      if (statusFilter && statusFilter !== 'all') {
+        params.append('status', statusFilter);
+      }
+      if (dateFrom) {
+        params.append('date_from', dateFrom);
+      }
+      if (dateTo) {
+        params.append('date_to', dateTo);
+      }
+
+      const url = `${endpoint}?${params.toString()}`;
 
       const response = await fetch(url, {
         headers: getAuthHeaders(),
@@ -92,11 +115,7 @@ export function SwotMentionsPage() {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
       const result = await response.json();
-      console.log('API Response:', result);
 
-      // Handle both response shapes:
-      // - Analyst: { success: true, data: [...] }
-      // - Supervisor/Admin: { success: true, data: { data: [...], pagination: {} } }
       const swotArray = Array.isArray(result.data)
         ? result.data
         : Array.isArray(result.data?.data)
@@ -127,9 +146,10 @@ export function SwotMentionsPage() {
     }
   };
 
+  // Re-fetch when page or filters change
   useEffect(() => {
     fetchSwotData(currentPage);
-  }, [currentPage, user, token]);
+  }, [currentPage, user, token, statusFilter, dateFrom, dateTo]);
 
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= (pagination?.totalPages || 1) && page !== currentPage) {
@@ -175,6 +195,13 @@ export function SwotMentionsPage() {
     setSelectedSwot(null);
   };
 
+  const handleResetFilters = () => {
+    setStatusFilter('all');
+    setDateFrom('');
+    setDateTo('');
+    setCurrentPage(1);
+  };
+
   if (!user || !token) {
     return <div className="p-6 text-center">Please log in to continue.</div>;
   }
@@ -189,24 +216,80 @@ export function SwotMentionsPage() {
             {currentDate.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' })}
           </span>
 
-          {(user.role?.name === 'Admin' || user.role?.name === 'Analyst') && (
-            <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="flex items-center gap-2">
-                  <Plus className="h-4 w-4" />
-                  Create SWOT Mention
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-4xl">
-                <DialogHeader>
-                  <DialogTitle>Create SWOT Mention</DialogTitle>
-                </DialogHeader>
-                <SwotMentionForm onClose={handleFormClose} />
-              </DialogContent>
-            </Dialog>
-          )}
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={() => fetchSwotData(currentPage)} disabled={loading}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+
+            {(user.role?.name === 'Admin' || user.role?.name === 'Analyst') && (
+              <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="flex items-center gap-2">
+                    <Plus className="h-4 w-4" />
+                    Create SWOT Mention
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl">
+                  <DialogHeader>
+                    <DialogTitle>Create SWOT Mention</DialogTitle>
+                  </DialogHeader>
+                  <SwotMentionForm onClose={handleFormClose} />
+                </DialogContent>
+              </Dialog>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* FILTER SECTION */}
+      <Card className="mb-6">
+        <CardContent className="pt-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <Label htmlFor="swot-status">Status</Label>
+              <Select value={statusFilter} onValueChange={(value) => { setStatusFilter(value); setCurrentPage(1); }}>
+                <SelectTrigger id="swot-status">
+                  <SelectValue placeholder="All statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="swot-dateFrom">Date From</Label>
+              <Input
+                id="swot-dateFrom"
+                type="date"
+                value={dateFrom}
+                onChange={(e) => { setDateFrom(e.target.value); setCurrentPage(1); }}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="swot-dateTo">Date To</Label>
+              <Input
+                id="swot-dateTo"
+                type="date"
+                value={dateTo}
+                onChange={(e) => { setDateTo(e.target.value); setCurrentPage(1); }}
+              />
+            </div>
+
+            <div className="flex items-end">
+              <Button variant="outline" onClick={handleResetFilters} className="w-full">
+                <Filter className="mr-2 h-4 w-4" />
+                Clear Filters
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Table Card */}
       <Card>

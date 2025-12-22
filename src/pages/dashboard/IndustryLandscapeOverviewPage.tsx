@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -20,6 +20,7 @@ import {
   RefreshCw,
   ChevronLeft,
   ChevronRight,
+  Filter,
 } from 'lucide-react';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import {
@@ -43,7 +44,10 @@ import { useAuth } from '@/components/auth/AuthContext';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useLocation } from 'react-router-dom'; // ← Added for dashboard fix
+import { useLocation } from 'react-router-dom';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface Company {
   id: number;
@@ -356,7 +360,7 @@ function ViewModal({ item, onClose }: { item: IndustryLandscape; onClose: () => 
 /* ====================== MAIN PAGE ====================== */
 export default function IndustryLandscapeOverviewPage() {
   const { token } = useAuth();
-  const location = useLocation(); // ← Added to detect navigation from dashboard
+  const location = useLocation();
 
   const [items, setItems] = useState<IndustryLandscape[]>([]);
   const [loading, setLoading] = useState(true);
@@ -372,6 +376,11 @@ export default function IndustryLandscapeOverviewPage() {
   const [editingItem, setEditingItem] = useState<IndustryLandscape | null>(null);
   const [viewingItem, setViewingItem] = useState<IndustryLandscape | null>(null);
 
+  // === FILTER STATES ===
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
+
   // === FIX: Auto-open edit dialog when navigated from Analyst Dashboard ===
   useEffect(() => {
     if (location.state?.editingItem) {
@@ -380,13 +389,30 @@ export default function IndustryLandscapeOverviewPage() {
     }
   }, [location.state]);
 
-  const fetchData = async (page = 1) => {
+  const fetchData = useCallback(async (page = 1) => {
     if (!token) return;
     setLoading(true);
     setError(null);
 
     try {
-      const res = await fetch(`${API_BASE}?page=${page}&limit=10`, {
+      // Build query parameters with filters
+      const params = new URLSearchParams();
+      params.append('page', page.toString());
+      params.append('limit', '10');
+
+      if (statusFilter && statusFilter !== 'all') {
+        params.append('status', statusFilter);
+      }
+      if (dateFrom) {
+        params.append('date_from', dateFrom);
+      }
+      if (dateTo) {
+        params.append('date_to', dateTo);
+      }
+
+      const url = `${API_BASE}?${params.toString()}`;
+
+      const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const json = await res.json();
@@ -411,11 +437,16 @@ export default function IndustryLandscapeOverviewPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, pagination.page, statusFilter, dateFrom, dateTo]);
 
+  // Fetch on mount and when filters/page change
   useEffect(() => {
     fetchData(1);
   }, [token]);
+
+  useEffect(() => {
+    fetchData(pagination.page);
+  }, [pagination.page, statusFilter, dateFrom, dateTo]);
 
   const handleDelete = async (id: number) => {
     if (!confirm('Delete this overview?')) return;
@@ -436,7 +467,13 @@ export default function IndustryLandscapeOverviewPage() {
 
   const goToPage = (newPage: number) => {
     setPagination(p => ({ ...p, page: newPage }));
-    fetchData(newPage);
+  };
+
+  const handleResetFilters = () => {
+    setStatusFilter('all');
+    setDateFrom('');
+    setDateTo('');
+    setPagination(prev => ({ ...prev, page: 1 }));
   };
 
   return (
@@ -486,6 +523,55 @@ export default function IndustryLandscapeOverviewPage() {
           </Dialog>
         </div>
       </div>
+
+      {/* FILTER SECTION */}
+      <Card className="mb-6">
+        <CardContent className="pt-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <Label htmlFor="il-status">Status</Label>
+              <Select value={statusFilter} onValueChange={(value) => { setStatusFilter(value); setPagination(p => ({ ...p, page: 1 })); }}>
+                <SelectTrigger id="il-status">
+                  <SelectValue placeholder="All statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="il-dateFrom">Date From</Label>
+              <Input
+                id="il-dateFrom"
+                type="date"
+                value={dateFrom}
+                onChange={(e) => { setDateFrom(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="il-dateTo">Date To</Label>
+              <Input
+                id="il-dateTo"
+                type="date"
+                value={dateTo}
+                onChange={(e) => { setDateTo(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}
+              />
+            </div>
+
+            <div className="flex items-end">
+              <Button variant="outline" onClick={handleResetFilters} className="w-full">
+                <Filter className="mr-2 h-4 w-4" />
+                Clear Filters
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {error && (
         <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">

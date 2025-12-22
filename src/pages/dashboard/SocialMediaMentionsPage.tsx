@@ -5,13 +5,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Facebook, Twitter, Instagram, Eye, MoreHorizontal, Trash2, RefreshCw, Plus } from "lucide-react";
+import { Facebook, Twitter, Instagram, Eye, MoreHorizontal, Trash2, RefreshCw, Plus, Filter } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { SocialMediaMentionForm } from '../dashboard/components/SocialMediaMentionForm';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useAuth } from '@/components/auth/AuthContext';
-import { useLocation } from 'react-router-dom'; // ← Added for dashboard fix
+import { useLocation } from 'react-router-dom';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const API_BASE = 'https://pplus-alde.onrender.com/api';
 
@@ -47,7 +50,7 @@ interface Pagination {
 
 export default function SocialMediaMentionsPage() {
   const { user, token } = useAuth();
-  const location = useLocation(); // ← Added to read navigation state from dashboard
+  const location = useLocation();
 
   const [loading, setLoading] = useState(true);
   const [mentions, setMentions] = useState<SocialMediaMention[]>([]);
@@ -60,6 +63,11 @@ export default function SocialMediaMentionsPage() {
   const [error, setError] = useState<string | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingMention, setEditingMention] = useState<SocialMediaMention | null>(null);
+
+  // === FILTER STATES ===
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
 
   // === FIX: Auto-open edit modal when navigated from Analyst Dashboard ===
   useEffect(() => {
@@ -85,7 +93,22 @@ export default function SocialMediaMentionsPage() {
         ? `${API_BASE}/social-media-mentions/my-social-media-mentions`
         : `${API_BASE}/social-media-mentions`;
 
-      const url = `${endpoint}?page=${page}&limit=${limit}`;
+      // Build query parameters with filters
+      const params = new URLSearchParams();
+      params.append('page', page.toString());
+      params.append('limit', limit.toString());
+
+      if (statusFilter && statusFilter !== 'all') {
+        params.append('status', statusFilter);
+      }
+      if (dateFrom) {
+        params.append('date_from', dateFrom);
+      }
+      if (dateTo) {
+        params.append('date_to', dateTo);
+      }
+
+      const url = `${endpoint}?${params.toString()}`;
 
       const response = await fetch(url, {
         headers: {
@@ -105,12 +128,10 @@ export default function SocialMediaMentionsPage() {
       let meta: Pagination = { total: 0, page, limit, totalPages: 0 };
 
       if (result.success && result.data) {
-        // Admin: { data: { data: [...], pagination: {} } }
         if (result.data.data && Array.isArray(result.data.data)) {
           items = result.data.data;
           meta = result.data.pagination || meta;
         }
-        // Analyst/Supervisor: { data: [...] }
         else if (Array.isArray(result.data)) {
           items = result.data;
           meta = result.pagination || {
@@ -138,13 +159,14 @@ export default function SocialMediaMentionsPage() {
     }
   };
 
+  // Fetch on mount, page change, or filter change
   useEffect(() => {
     if (user && token) fetchMentions(1, 10);
   }, [user, token]);
 
   useEffect(() => {
     if (user && token) fetchMentions(pagination.page, pagination.limit);
-  }, [pagination.page]);
+  }, [pagination.page, statusFilter, dateFrom, dateTo]);
 
   const handleDelete = async (id: number) => {
     if (!confirm('Delete this mention permanently?')) return;
@@ -206,6 +228,13 @@ export default function SocialMediaMentionsPage() {
     }
   };
 
+  const handleResetFilters = () => {
+    setStatusFilter('all');
+    setDateFrom('');
+    setDateTo('');
+    setPagination(prev => ({ ...prev, page: 1 }));
+  };
+
   return (
     <div className="space-y-6 p-6 bg-gray-50 min-h-screen">
       {/* Header */}
@@ -242,6 +271,55 @@ export default function SocialMediaMentionsPage() {
           </Dialog>
         </div>
       </div>
+
+      {/* FILTER SECTION */}
+      <Card className="mb-6">
+        <CardContent className="pt-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <Label htmlFor="sm-status">Status</Label>
+              <Select value={statusFilter} onValueChange={(value) => { setStatusFilter(value); setPagination(prev => ({ ...prev, page: 1 })); }}>
+                <SelectTrigger id="sm-status">
+                  <SelectValue placeholder="All statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="Pending">Pending</SelectItem>
+                  <SelectItem value="Approved">Approved</SelectItem>
+                  <SelectItem value="Rejected">Rejected</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="sm-dateFrom">Date From</Label>
+              <Input
+                id="sm-dateFrom"
+                type="date"
+                value={dateFrom}
+                onChange={(e) => { setDateFrom(e.target.value); setPagination(prev => ({ ...prev, page: 1 })); }}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="sm-dateTo">Date To</Label>
+              <Input
+                id="sm-dateTo"
+                type="date"
+                value={dateTo}
+                onChange={(e) => { setDateTo(e.target.value); setPagination(prev => ({ ...prev, page: 1 })); }}
+              />
+            </div>
+
+            <div className="flex items-end">
+              <Button variant="outline" onClick={handleResetFilters} className="w-full">
+                <Filter className="mr-2 h-4 w-4" />
+                Clear Filters
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Error */}
       {error && (
@@ -283,7 +361,7 @@ export default function SocialMediaMentionsPage() {
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-16 text-gray-500">
                       <p className="text-lg font-medium">No mentions found</p>
-                      <p className="text-sm mt-2">Create your first mention to get started</p>
+                      <p className="text-sm mt-2">Create your first mention or adjust filters</p>
                     </TableCell>
                   </TableRow>
                 ) : (

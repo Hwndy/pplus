@@ -21,6 +21,7 @@ import {
   RefreshCw,
   ChevronLeft,
   ChevronRight,
+  Filter,
 } from 'lucide-react';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import {
@@ -43,7 +44,10 @@ import { toast } from 'sonner';
 import { useAuth } from '@/components/auth/AuthContext';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { useLocation } from 'react-router-dom'; // ← Added for dashboard fix
+import { useLocation } from 'react-router-dom';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface InsightItem {
   category: string;
@@ -214,7 +218,7 @@ function ViewOutcomeModal({
 /* ------------------------------------------------------------------ */
 export default function OutcomeInsightsPage() {
   const { user, token } = useAuth();
-  const location = useLocation(); // ← Added to detect navigation from dashboard
+  const location = useLocation();
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedOutcome, setSelectedOutcome] = useState<OutcomeInsight | null>(null);
@@ -230,6 +234,11 @@ export default function OutcomeInsightsPage() {
     limit: 10,
     totalPages: 0,
   });
+
+  // === FILTER STATES ===
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
 
   const BASE_URL = 'https://pplus-alde.onrender.com/api';
 
@@ -261,7 +270,22 @@ export default function OutcomeInsightsPage() {
       else if (role === 'Analyst')
         endpoint = `${BASE_URL}/outcome-insights/my-insights`;
 
-      const url = `${endpoint}?page=${page}&limit=${limit}`;
+      // Build query parameters with filters
+      const params = new URLSearchParams();
+      params.append('page', page.toString());
+      params.append('limit', limit.toString());
+
+      if (statusFilter && statusFilter !== 'all') {
+        params.append('status', statusFilter);
+      }
+      if (dateFrom) {
+        params.append('date_from', dateFrom);
+      }
+      if (dateTo) {
+        params.append('date_to', dateTo);
+      }
+
+      const url = `${endpoint}?${params.toString()}`;
 
       const res = await fetch(url, {
         headers: {
@@ -278,12 +302,10 @@ export default function OutcomeInsightsPage() {
       let meta: Pagination = { total: 0, page, limit, totalPages: 0 };
 
       if (json.success && json.data) {
-        // Admin: { data: { data: [...], pagination: {} } }
         if (json.data.data && Array.isArray(json.data.data)) {
           items = json.data.data;
           meta = json.data.pagination || meta;
         }
-        // Analyst/Supervisor: { data: [...] }
         else if (Array.isArray(json.data)) {
           items = json.data;
           meta = json.pagination || { total: items.length, page, limit, totalPages: Math.ceil(items.length / limit) };
@@ -303,13 +325,14 @@ export default function OutcomeInsightsPage() {
     }
   };
 
+  // Fetch on mount, page change, or filter change
   useEffect(() => {
     fetchOutcomeInsights(1, 10);
   }, [user, token]);
 
   useEffect(() => {
     fetchOutcomeInsights(pagination.page, pagination.limit);
-  }, [pagination.page]);
+  }, [pagination.page, statusFilter, dateFrom, dateTo]);
 
   const handleEdit = (outcome: OutcomeInsight) => {
     setSelectedOutcome(outcome);
@@ -335,6 +358,13 @@ export default function OutcomeInsightsPage() {
     analyst_note: outcome.analyst_note || '',
     supervisor_note: outcome.supervisor_note || '',
   });
+
+  const handleResetFilters = () => {
+    setStatusFilter('all');
+    setDateFrom('');
+    setDateTo('');
+    setPagination(prev => ({ ...prev, page: 1 }));
+  };
 
   return (
     <div className="space-y-6 p-6 bg-gray-50 min-h-screen">
@@ -376,6 +406,55 @@ export default function OutcomeInsightsPage() {
           </Dialog>
         </div>
       </div>
+
+      {/* FILTER SECTION */}
+      <Card className="mb-6">
+        <CardContent className="pt-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <Label htmlFor="oi-status">Status</Label>
+              <Select value={statusFilter} onValueChange={(value) => { setStatusFilter(value); setPagination(p => ({ ...p, page: 1 })); }}>
+                <SelectTrigger id="oi-status">
+                  <SelectValue placeholder="All statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="oi-dateFrom">Date From</Label>
+              <Input
+                id="oi-dateFrom"
+                type="date"
+                value={dateFrom}
+                onChange={(e) => { setDateFrom(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="oi-dateTo">Date To</Label>
+              <Input
+                id="oi-dateTo"
+                type="date"
+                value={dateTo}
+                onChange={(e) => { setDateTo(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}
+              />
+            </div>
+
+            <div className="flex items-end">
+              <Button variant="outline" onClick={handleResetFilters} className="w-full">
+                <Filter className="mr-2 h-4 w-4" />
+                Clear Filters
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Error */}
       {error && (
@@ -421,7 +500,7 @@ export default function OutcomeInsightsPage() {
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-16 text-gray-500">
                       <p className="text-lg font-medium">No insights found</p>
-                      <p className="text-sm mt-2">Create your first outcome insight</p>
+                      <p className="text-sm mt-2">Create your first outcome insight or adjust filters</p>
                     </TableCell>
                   </TableRow>
                 ) : (
