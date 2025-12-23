@@ -212,9 +212,11 @@ export function AnalystDashboard() {
             }
             const data = await res.json();
 
-            const normalizedData = (Array.isArray(data.data?.editorial) ? data.data.editorial : 
-                                   Array.isArray(data.data) ? data.data : 
-                                   Array.isArray(data) ? data : [])
+            const arrayData = Array.isArray(data.data?.data) ? data.data.data :
+                              Array.isArray(data.data) ? data.data :
+                              Array.isArray(data) ? data : [];
+
+            const normalizedData = arrayData
               .filter(item => item && typeof item === 'object')
               .map((item: any) => {
                 let title = 'Untitled';
@@ -239,12 +241,23 @@ export function AnalystDashboard() {
                 } else if (type === 'Social Media Mention') {
                   title = `${item.social_media_type || 'Social'} Mention - ${new Date(item.date || item.createdAt).toLocaleDateString()}`;
                 } else if (type === 'Outcome Insight') {
-                  title = item.insights?.[0]?.analysis ||
-                          item.insights?.[0]?.category ||
-                          item.analyst_note?.slice(0, 60) ||
-                          'Untitled Outcome Insight';
+                  title = item.insights?.[0]?.category || item.insights?.[0]?.analysis || 'Untitled Outcome Insight';
                 } else if (type === 'Industry Landscape') {
-                  title = item.overview_title || item.title || 'Untitled Industry Landscape Overview';
+                  title = item.sector || 'Untitled Industry Landscape';
+                }
+
+                let content = '';
+                if (type === 'Outcome Insight') {
+                  content = item.analyst_note || item.insights?.map(i => i.analysis).join(', ') || 'No content';
+                } else if (type === 'Industry Landscape') {
+                  content = item.analyst_note || item.highlights?.join(', ') || 'No content';
+                } else {
+                  content = item.analyst_note ||
+                            item.content ||
+                            item.description ||
+                            item.supervisor_note ||
+                            item.overview_content ||
+                            'No content';
                 }
 
                 return {
@@ -252,12 +265,7 @@ export function AnalystDashboard() {
                   rawData: item,
                   type,
                   title,
-                  content: item.analyst_note ||
-                          item.content ||
-                          item.description ||
-                          item.supervisor_note ||
-                          item.overview_content ||
-                          'No content',
+                  content,
                   createdAt: item.createdAt || item.date || new Date().toISOString(),
                   status: typeof item.status === 'string' && item.status.trim() !== '' ? item.status : 'pending',
                   comments: item.supervisor_note || item.comments || undefined,
