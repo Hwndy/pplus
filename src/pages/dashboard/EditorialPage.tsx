@@ -108,10 +108,11 @@ const EditorialPage = () => {
       }
 
       const safePage = Math.max(1, isNaN(pagination.page) ? 1 : pagination.page);
+      const safeLimit = isNaN(pagination.limit) ? 10 : pagination.limit;
 
       const params = new URLSearchParams();
       params.append('page', safePage.toString());
-      params.append('limit', pagination.limit.toString());
+      params.append('limit', safeLimit.toString());
 
       if (statusFilter && statusFilter !== 'all') {
         params.append('status', statusFilter);
@@ -142,7 +143,7 @@ const EditorialPage = () => {
       let meta: Pagination = {
         total: 0,
         page: safePage,
-        limit: pagination.limit,
+        limit: safeLimit,
         totalPages: 1,
       };
 
@@ -152,16 +153,17 @@ const EditorialPage = () => {
         meta = result.pagination || {
           total: items.length,
           page: safePage,
-          limit: pagination.limit,
-          totalPages: Math.ceil(items.length / pagination.limit),
+          limit: safeLimit,
+          totalPages: Math.ceil(items.length / safeLimit),
         };
       } else if (result.data?.data && Array.isArray(result.data.data)) {
         items = result.data.data;
+        const pag = result.data.pagination;
         meta = {
-          total: result.data.pagination.total,
-          page: result.data.pagination.currentPage,
-          limit: result.data.pagination.pageSize,
-          totalPages: result.data.pagination.totalPages,
+          total: pag.total,
+          page: pag.page || pag.currentPage || safePage,
+          limit: pag.limit || pag.pageSize || safeLimit,
+          totalPages: pag.totalPages,
         };
       }
 
