@@ -3,7 +3,20 @@ import axios from 'axios';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Eye, Edit, Trash2, Filter, X, Loader2, ChevronLeft, ChevronRight, RefreshCw, Check, ChevronsUpDown } from 'lucide-react';
+import {
+  Plus,
+  Eye,
+  Edit,
+  Trash2,
+  Filter,
+  X,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
+  RefreshCw,
+  Check,
+  ChevronsUpDown,
+} from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { DataTable } from '@/components/ui/DataTable';
 import { ColumnDef } from '@tanstack/react-table';
@@ -78,6 +91,13 @@ interface TableRow {
   status: string;
 }
 
+interface Pagination {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 // === Axios Interceptor ===
 axios.interceptors.request.use(
   (config) => {
@@ -108,7 +128,7 @@ const Combobox: React.FC<{
           aria-expanded={open}
           className="w-full justify-between"
         >
-          {value ? options.find((option) => option.value === value)?.label : placeholder}
+          {value ? options.find((o) => o.value === value)?.label : placeholder}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -121,8 +141,8 @@ const Combobox: React.FC<{
               <CommandItem
                 key={option.value}
                 value={option.value}
-                onSelect={(currentValue) => {
-                  onChange(currentValue === value ? '' : currentValue);
+                onSelect={(current) => {
+                  onChange(current === value ? '' : current);
                   setOpen(false);
                 }}
               >
@@ -148,9 +168,13 @@ const DailyMentionsTablePage: React.FC = () => {
   // State
   const [dailyMentions, setDailyMentions] = useState<DailyMention[]>([]);
   const [tableData, setTableData] = useState<TableRow[]>([]);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState<Pagination>({
+    total: 0,
+    page: 1,
+    limit: ITEMS_PER_PAGE,
+    totalPages: 1,
+  });
+
   const [loading, setLoading] = useState(true);
 
   const [viewModalOpen, setViewModalOpen] = useState(false);
@@ -171,12 +195,12 @@ const DailyMentionsTablePage: React.FC = () => {
   const [publications, setPublications] = useState<Publication[]>([]);
   const [reporters, setReporters] = useState<Reporter[]>([]);
 
-  // === FILTER STATES ===
+  // Filters
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
 
-  // === FIX: Auto-open edit modal when navigated from Analyst Dashboard ===
+  // Auto-open edit modal from dashboard navigation
   useEffect(() => {
     if (location.state?.editId) {
       handleEdit(location.state.editId);
@@ -190,7 +214,7 @@ const DailyMentionsTablePage: React.FC = () => {
     return pattern.test(url);
   };
 
-  // === Fetch Daily Mentions WITH FILTERS ===
+  // === Fetch Daily Mentions WITH PAGINATION & FILTERS ===
   const fetchDailyMentions = useCallback(async () => {
     if (!token || !user) {
       toast({ title: 'Error', description: 'Please login', variant: 'destructive' });
@@ -199,39 +223,55 @@ const DailyMentionsTablePage: React.FC = () => {
     }
 
     setLoading(true);
+
     try {
-      const endpoint =
-        user.role?.name === 'Supervisor'
-          ? `${BASE_URL}/daily-mentions/supervisor-mentions`
-          : user.role?.name === 'Analyst'
-          ? `${BASE_URL}/daily-mentions/my-mentions`
-          : `${BASE_URL}/daily-mentions/`;
+      const role = user.role?.name || (typeof user.role === 'string' ? user.role : 'Analyst');
+      let endpoint = `${BASE_URL}/daily-mentions/`;
+
+      if (role === 'Supervisor') {
+        endpoint = `${BASE_URL}/daily-mentions/supervisor-mentions`;
+      } else if (role === 'Analyst') {
+        endpoint = `${BASE_URL}/daily-mentions/my-mentions`;
+      }
+
+      const safePage = Math.max(1, isNaN(pagination.page) ? 1 : pagination.page);
 
       const params = new URLSearchParams();
-      params.append('page', currentPage.toString());
-      params.append('limit', ITEMS_PER_PAGE.toString());
+      params.append('page', safePage.toString());
+      params.append('limit', pagination.limit.toString());
 
-      if (statusFilter && statusFilter !== 'all') {
-        params.append('status', statusFilter);
-      }
-      if (dateFrom) {
-        params.append('date_from', dateFrom);
-      }
-      if (dateTo) {
-        params.append('date_to', dateTo);
-      }
+      if (statusFilter && statusFilter !== 'all') params.append('status', statusFilter);
+      if (dateFrom) params.append('date_from', dateFrom);
+      if (dateTo) params.append('date_to', dateTo);
 
       const response = await axios.get(`${endpoint}?${params.toString()}`);
 
       let mentions: DailyMention[] = [];
-      let pagination = { total: 0, totalPages: 1 };
+      let meta: Pagination = {
+        total: 0,
+        page: safePage,
+        limit: pagination.limit,
+        totalPages: 1,
+      };
 
-      if (response.data?.data?.data) {
-        mentions = response.data.data.data;
-        pagination = response.data.data.pagination;
-      } else if (Array.isArray(response.data?.data)) {
-        mentions = response.data.data;
-        pagination = response.data.pagination || { total: mentions.length, totalPages: 1 };
+      if (response.data?.success && response.data.data) {
+        if (Array.isArray(response.data.data.data)) {
+          mentions = response.data.data.data;
+          meta = {
+            total: response.data.data.pagination.total,
+            page: response.data.data.pagination.currentPage,
+            limit: response.data.data.pagination.pageSize,
+            totalPages: response.data.data.pagination.totalPages,
+          };
+        } else if (Array.isArray(response.data.data)) {
+          mentions = response.data.data;
+          meta = response.data.pagination || {
+            total: mentions.length,
+            page: safePage,
+            limit: pagination.limit,
+            totalPages: Math.ceil(mentions.length / pagination.limit),
+          };
+        }
       }
 
       const filtered = mentions.filter((m) => !m.is_deleted);
@@ -272,9 +312,9 @@ const DailyMentionsTablePage: React.FC = () => {
 
       setDailyMentions(normalized);
       setTableData(tableRows);
-      setTotalPages(pagination.totalPages || 1);
-      setTotalCount(pagination.total || 0);
+      setPagination(meta);
     } catch (err: any) {
+      console.error('Fetch error:', err);
       toast({
         title: 'Error',
         description: err.response?.data?.message || 'Failed to load mentions',
@@ -284,16 +324,16 @@ const DailyMentionsTablePage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, user, token, navigate, toast, statusFilter, dateFrom, dateTo]);
+  }, [pagination.page, pagination.limit, user, token, navigate, toast, statusFilter, dateFrom, dateTo]);
 
-  // Fetch when page or filters change
+  // Fetch on mount + when filters/page change
   useEffect(() => {
     fetchDailyMentions();
   }, [fetchDailyMentions]);
 
-  // === Fetch Companies, Publications & Reporters ===
+  // Fetch companies, publications, reporters (once)
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchSupportingData = async () => {
       try {
         const [compRes, pubRes, repRes] = await Promise.all([
           axios.get(`${BASE_URL}/companies`),
@@ -301,25 +341,17 @@ const DailyMentionsTablePage: React.FC = () => {
           axios.get(`${BASE_URL}/data-parameters/category/Reporters`),
         ]);
 
-        const compData = compRes.data?.data?.data || compRes.data?.data || [];
-        setCompanies(Array.isArray(compData) ? compData : []);
-
-        const pubArray = pubRes.data?.data?.publication || pubRes.data?.data || [];
-        setPublications(Array.isArray(pubArray) ? pubArray : []);
-
-        const repData = repRes.data?.data || [];
-        setReporters(Array.isArray(repData) ? repData : []);
+        setCompanies(compRes.data?.data?.data || compRes.data?.data || []);
+        setPublications(pubRes.data?.data?.publication || pubRes.data?.data || []);
+        setReporters(repRes.data?.data || []);
       } catch (err) {
-        toast({ title: 'Warning', description: 'Failed to load companies/publications/reporters', variant: 'default' });
-        setCompanies([]);
-        setPublications([]);
-        setReporters([]);
+        toast({ title: 'Warning', description: 'Failed to load supporting data', variant: 'default' });
       }
     };
-    fetchData();
+    fetchSupportingData();
   }, [toast]);
 
-  // === Form Helpers ===
+  // === Form Helpers (unchanged) ===
   const updateMention = (cat: keyof DailyMention, idx: number, field: keyof MentionDetail, val: any) => {
     setFormData((prev) => ({
       ...prev,
@@ -365,7 +397,7 @@ const DailyMentionsTablePage: React.FC = () => {
       publication_date: null,
       urls: [''],
     };
-    setFormData((prev) => ({ ...prev, [cat]: [...(prev[cat] as MentionDetail[]), newMention] }));
+    setFormData((prev) => ({ ...prev, [cat]: [...(prev[cat] as MentionDetail[] || []), newMention] }));
   };
 
   const removeMention = (cat: keyof DailyMention, idx: number) => {
@@ -378,8 +410,20 @@ const DailyMentionsTablePage: React.FC = () => {
   // === Render Helpers ===
   const renderMentionFields = (category: keyof DailyMention, idx: number) => (
     <div className="space-y-3">
-      <div><Label>Headline</Label><Input value={(formData[category] as MentionDetail[])[idx]?.headline || ''} onChange={(e) => updateMention(category, idx, 'headline', e.target.value)} /></div>
-      <div><Label>Content</Label><Textarea value={(formData[category] as MentionDetail[])[idx]?.content || ''} onChange={(e) => updateMention(category, idx, 'content', e.target.value || null)} /></div>
+      <div>
+        <Label>Headline</Label>
+        <Input
+          value={(formData[category] as MentionDetail[])[idx]?.headline || ''}
+          onChange={(e) => updateMention(category, idx, 'headline', e.target.value)}
+        />
+      </div>
+      <div>
+        <Label>Content</Label>
+        <Textarea
+          value={(formData[category] as MentionDetail[])[idx]?.content || ''}
+          onChange={(e) => updateMention(category, idx, 'content', e.target.value || null)}
+        />
+      </div>
       <div>
         <Label>Reporter</Label>
         <Combobox
@@ -396,8 +440,12 @@ const DailyMentionsTablePage: React.FC = () => {
           onChange={(v) => updateMention(category, idx, 'source', v || null)}
         />
       </div>
-      <div><Label>Sentiment</Label>
-        <Select value={(formData[category] as MentionDetail[])[idx]?.sentiment || 'neutral'} onValueChange={(v) => updateMention(category, idx, 'sentiment', v as any)}>
+      <div>
+        <Label>Sentiment</Label>
+        <Select
+          value={(formData[category] as MentionDetail[])[idx]?.sentiment || 'neutral'}
+          onValueChange={(v) => updateMention(category, idx, 'sentiment', v as any)}
+        >
           <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="positive">Positive</SelectItem>
@@ -406,16 +454,43 @@ const DailyMentionsTablePage: React.FC = () => {
           </SelectContent>
         </Select>
       </div>
-      <div><Label>Page</Label><Input value={(formData[category] as MentionDetail[])[idx]?.page || ''} onChange={(e) => updateMention(category, idx, 'page', e.target.value || null)} /></div>
-      <div><Label>Publication Date</Label><Input type="date" value={(formData[category] as MentionDetail[])[idx]?.publication_date?.slice(0,10) || ''} onChange={(e) => updateMention(category, idx, 'publication_date', e.target.value || null)} /></div>
-      <div><Label>URLs</Label>
+      <div>
+        <Label>Page</Label>
+        <Input
+          value={(formData[category] as MentionDetail[])[idx]?.page || ''}
+          onChange={(e) => updateMention(category, idx, 'page', e.target.value || null)}
+        />
+      </div>
+      <div>
+        <Label>Publication Date</Label>
+        <Input
+          type="date"
+          value={(formData[category] as MentionDetail[])[idx]?.publication_date?.slice(0, 10) || ''}
+          onChange={(e) => updateMention(category, idx, 'publication_date', e.target.value || null)}
+        />
+      </div>
+      <div>
+        <Label>URLs</Label>
         {(formData[category] as MentionDetail[])[idx]?.urls.map((url, uidx) => (
           <div key={uidx} className="flex gap-2 mb-2">
-            <Input value={url} onChange={(e) => updateUrl(category, idx, uidx, e.target.value)} placeholder="https://..." />
-            <Button variant="ghost" size="icon" onClick={() => removeUrl(category, idx, uidx)} disabled={(formData[category] as MentionDetail[])[idx].urls.length <= 1}><X className="h-4 w-4" /></Button>
+            <Input
+              value={url}
+              onChange={(e) => updateUrl(category, idx, uidx, e.target.value)}
+              placeholder="https://..."
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => removeUrl(category, idx, uidx)}
+              disabled={(formData[category] as MentionDetail[])[idx].urls.length <= 1}
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </div>
         ))}
-        <Button variant="outline" size="sm" onClick={() => addUrl(category, idx)}>Add URL</Button>
+        <Button variant="outline" size="sm" onClick={() => addUrl(category, idx)}>
+          Add URL
+        </Button>
       </div>
     </div>
   );
@@ -424,17 +499,24 @@ const DailyMentionsTablePage: React.FC = () => {
     <div className="space-y-4">
       <Label className="text-lg font-semibold">{title}</Label>
       {(formData[category] as MentionDetail[] || []).map((_, idx) => (
-        <div key={idx} className="border rounded-lg p-4 space-y-4">
-          <div className="flex justify-between">
+        <div key={idx} className="border rounded-lg p-4 space-y-4 bg-gray-50">
+          <div className="flex justify-between items-center">
             <h4 className="font-medium">{title} Mention {idx + 1}</h4>
-            <Button variant="ghost" size="icon" onClick={() => removeMention(category, idx)} disabled={(formData[category] as MentionDetail[] || []).length <= 1}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => removeMention(category, idx)}
+              disabled={(formData[category] as MentionDetail[] || []).length <= 1}
+            >
               <Trash2 className="h-4 w-4 text-red-600" />
             </Button>
           </div>
           {renderMentionFields(category, idx)}
         </div>
       ))}
-      <Button variant="outline" onClick={() => addMention(category)}>Add {title} Mention</Button>
+      <Button variant="outline" onClick={() => addMention(category)}>
+        Add {title} Mention
+      </Button>
     </div>
   );
 
@@ -444,8 +526,22 @@ const DailyMentionsTablePage: React.FC = () => {
       company_id: undefined,
       publication: '',
       date: '',
-      industry: [{ headline: '', content: null, reporter: null, source: null, sentiment: 'neutral', page: null, publication_date: null, urls: [''] }],
-      competitors: [], subsidiaries: [], passive: [], advert: [],
+      industry: [
+        {
+          headline: '',
+          content: null,
+          reporter: null,
+          source: null,
+          sentiment: 'neutral',
+          page: null,
+          publication_date: null,
+          urls: [''],
+        },
+      ],
+      competitors: [],
+      subsidiaries: [],
+      passive: [],
+      advert: [],
     });
     setFormErrors({});
     setCreateModalOpen(true);
@@ -491,6 +587,7 @@ const DailyMentionsTablePage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent, isEdit: boolean) => {
     e.preventDefault();
     const errors: Record<string, string> = {};
+
     if (!formData.company_id) errors.company_id = 'Required';
     if (!formData.publication) errors.publication = 'Required';
     if (!formData.date) errors.date = 'Required';
@@ -499,10 +596,12 @@ const DailyMentionsTablePage: React.FC = () => {
     let invalidUrl = false;
     ['industry', 'competitors', 'subsidiaries', 'passive', 'advert'].forEach((cat) => {
       (formData[cat as keyof DailyMention] as MentionDetail[] || []).forEach((m) => {
-        m.urls.forEach((u) => { if (u && !isValidUrl(u)) invalidUrl = true; });
+        m.urls.forEach((u) => {
+          if (u && !isValidUrl(u)) invalidUrl = true;
+        });
       });
     });
-    if (invalidUrl) errors.urls = 'Invalid URL';
+    if (invalidUrl) errors.urls = 'One or more URLs are invalid';
 
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
@@ -513,11 +612,26 @@ const DailyMentionsTablePage: React.FC = () => {
     try {
       const payload = {
         ...formData,
-        industry: formData.industry?.map(m => ({ ...m, urls: m.urls.filter(u => u && isValidUrl(u)) })),
-        competitors: formData.competitors?.map(m => ({ ...m, urls: m.urls.filter(u => u && isValidUrl(u)) })),
-        subsidiaries: formData.subsidiaries?.map(m => ({ ...m, urls: m.urls.filter(u => u && isValidUrl(u)) })),
-        passive: formData.passive?.map(m => ({ ...m, urls: m.urls.filter(u => u && isValidUrl(u)) })),
-        advert: formData.advert?.map(m => ({ ...m, urls: m.urls.filter(u => u && isValidUrl(u)) })),
+        industry: formData.industry?.map((m) => ({
+          ...m,
+          urls: m.urls.filter((u) => u && isValidUrl(u)),
+        })),
+        competitors: formData.competitors?.map((m) => ({
+          ...m,
+          urls: m.urls.filter((u) => u && isValidUrl(u)),
+        })),
+        subsidiaries: formData.subsidiaries?.map((m) => ({
+          ...m,
+          urls: m.urls.filter((u) => u && isValidUrl(u)),
+        })),
+        passive: formData.passive?.map((m) => ({
+          ...m,
+          urls: m.urls.filter((u) => u && isValidUrl(u)),
+        })),
+        advert: formData.advert?.map((m) => ({
+          ...m,
+          urls: m.urls.filter((u) => u && isValidUrl(u)),
+        })),
       };
 
       if (isEdit && selectedMention) {
@@ -527,11 +641,16 @@ const DailyMentionsTablePage: React.FC = () => {
         await axios.post(`${BASE_URL}/daily-mentions/create`, payload);
         toast({ title: 'Success', description: 'Created successfully' });
       }
+
       setCreateModalOpen(false);
       setEditModalOpen(false);
       fetchDailyMentions();
     } catch (err: any) {
-      toast({ title: 'Error', description: err.response?.data?.message || 'Submit failed', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: err.response?.data?.message || 'Submit failed',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -540,50 +659,94 @@ const DailyMentionsTablePage: React.FC = () => {
     setStatusFilter('all');
     setDateFrom('');
     setDateTo('');
-    setCurrentPage(1);
+    setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
-  // === Columns ===
-  const columns: ColumnDef<TableRow>[] = useMemo(() => [
-    { accessorKey: 'companyName', header: 'Company' },
-    { accessorKey: 'headline', header: 'Headline', cell: info => <div className="max-w-xs truncate" title={info.getValue() as string}>{info.getValue()}</div> },
-    { accessorKey: 'publicationName', header: 'Publication' },
-    { accessorKey: 'sentiment', header: 'Sentiment', cell: ({ row }) => {
-        const s = row.original.sentiment;
-        const color = s === 'positive' ? 'bg-green-100 text-green-800' : s === 'negative' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800';
-        return <Badge className={color}>{s}</Badge>;
-      }},
-    { accessorKey: 'formattedDate', header: 'Date' },
-    { accessorKey: 'status', header: 'Status', cell: ({ row }) => {
-        const s = row.original.status;
-        const color = s === 'approved' ? 'bg-green-100 text-green-800' : s === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800';
-        return <Badge className={color}>{s}</Badge>;
-      }},
-    { id: 'actions', header: 'Actions', cell: ({ row }) => (
-        <div className="flex gap-2">
-          <Button variant="ghost" size="icon" onClick={() => handleView(row.original.id)}><Eye className="h-4 w-4" /></Button>
-          <Button variant="ghost" size="icon" onClick={() => handleEdit(row.original.id)}><Edit className="h-4 w-4" /></Button>
-          <Button variant="ghost" size="icon" onClick={() => handleDelete(row.original.id)} className="text-red-600"><Trash2 className="h-4 w-4" /></Button>
-        </div>
-      )},
-  ], []);
+  // === Table Columns ===
+  const columns: ColumnDef<TableRow>[] = useMemo(
+    () => [
+      { accessorKey: 'companyName', header: 'Company' },
+      {
+        accessorKey: 'headline',
+        header: 'Headline',
+        cell: ({ row }) => (
+          <div className="max-w-xs truncate" title={row.original.headline}>
+            {row.original.headline}
+          </div>
+        ),
+      },
+      { accessorKey: 'publicationName', header: 'Publication' },
+      {
+        accessorKey: 'sentiment',
+        header: 'Sentiment',
+        cell: ({ row }) => {
+          const s = row.original.sentiment;
+          const color =
+            s === 'positive'
+              ? 'bg-green-100 text-green-800'
+              : s === 'negative'
+              ? 'bg-red-100 text-red-800'
+              : 'bg-gray-100 text-gray-800';
+          return <Badge className={color}>{s}</Badge>;
+        },
+      },
+      { accessorKey: 'formattedDate', header: 'Date' },
+      {
+        accessorKey: 'status',
+        header: 'Status',
+        cell: ({ row }) => {
+          const s = row.original.status;
+          const color =
+            s === 'approved'
+              ? 'bg-green-100 text-green-800'
+              : s === 'rejected'
+              ? 'bg-red-100 text-red-800'
+              : 'bg-yellow-100 text-yellow-800';
+          return <Badge className={color}>{s}</Badge>;
+        },
+      },
+      {
+        id: 'actions',
+        header: 'Actions',
+        cell: ({ row }) => (
+          <div className="flex gap-2">
+            <Button variant="ghost" size="icon" onClick={() => handleView(row.original.id)}>
+              <Eye className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => handleEdit(row.original.id)}>
+              <Edit className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleDelete(row.original.id)}
+              className="text-red-600"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    []
+  );
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
         <Loader2 className="h-10 w-10 animate-spin text-indigo-600" />
-        <p className="ml-3">Loading mentions...</p>
+        <p className="ml-3 text-gray-600">Loading mentions...</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex justify-between items-center flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Daily Mentions</h1>
-          <p className="text-gray-600">Manage all media mentions</p>
+          <h1 className="text-3xl font-bold text-gray-900">Daily Mentions</h1>
+          <p className="text-gray-600 mt-1">Track and manage daily media coverage</p>
         </div>
         <div className="flex gap-3">
           <Button variant="outline" onClick={fetchDailyMentions} disabled={loading}>
@@ -592,12 +755,14 @@ const DailyMentionsTablePage: React.FC = () => {
           </Button>
           <Dialog open={createModalOpen} onOpenChange={setCreateModalOpen}>
             <DialogTrigger asChild>
-              <Button onClick={handleCreateNew}>
+              <Button onClick={handleCreateNew} className="bg-indigo-950 hover:bg-indigo-800">
                 <Plus className="mr-2 h-4 w-4" /> Create New
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader><DialogTitle>Create Daily Mention</DialogTitle></DialogHeader>
+              <DialogHeader>
+                <DialogTitle>Create Daily Mention</DialogTitle>
+              </DialogHeader>
               <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
                 <div>
                   <Label>Company *</Label>
@@ -606,7 +771,7 @@ const DailyMentionsTablePage: React.FC = () => {
                     value={formData.company_id?.toString() || ''}
                     onChange={(v) => setFormData({ ...formData, company_id: v ? parseInt(v) : undefined })}
                   />
-                  {formErrors.company_id && <p className="text-red-500 text-sm">{formErrors.company_id}</p>}
+                  {formErrors.company_id && <p className="text-red-500 text-sm mt-1">{formErrors.company_id}</p>}
                 </div>
 
                 <div>
@@ -616,13 +781,17 @@ const DailyMentionsTablePage: React.FC = () => {
                     value={formData.publication as string || ''}
                     onChange={(v) => setFormData({ ...formData, publication: v })}
                   />
-                  {formErrors.publication && <p className="text-red-500 text-sm">{formErrors.publication}</p>}
+                  {formErrors.publication && <p className="text-red-500 text-sm mt-1">{formErrors.publication}</p>}
                 </div>
 
                 <div>
                   <Label>Date *</Label>
-                  <Input type="date" value={formData.date?.slice(0,10) || ''} onChange={(e) => setFormData({ ...formData, date: e.target.value })} />
-                  {formErrors.date && <p className="text-red-500 text-sm">{formErrors.date}</p>}
+                  <Input
+                    type="date"
+                    value={formData.date?.slice(0, 10) || ''}
+                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                  />
+                  {formErrors.date && <p className="text-red-500 text-sm mt-1">{formErrors.date}</p>}
                 </div>
 
                 {renderCategorySection('industry', 'Industry')}
@@ -634,20 +803,28 @@ const DailyMentionsTablePage: React.FC = () => {
                 {formErrors.urls && <p className="text-red-500 text-sm">{formErrors.urls}</p>}
                 {formErrors.industry && <p className="text-red-500 text-sm">{formErrors.industry}</p>}
 
-                <Button type="submit">Create Mention</Button>
+                <div className="flex justify-end">
+                  <Button type="submit">Create Mention</Button>
+                </div>
               </form>
             </DialogContent>
           </Dialog>
         </div>
       </div>
 
-      {/* FILTER SECTION */}
+      {/* Filters */}
       <Card className="mb-6">
         <CardContent className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <Label htmlFor="status">Status</Label>
-              <Select value={statusFilter} onValueChange={(value) => { setStatusFilter(value); setCurrentPage(1); }}>
+              <Select
+                value={statusFilter}
+                onValueChange={(value) => {
+                  setStatusFilter(value);
+                  setPagination((prev) => ({ ...prev, page: 1 }));
+                }}
+              >
                 <SelectTrigger id="status">
                   <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
@@ -666,7 +843,10 @@ const DailyMentionsTablePage: React.FC = () => {
                 id="dateFrom"
                 type="date"
                 value={dateFrom}
-                onChange={(e) => { setDateFrom(e.target.value); setCurrentPage(1); }}
+                onChange={(e) => {
+                  setDateFrom(e.target.value);
+                  setPagination((prev) => ({ ...prev, page: 1 }));
+                }}
               />
             </div>
 
@@ -676,7 +856,10 @@ const DailyMentionsTablePage: React.FC = () => {
                 id="dateTo"
                 type="date"
                 value={dateTo}
-                onChange={(e) => { setDateTo(e.target.value); setCurrentPage(1); }}
+                onChange={(e) => {
+                  setDateTo(e.target.value);
+                  setPagination((prev) => ({ ...prev, page: 1 }));
+                }}
               />
             </div>
 
@@ -690,27 +873,49 @@ const DailyMentionsTablePage: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Table */}
+      {/* Main Table */}
       <Card>
-        <CardHeader><CardTitle>Mentions List</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>Mentions List</CardTitle>
+        </CardHeader>
         <CardContent>
           {tableData.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">No mentions found</div>
+            <div className="text-center py-12 text-gray-500">
+              {loading ? 'Loading mentions...' : 'No mentions found'}
+            </div>
           ) : (
             <DataTable columns={columns} data={tableData} />
           )}
 
-          {totalPages > 1 && (
-            <div className="flex justify-between items-center mt-6">
-              <p className="text-sm text-gray-600">
-                Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, totalCount)} of {totalCount}
+          {/* Pagination Controls */}
+          {pagination.totalPages > 1 && (
+            <div className="flex items-center justify-between mt-6 text-sm">
+              <p className="text-gray-600">
+                Showing{' '}
+                {Math.max(1, (pagination.page - 1) * pagination.limit + 1)}–
+                {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total}
               </p>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>
-                  <ChevronLeft className="h-4 w-4" />
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPagination((p) => ({ ...p, page: Math.max(1, p.page - 1) }))}
+                  disabled={pagination.page === 1 || loading}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" /> Previous
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
-                  <ChevronRight className="h-4 w-4" />
+
+                <span className="px-4 py-2 bg-gray-100 rounded-md font-medium">
+                  Page {pagination.page} of {pagination.totalPages}
+                </span>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPagination((p) => ({ ...p, page: Math.min(p.totalPages, p.page + 1) }))}
+                  disabled={pagination.page === pagination.totalPages || loading}
+                >
+                  Next <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
               </div>
             </div>
@@ -721,30 +926,75 @@ const DailyMentionsTablePage: React.FC = () => {
       {/* View Modal */}
       <Dialog open={viewModalOpen} onOpenChange={setViewModalOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Mention Details</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Mention Details</DialogTitle>
+          </DialogHeader>
           {selectedMention && (
             <div className="space-y-6">
-              <div><Label>Company</Label><p>{selectedMention.company?.company_name}</p></div>
-              <div><Label>Publication</Label><p>{typeof selectedMention.publication === 'string' ? selectedMention.publication : selectedMention.publication?.name}</p></div>
-              <div><Label>Date</Label><p>{selectedMention.date ? new Date(selectedMention.date).toLocaleDateString() : 'N/A'}</p></div>
-              <div><Label>Status</Label><p>{selectedMention.status}</p></div>
-              {(['industry', 'competitors', 'subsidiaries', 'passive', 'advert'] as const).map(cat => (
+              <div>
+                <Label>Company</Label>
+                <p className="font-medium">{selectedMention.company?.company_name || 'N/A'}</p>
+              </div>
+              <div>
+                <Label>Publication</Label>
+                <p>
+                  {typeof selectedMention.publication === 'string'
+                    ? selectedMention.publication
+                    : selectedMention.publication?.name || 'N/A'}
+                </p>
+              </div>
+              <div>
+                <Label>Date</Label>
+                <p>
+                  {selectedMention.date
+                    ? new Date(selectedMention.date).toLocaleDateString('en-GB')
+                    : 'N/A'}
+                </p>
+              </div>
+              <div>
+                <Label>Status</Label>
+                <Badge
+                  variant={
+                    selectedMention.status === 'approved'
+                      ? 'default'
+                      : selectedMention.status === 'rejected'
+                      ? 'destructive'
+                      : 'secondary'
+                  }
+                >
+                  {selectedMention.status}
+                </Badge>
+              </div>
+
+              {(['industry', 'competitors', 'subsidiaries', 'passive', 'advert'] as const).map((cat) => (
                 <div key={cat}>
-                  <Label className="capitalize">{cat} Mentions</Label>
-                  {(selectedMention[cat] as MentionDetail[]).map((m, i) => (
-                    <div key={i} className="border rounded p-4 mt-2">
-                      <p><strong>Headline:</strong> {m.headline}</p>
-                      <p><strong>Sentiment:</strong> {m.sentiment}</p>
-                      {m.urls.length > 0 && (
-                        <div>
-                          <strong>URLs:</strong>
-                          <ul className="list-disc pl-5">
-                            {m.urls.map((u, ui) => <li key={ui}><a href={u} target="_blank" rel="noopener noreferrer" className="text-blue-600">{u}</a></li>)}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                  <Label className="capitalize text-lg font-semibold mb-2 block">{cat} Mentions</Label>
+                  {(selectedMention[cat] as MentionDetail[]).length === 0 ? (
+                    <p className="text-gray-500 italic">No {cat} mentions</p>
+                  ) : (
+                    (selectedMention[cat] as MentionDetail[]).map((m, i) => (
+                      <div key={i} className="border rounded p-4 mt-2 bg-gray-50">
+                        <p><strong>Headline:</strong> {m.headline}</p>
+                        <p><strong>Sentiment:</strong> <Badge variant={m.sentiment === 'positive' ? 'default' : m.sentiment === 'negative' ? 'destructive' : 'secondary'}>{m.sentiment}</Badge></p>
+                        {m.content && <p><strong>Content:</strong> {m.content}</p>}
+                        {m.reporter && <p><strong>Reporter:</strong> {m.reporter}</p>}
+                        {m.urls.length > 0 && (
+                          <div>
+                            <strong>URLs:</strong>
+                            <ul className="list-disc pl-5 mt-1">
+                              {m.urls.map((u, ui) => (
+                                <li key={ui}>
+                                  <a href={u} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                                    {u}
+                                  </a>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
                 </div>
               ))}
             </div>
@@ -752,10 +1002,12 @@ const DailyMentionsTablePage: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Modal (same form as create) */}
+      {/* Edit Modal */}
       <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Edit Daily Mention</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Edit Daily Mention</DialogTitle>
+          </DialogHeader>
           <form onSubmit={(e) => handleSubmit(e, true)} className="space-y-6">
             <div>
               <Label>Company *</Label>
@@ -764,7 +1016,7 @@ const DailyMentionsTablePage: React.FC = () => {
                 value={formData.company_id?.toString() || ''}
                 onChange={(v) => setFormData({ ...formData, company_id: v ? parseInt(v) : undefined })}
               />
-              {formErrors.company_id && <p className="text-red-500 text-sm">{formErrors.company_id}</p>}
+              {formErrors.company_id && <p className="text-red-500 text-sm mt-1">{formErrors.company_id}</p>}
             </div>
 
             <div>
@@ -774,13 +1026,17 @@ const DailyMentionsTablePage: React.FC = () => {
                 value={formData.publication as string || ''}
                 onChange={(v) => setFormData({ ...formData, publication: v })}
               />
-              {formErrors.publication && <p className="text-red-500 text-sm">{formErrors.publication}</p>}
+              {formErrors.publication && <p className="text-red-500 text-sm mt-1">{formErrors.publication}</p>}
             </div>
 
             <div>
               <Label>Date *</Label>
-              <Input type="date" value={formData.date?.slice(0,10) || ''} onChange={(e) => setFormData({ ...formData, date: e.target.value })} />
-              {formErrors.date && <p className="text-red-500 text-sm">{formErrors.date}</p>}
+              <Input
+                type="date"
+                value={formData.date?.slice(0, 10) || ''}
+                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+              />
+              {formErrors.date && <p className="text-red-500 text-sm mt-1">{formErrors.date}</p>}
             </div>
 
             {renderCategorySection('industry', 'Industry')}
@@ -792,7 +1048,9 @@ const DailyMentionsTablePage: React.FC = () => {
             {formErrors.urls && <p className="text-red-500 text-sm">{formErrors.urls}</p>}
             {formErrors.industry && <p className="text-red-500 text-sm">{formErrors.industry}</p>}
 
-            <Button type="submit">Update Mention</Button>
+            <div className="flex justify-end">
+              <Button type="submit">Update Mention</Button>
+            </div>
           </form>
         </DialogContent>
       </Dialog>

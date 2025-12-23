@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+// EditorialPage.tsx - FIXED PAGINATION + SCROLLABLE TABLE
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, Pencil, Trash2, FileSpreadsheet, RefreshCw, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/DataTable';
@@ -53,6 +54,15 @@ interface Editorial {
   company_data: {
     company_name: string;
   };
+  creator_data?: { username: string; email: string };
+  approver_data?: { username: string; email: string } | null;
+}
+
+interface Pagination {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }
 
 const API_BASE = "https://pplus-alde.onrender.com/api";
@@ -64,17 +74,20 @@ const EditorialPage = () => {
   const [editorials, setEditorials] = useState<Editorial[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
-  const editorialsPerPage = 10;
+
+  const [pagination, setPagination] = useState<Pagination>({
+    total: 0,
+    page: 1,
+    limit: 10,
+    totalPages: 1,
+  });
 
   // Filter states
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
 
-  const fetchEditorials = async () => {
+  const fetchEditorials = useCallback(async () => {
     if (!token || !user) {
       toast.error("Authentication required");
       setLoading(false);
@@ -85,34 +98,36 @@ const EditorialPage = () => {
     setError(null);
 
     try {
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      };
+      const role = user.role?.name || (typeof user.role === 'string' ? user.role : 'Analyst');
 
-      const endpoint = user.role.name === 'Supervisor'
-        ? `${API_BASE}/editorials/supervisor-mentions`
-        : user.role.name === 'Analyst'
-        ? `${API_BASE}/editorials/my-editorials`
-        : `${API_BASE}/editorials`;
+      let endpoint = `${API_BASE}/editorials`;
+      if (role === 'Supervisor') {
+        endpoint = `${API_BASE}/editorials/supervisor-mentions`;
+      } else if (role === 'Analyst') {
+        endpoint = `${API_BASE}/editorials/my-editorials`;
+      }
+
+      const safePage = Math.max(1, isNaN(pagination.page) ? 1 : pagination.page);
 
       const params = new URLSearchParams();
-      params.append('page', currentPage.toString());
-      params.append('limit', editorialsPerPage.toString());
+      params.append('page', safePage.toString());
+      params.append('limit', pagination.limit.toString());
 
       if (statusFilter && statusFilter !== 'all') {
         params.append('status', statusFilter);
       }
-      if (dateFrom) {
-        params.append('date_from', dateFrom);
-      }
-      if (dateTo) {
-        params.append('date_to', dateTo);
-      }
+      if (dateFrom) params.append('date_from', dateFrom);
+      if (dateTo) params.append('date_to', dateTo);
 
       const url = `${endpoint}?${params.toString()}`;
 
-      const response = await fetch(url, { headers });
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: Failed to fetch editorials`);
       }
@@ -123,26 +138,35 @@ const EditorialPage = () => {
         throw new Error(result.message || "Failed to fetch editorials");
       }
 
-      // Correct extraction based on actual API response
       let items: Editorial[] = [];
+      let meta: Pagination = {
+        total: 0,
+        page: safePage,
+        limit: pagination.limit,
+        totalPages: 1,
+      };
 
-      // Analyst/Supervisor endpoints return direct array in result.data
+      // Handle different response shapes
       if (Array.isArray(result.data)) {
         items = result.data;
-      }
-      // Admin or other endpoints may wrap in { editorial: [...], meta: {...} }
-      else if (result.data?.editorial && Array.isArray(result.data.editorial)) {
-        items = result.data.editorial;
-      } else {
-        items = [];
+        meta = result.pagination || {
+          total: items.length,
+          page: safePage,
+          limit: pagination.limit,
+          totalPages: Math.ceil(items.length / pagination.limit),
+        };
+      } else if (result.data?.data && Array.isArray(result.data.data)) {
+        items = result.data.data;
+        meta = {
+          total: result.data.pagination.total,
+          page: result.data.pagination.currentPage,
+          limit: result.data.pagination.pageSize,
+          totalPages: result.data.pagination.totalPages,
+        };
       }
 
-      // Since analyst endpoints don't return pagination meta, fallback to basic values
-      setEditorials(items);
-      setTotalItems(items.length);
-      setTotalPages(1);
-      setCurrentPage(1);
-
+      setEditorials(items.filter(e => !e.is_deleted));
+      setPagination(meta);
     } catch (err: any) {
       console.error("Fetch error:", err);
       setError(err.message || "Failed to load editorials");
@@ -151,17 +175,16 @@ const EditorialPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [pagination.page, pagination.limit, user, token, statusFilter, dateFrom, dateTo]);
 
   useEffect(() => {
     fetchEditorials();
-  }, [currentPage, user, token, statusFilter, dateFrom, dateTo]);
+  }, [fetchEditorials]);
 
   const handleDelete = async (id: number) => {
-    if (!token) return toast.error("Authentication required");
+    if (!confirm("Are you sure you want to delete this editorial?")) return;
 
     try {
-      setLoading(true);
       const response = await fetch(`${API_BASE}/editorials/delete/${id}`, {
         method: 'PUT',
         headers: {
@@ -176,8 +199,6 @@ const EditorialPage = () => {
       fetchEditorials();
     } catch (err: any) {
       toast.error(err.message || "Failed to delete editorial");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -188,78 +209,49 @@ const EditorialPage = () => {
     }
 
     try {
-      setLoading(true);
       const response = await fetch(`${API_BASE}/editorials/${id}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch editorial for editing");
-      }
+      if (!response.ok) throw new Error("Failed to fetch editorial");
 
       const result = await response.json();
-
-      if (!result.success || !result.data) {
-        throw new Error("Invalid response from server");
-      }
+      if (!result.success || !result.data) throw new Error("Invalid response");
 
       const data = result.data;
-
-      const mappedEditorial = {
-        id: data.id,
-        date: data.date ? new Date(data.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-        company_id: data.company?.id || data.company_data?.id,
-        media_type: data.media_type || '',
-        online_channel: data.online_channel || '',
-        source: data.source || '',
-        audience_reach: data.audience_reach || 0,
-        placement: data.placement || '',
-        title: data.title || '',
-        print_web_clips: data.print_web_clips || '',
-        reporter: data.reporter || '',
-        country: data.country || '',
-        spokesperson: data.spokesperson || '',
-        activity: data.activity || '',
-        sentiment: data.sentiment || '',
-        sentiment_keyword_indicator_id: data.sentiment_keyword_indicator?.id || data.sentiment_keyword_indicator_data?.id,
-        advert_spend: data.advert_spend || 0,
-        circulation: data.circulation || 0,
-        page_size: data.page_size || '',
-        page_number: data.page_number || '',
-        language: data.language || '',
-        ceo_thought_leadership: data.ceo_thought_leadership || '',
-        analyst_note: data.analyst_note || '',
-        supervisor_note: data.supervisor_note || '',
-        admin_note: data.admin_note || '',
-        filename: data.filename,
-        original_name: data.original_name,
-        file_path: data.file_path,
-        file_size: data.file_size,
-        mime_type: data.mime_type,
-        file_type: data.file_type,
-      };
 
       navigate('/dashboard/editorial/create', {
         state: {
           editorialData: {
-            date: mappedEditorial.date,
-            company_id: mappedEditorial.company_id,
-            media_type: mappedEditorial.media_type,
-            analyst_note: mappedEditorial.analyst_note,
-            supervisor_note: mappedEditorial.supervisor_note,
-            admin_note: mappedEditorial.admin_note,
-            editorials: [mappedEditorial],
-          }
-        }
+            id: data.id,
+            date: data.date ? new Date(data.date).toISOString().split('T')[0] : '',
+            company_id: data.company?.id || data.company_data?.id,
+            online_channel: data.online_channel || '',
+            source: data.source || '',
+            title: data.title || '',
+            audience_reach: data.audience_reach || 0,
+            placement: data.placement || '',
+            language: data.language || '',
+            ceo_thought_leadership: data.ceo_thought_leadership || '',
+            print_web_clips: data.print_web_clips || '',
+            reporter: data.reporter || '',
+            country: data.country || '',
+            spokesperson: data.spokesperson || '',
+            activity: data.activity || '',
+            sentiment: data.sentiment || '',
+            advert_spend: data.advert_spend || 0,
+            circulation: data.circulation || 0,
+            page_size: data.page_size || '',
+            analyst_note: data.analyst_note || '',
+            supervisor_note: data.supervisor_note || '',
+            admin_note: data.admin_note || '',
+          },
+        },
       });
-
     } catch (err: any) {
-      console.error("Edit fetch error:", err);
       toast.error(err.message || "Could not load editorial for editing");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -275,6 +267,7 @@ const EditorialPage = () => {
     setStatusFilter('all');
     setDateFrom('');
     setDateTo('');
+    setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
   const columns = [
@@ -297,7 +290,7 @@ const EditorialPage = () => {
       accessorKey: 'status',
       header: 'Status',
       cell: ({ row }: any) => {
-        const status = (row.getValue('status') || 'pending').toLowerCase();
+        const status = (row.original.status || 'pending').toLowerCase();
         const colors: Record<string, string> = {
           approved: 'bg-green-100 text-green-800',
           rejected: 'bg-red-100 text-red-800',
@@ -321,7 +314,12 @@ const EditorialPage = () => {
             <Button variant="ghost" size="icon" onClick={() => handleEdit(editorial.id)}>
               <Pencil className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={() => handleDelete(editorial.id)}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => handleDelete(editorial.id)}
+              className="text-red-600 hover:text-red-800"
+            >
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
@@ -335,11 +333,15 @@ const EditorialPage = () => {
       {/* Header */}
       <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Editorial</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Editorial</h1>
           <p className="text-gray-600 mt-1">Manage editorial content and media coverage</p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" onClick={fetchEditorials} disabled={loading}>
+          <Button
+            variant="outline"
+            onClick={fetchEditorials}
+            disabled={loading}
+          >
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
@@ -359,7 +361,13 @@ const EditorialPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <Label htmlFor="status">Status</Label>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select
+              value={statusFilter}
+              onValueChange={(value) => {
+                setStatusFilter(value);
+                setPagination((prev) => ({ ...prev, page: 1 }));
+              }}
+            >
               <SelectTrigger id="status">
                 <SelectValue placeholder="All statuses" />
               </SelectTrigger>
@@ -371,27 +379,30 @@ const EditorialPage = () => {
               </SelectContent>
             </Select>
           </div>
-
           <div>
             <Label htmlFor="dateFrom">Date From</Label>
             <Input
               id="dateFrom"
               type="date"
               value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
+              onChange={(e) => {
+                setDateFrom(e.target.value);
+                setPagination((prev) => ({ ...prev, page: 1 }));
+              }}
             />
           </div>
-
           <div>
             <Label htmlFor="dateTo">Date To</Label>
             <Input
               id="dateTo"
               type="date"
               value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
+              onChange={(e) => {
+                setDateTo(e.target.value);
+                setPagination((prev) => ({ ...prev, page: 1 }));
+              }}
             />
           </div>
-
           <div className="flex items-end">
             <Button variant="outline" onClick={handleResetFilters} className="w-full">
               Reset Filters
@@ -407,8 +418,8 @@ const EditorialPage = () => {
         </div>
       )}
 
-      {/* Table */}
-      <div className="flex-1 overflow-hidden border rounded-lg bg-white">
+      {/* Main Table - Scrollable */}
+      <div className="flex-1 border rounded-lg bg-white shadow-sm overflow-hidden">
         {loading ? (
           <div className="flex flex-col items-center justify-center h-96">
             <Loader2 className="h-10 w-10 animate-spin text-indigo-600" />
@@ -420,37 +431,45 @@ const EditorialPage = () => {
             <p className="text-sm mt-2">Try creating one or adjusting filters</p>
           </div>
         ) : (
-          <DataTable columns={columns} data={editorials} />
+          <div className="overflow-auto max-h-[calc(100vh-320px)] scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
+            <DataTable columns={columns} data={editorials} />
+          </div>
         )}
       </div>
 
-      {/* Pagination - Exactly as original (kept untouched) */}
-      <div className="mt-4 flex items-center justify-between text-sm">
-        <div className="text-gray-600">
-          Showing {editorials.length} of {totalItems} entries
+      {/* Pagination */}
+      {pagination.totalPages > 1 && (
+        <div className="mt-4 flex items-center justify-between text-sm">
+          <div className="text-gray-600">
+            Showing{' '}
+            {Math.max(1, (pagination.page - 1) * pagination.limit + 1)}–
+            {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total}
+          </div>
+          <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPagination((p) => ({ ...p, page: Math.max(1, p.page - 1) }))}
+              disabled={pagination.page === 1 || loading}
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+            </Button>
+
+            <span className="px-4 py-2 bg-gray-100 rounded-md font-medium">
+              Page {pagination.page} of {pagination.totalPages}
+            </span>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPagination((p) => ({ ...p, page: Math.min(p.totalPages, p.page + 1) }))}
+              disabled={pagination.page === pagination.totalPages || loading}
+            >
+              Next <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-            disabled={currentPage === 1 || loading}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="px-3 text-gray-700">
-            Page {currentPage} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-            disabled={currentPage === totalPages || loading}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
+      )}
     </div>
   );
 };
