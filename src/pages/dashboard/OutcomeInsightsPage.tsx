@@ -1,6 +1,5 @@
 'use client';
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -8,7 +7,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogFooter,
 } from '@/components/ui/dialog';
 import { OutcomeInsightForm } from '../../components/admin/OutcomeInsightForm';
 import {
@@ -22,6 +20,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Filter,
+  Check,
+  ChevronsUpDown,
 } from 'lucide-react';
 import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import {
@@ -43,11 +43,12 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/auth/AuthContext';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { useLocation } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
 
 interface InsightItem {
   category: string;
@@ -60,7 +61,7 @@ interface OutcomeInsight {
   company: { company_name: string };
   date: string;
   insights: InsightItem[];
-  created_by: number;
+  created_by: string;
   approved_by: number | null;
   analyst_note: string | null;
   supervisor_note: string | null;
@@ -79,8 +80,57 @@ interface Pagination {
   totalPages: number;
 }
 
+interface CategoryValue {
+  value: string;
+}
+
+// Multi-select category combobox
+const CategoryCombobox: React.FC<{
+  categories: string[];
+  selected: string[];
+  onChange: (selected: string[]) => void;
+}> = ({ categories, selected, onChange }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" role="combobox" className="w-full justify-between">
+          {selected.length > 0 ? `${selected.length} selected` : 'Select categories...'}
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-full p-0">
+        <Command>
+          <CommandInput placeholder="Search categories..." />
+          <CommandEmpty>No category found.</CommandEmpty>
+          <CommandGroup className="max-h-64 overflow-auto">
+            {categories.map((category) => (
+              <CommandItem
+                key={category}
+                value={category}
+                onSelect={() => {
+                  onChange(
+                    selected.includes(category)
+                      ? selected.filter((c) => c !== category)
+                      : [...selected, category]
+                  );
+                }}
+              >
+                <Check
+                  className={`mr-2 h-4 w-4 ${selected.includes(category) ? 'opacity-100' : 'opacity-0'}`}
+                />
+                {category}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
 /* ------------------------------------------------------------------ */
-/*                         BEAUTIFUL VIEW MODAL                        */
+/* BEAUTIFUL VIEW MODAL */
 /* ------------------------------------------------------------------ */
 function ViewOutcomeModal({
   outcome,
@@ -101,21 +151,18 @@ function ViewOutcomeModal({
         <DialogHeader className="border-b pb-6">
           <DialogTitle className="text-2xl font-bold flex items-center justify-between">
             <span>{outcome.company.company_name}</span>
-            <Badge variant="outline" className="text-lg px-4">
-              Outcome & Insight
-            </Badge>
+            <Badge variant="outline" className="text-lg px-4">Outcome & Insight</Badge>
           </DialogTitle>
           <p className="text-sm text-gray-500 mt-2">
-            ID: <span className="font-mono">{outcome.id}</span> • 
-            Created by <strong>{outcome.creator_data?.username || '—'}</strong> • 
+            ID: <span className="font-mono">{outcome.id}</span> •
+            Created by <strong>{outcome.creator_data?.username || '—'}</strong> •
             {format(new Date(outcome.date), 'MMMM d, yyyy')}
           </p>
         </DialogHeader>
 
         <ScrollArea className="flex-1 px-6 py-6">
           <div className="space-y-10">
-
-            {/* Metadata */}
+            {/* Metadata Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-sm bg-gray-50 p-6 rounded-lg">
               <div>
                 <strong className="text-gray-600">Status</strong>
@@ -150,16 +197,14 @@ function ViewOutcomeModal({
               </div>
             </div>
 
-            {/* Insights */}
+            {/* Insights by Category */}
             <div>
               <h3 className="text-xl font-semibold mb-6 text-indigo-700">Insights by Category</h3>
               <div className="space-y-8">
                 {Object.entries(grouped).map(([category, analyses]) => (
                   <Card key={category} className="border-2 hover:border-indigo-300 transition-all">
                     <CardHeader>
-                      <CardTitle className="text-lg font-bold text-indigo-900">
-                        {category}
-                      </CardTitle>
+                      <CardTitle className="text-lg font-bold text-indigo-900">{category}</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <ul className="space-y-3">
@@ -203,31 +248,29 @@ function ViewOutcomeModal({
           </div>
         </ScrollArea>
 
-        <DialogFooter className="border-t px-6 py-4">
-          <Button variant="outline" onClick={onClose} size="lg">
-            Close
-          </Button>
-        </DialogFooter>
+        <Button variant="outline" onClick={onClose} size="lg" className="mt-4">
+          Close
+        </Button>
       </DialogContent>
     </Dialog>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/*                           MAIN PAGE COMPONENT                      */
+/* MAIN PAGE COMPONENT */
 /* ------------------------------------------------------------------ */
 export default function OutcomeInsightsPage() {
   const { user, token } = useAuth();
   const location = useLocation();
 
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedOutcome, setSelectedOutcome] = useState<OutcomeInsight | null>(null);
-  const [isEditMode, setIsEditMode] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
-
   const [outcomeInsights, setOutcomeInsights] = useState<OutcomeInsight[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
   const [pagination, setPagination] = useState<Pagination>({
     total: 0,
     page: 1,
@@ -235,23 +278,74 @@ export default function OutcomeInsightsPage() {
     totalPages: 0,
   });
 
-  // === FILTER STATES ===
+  const [categories, setCategories] = useState<string[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+
+  // Filter states
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
 
   const BASE_URL = 'https://pplus-alde.onrender.com/api';
 
-  // === FIX: Auto-open edit modal when navigated from Analyst Dashboard ===
+  // Fetch categories
+  useEffect(() => {
+    const fetchCategories = async () => {
+      if (!token) return;
+      setLoadingCategories(true);
+      try {
+        const res = await fetch(`${BASE_URL}/data-parameters/categories?page=1&limit=2000`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error('Failed to fetch categories');
+        const json = await res.json();
+        if (json.success && json.data?.data) {
+          const allValues = json.data.data
+            .flatMap((cat: any) => cat.values || [])
+            .map((v: CategoryValue) => v.value)
+            .filter(Boolean);
+          setCategories(allValues);
+        }
+      } catch (err) {
+        console.error('Error loading categories:', err);
+        toast.error('Failed to load categories');
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+    fetchCategories();
+  }, [token]);
+
+  // Auto-open edit modal if navigated with state
   useEffect(() => {
     if (location.state?.editData) {
       setSelectedOutcome(location.state.editData);
-      setIsEditMode(true);
-      setIsCreateOpen(true);
+      setIsEditModalOpen(true);
     }
   }, [location.state]);
 
-  const fetchOutcomeInsights = async (page = 1, limit = 10) => {
+  const handleCreateNew = useCallback(() => {
+    setSelectedOutcome(null);
+    setIsCreateModalOpen(true);
+  }, []);
+
+  const handleEdit = useCallback((outcome: OutcomeInsight) => {
+    setSelectedOutcome(outcome);
+    setIsEditModalOpen(true);
+  }, []);
+
+  const handleCloseCreate = useCallback((refresh = false) => {
+    setIsCreateModalOpen(false);
+    if (refresh) fetchOutcomeInsights(pagination.page, pagination.limit);
+  }, [pagination.page, pagination.limit]);
+
+  const handleCloseEdit = useCallback((refresh = false) => {
+    setIsEditModalOpen(false);
+    setSelectedOutcome(null);
+    if (refresh) fetchOutcomeInsights(pagination.page, pagination.limit);
+  }, [pagination.page, pagination.limit]);
+
+  const fetchOutcomeInsights = useCallback(async (page = 1, limit = 10) => {
     if (!user || !token) {
       setError('Authentication required');
       setLoading(false);
@@ -262,28 +356,19 @@ export default function OutcomeInsightsPage() {
     setError(null);
 
     try {
-      const role = user.role?.name || user.role;
+      const role = user.role?.name || (typeof user.role === 'string' ? user.role : 'Analyst');
       let endpoint = `${BASE_URL}/outcome-insights`;
+      if (role === 'Supervisor') endpoint = `${BASE_URL}/outcome-insights/supervisor-mentions`;
+      else if (role === 'Analyst') endpoint = `${BASE_URL}/outcome-insights/my-insights`;
 
-      if (role === 'Supervisor')
-        endpoint = `${BASE_URL}/outcome-insights/supervisor-mentions`;
-      else if (role === 'Analyst')
-        endpoint = `${BASE_URL}/outcome-insights/my-insights`;
+      const safePage = isNaN(page) || page < 1 ? 1 : page;
 
-      // Build query parameters with filters
       const params = new URLSearchParams();
-      params.append('page', page.toString());
+      params.append('page', safePage.toString());
       params.append('limit', limit.toString());
-
-      if (statusFilter && statusFilter !== 'all') {
-        params.append('status', statusFilter);
-      }
-      if (dateFrom) {
-        params.append('date_from', dateFrom);
-      }
-      if (dateTo) {
-        params.append('date_to', dateTo);
-      }
+      if (statusFilter && statusFilter !== 'all') params.append('status', statusFilter);
+      if (dateFrom) params.append('date_from', dateFrom);
+      if (dateTo) params.append('date_to', dateTo);
 
       const url = `${endpoint}?${params.toString()}`;
 
@@ -297,24 +382,41 @@ export default function OutcomeInsightsPage() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
       const json = await res.json();
-
       let items: OutcomeInsight[] = [];
-      let meta: Pagination = { total: 0, page, limit, totalPages: 0 };
+      let meta: Pagination = { total: 0, page: safePage, limit, totalPages: 0 };
 
       if (json.success && json.data) {
         if (json.data.data && Array.isArray(json.data.data)) {
           items = json.data.data;
-          meta = json.data.pagination || meta;
-        }
-        else if (Array.isArray(json.data)) {
+          // Normalize API pagination keys to our internal structure
+          meta = {
+            total: json.data.pagination.total,
+            page: json.data.pagination.currentPage,
+            limit: json.data.pagination.pageSize,
+            totalPages: json.data.pagination.totalPages,
+          };
+        } else if (Array.isArray(json.data)) {
           items = json.data;
-          meta = json.pagination || { total: items.length, page, limit, totalPages: Math.ceil(items.length / limit) };
+          meta = json.pagination || {
+            total: items.length,
+            page: safePage,
+            limit,
+            totalPages: Math.ceil(items.length / limit),
+          };
         }
       }
 
-      setOutcomeInsights(items.filter(o => !o.is_deleted));
-      setPagination(meta);
+      // Normalize insights (handle both 'analysis' and 'insight' fields)
+      const normalizedItems = items.map(item => ({
+        ...item,
+        insights: item.insights.map((insight: any) => ({
+          category: insight.category,
+          analysis: insight.insight || insight.analysis || '',
+        })),
+      }));
 
+      setOutcomeInsights(normalizedItems.filter(o => !o.is_deleted));
+      setPagination(meta);
     } catch (err: any) {
       console.error('Fetch error:', err);
       setError(err.message || 'Failed to load insights');
@@ -323,31 +425,19 @@ export default function OutcomeInsightsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, token, statusFilter, dateFrom, dateTo]);
 
-  // Fetch on mount, page change, or filter change
   useEffect(() => {
     fetchOutcomeInsights(1, 10);
-  }, [user, token]);
+  }, [fetchOutcomeInsights]);
 
   useEffect(() => {
-    fetchOutcomeInsights(pagination.page, pagination.limit);
-  }, [pagination.page, statusFilter, dateFrom, dateTo]);
+    if (pagination.page > 0) {
+      fetchOutcomeInsights(pagination.page, pagination.limit);
+    }
+  }, [pagination.page, pagination.limit, fetchOutcomeInsights]);
 
-  const handleEdit = (outcome: OutcomeInsight) => {
-    setSelectedOutcome(outcome);
-    setIsEditMode(true);
-    setIsCreateOpen(true);
-  };
-
-  const handleCloseForm = (refresh = false) => {
-    setIsCreateOpen(false);
-    setIsEditMode(false);
-    setSelectedOutcome(null);
-    if (refresh) fetchOutcomeInsights(pagination.page, pagination.limit);
-  };
-
-  const getFormInitialData = (outcome: OutcomeInsight) => ({
+  const getFormInitialData = useCallback((outcome: OutcomeInsight) => ({
     id: outcome.id,
     company_id: outcome.company_id,
     date: outcome.date.split('T')[0],
@@ -357,18 +447,21 @@ export default function OutcomeInsightsPage() {
     })),
     analyst_note: outcome.analyst_note || '',
     supervisor_note: outcome.supervisor_note || '',
-  });
+  }), []);
 
-  const handleResetFilters = () => {
+  const handleResetFilters = useCallback(() => {
     setStatusFilter('all');
     setDateFrom('');
     setDateTo('');
     setPagination(prev => ({ ...prev, page: 1 }));
+  }, []);
+
+  const getUserRole = () => {
+    return user?.role?.name || (typeof user?.role === 'string' ? user.role : 'Analyst');
   };
 
   return (
     <div className="space-y-6 p-6 bg-gray-50 min-h-screen">
-      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Outcome & Insights</h1>
@@ -383,23 +476,26 @@ export default function OutcomeInsightsPage() {
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+          <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-indigo-950 hover:bg-indigo-800">
+              <Button className="bg-indigo-950 hover:bg-indigo-800" onClick={handleCreateNew}>
                 <Plus className="mr-2 h-4 w-4" />
                 Create Insight
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>{isEditMode ? 'Edit' : 'Create'} Outcome & Insight</DialogTitle>
+                <DialogTitle>Create Outcome & Insight</DialogTitle>
               </DialogHeader>
               <ScrollArea className="mt-4">
                 <OutcomeInsightForm
-                  key={selectedOutcome?.id ?? 'new'}
-                  onClose={handleCloseForm}
-                  initialData={selectedOutcome ? getFormInitialData(selectedOutcome) : undefined}
-                  isEdit={isEditMode}
+                  key="create-new"
+                  onClose={handleCloseCreate}
+                  initialData={undefined}
+                  isEdit={false}
+                  userRole={getUserRole()}
+                  categories={categories}
+                  loadingCategories={loadingCategories}
                 />
               </ScrollArea>
             </DialogContent>
@@ -407,13 +503,19 @@ export default function OutcomeInsightsPage() {
         </div>
       </div>
 
-      {/* FILTER SECTION */}
+      {/* Filters */}
       <Card className="mb-6">
         <CardContent className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <Label htmlFor="oi-status">Status</Label>
-              <Select value={statusFilter} onValueChange={(value) => { setStatusFilter(value); setPagination(p => ({ ...p, page: 1 })); }}>
+              <Select
+                value={statusFilter}
+                onValueChange={(value) => {
+                  setStatusFilter(value);
+                  setPagination(p => ({ ...p, page: 1 }));
+                }}
+              >
                 <SelectTrigger id="oi-status">
                   <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
@@ -425,27 +527,30 @@ export default function OutcomeInsightsPage() {
                 </SelectContent>
               </Select>
             </div>
-
             <div>
               <Label htmlFor="oi-dateFrom">Date From</Label>
               <Input
                 id="oi-dateFrom"
                 type="date"
                 value={dateFrom}
-                onChange={(e) => { setDateFrom(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}
+                onChange={(e) => {
+                  setDateFrom(e.target.value);
+                  setPagination(p => ({ ...p, page: 1 }));
+                }}
               />
             </div>
-
             <div>
               <Label htmlFor="oi-dateTo">Date To</Label>
               <Input
                 id="oi-dateTo"
                 type="date"
                 value={dateTo}
-                onChange={(e) => { setDateTo(e.target.value); setPagination(p => ({ ...p, page: 1 })); }}
+                onChange={(e) => {
+                  setDateTo(e.target.value);
+                  setPagination(p => ({ ...p, page: 1 }));
+                }}
               />
             </div>
-
             <div className="flex items-end">
               <Button variant="outline" onClick={handleResetFilters} className="w-full">
                 <Filter className="mr-2 h-4 w-4" />
@@ -456,7 +561,6 @@ export default function OutcomeInsightsPage() {
         </CardContent>
       </Card>
 
-      {/* Error */}
       {error && (
         <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
           {error}
@@ -466,7 +570,6 @@ export default function OutcomeInsightsPage() {
         </div>
       )}
 
-      {/* Table */}
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle>All Insights</CardTitle>
@@ -476,7 +579,6 @@ export default function OutcomeInsightsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>S/N</TableHead>
                   <TableHead>Company</TableHead>
                   <TableHead>Categories</TableHead>
                   <TableHead>Key Insights</TableHead>
@@ -489,7 +591,7 @@ export default function OutcomeInsightsPage() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-16">
+                    <TableCell colSpan={7} className="text-center py-16">
                       <div className="flex items-center justify-center gap-3">
                         <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
                         <span>Loading insights...</span>
@@ -498,23 +600,21 @@ export default function OutcomeInsightsPage() {
                   </TableRow>
                 ) : outcomeInsights.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-16 text-gray-500">
+                    <TableCell colSpan={7} className="text-center py-16 text-gray-500">
                       <p className="text-lg font-medium">No insights found</p>
                       <p className="text-sm mt-2">Create your first outcome insight or adjust filters</p>
                     </TableCell>
                   </TableRow>
                 ) : (
                   outcomeInsights.map((o, i) => {
-                    const categories = o.insights.map(x => x.category).slice(0, 2).join(', ');
+                    const categoriesDisplay = o.insights.map(x => x.category).slice(0, 2).join(', ');
                     const more = o.insights.length > 2 ? ` +${o.insights.length - 2} more` : '';
                     return (
                       <TableRow key={o.id} className="hover:bg-gray-50">
-                        <TableCell className="font-medium">
-                          {(pagination.page - 1) * pagination.limit + i + 1}
-                        </TableCell>
                         <TableCell className="font-medium">{o.company.company_name}</TableCell>
                         <TableCell className="text-sm">
-                          {categories}{more && <span className="text-gray-500">{more}</span>}
+                          {categoriesDisplay}
+                          {more && <span className="text-gray-500">{more}</span>}
                         </TableCell>
                         <TableCell className="max-w-md">
                           <p className="text-sm text-gray-600 line-clamp-2">
@@ -557,23 +657,25 @@ export default function OutcomeInsightsPage() {
                                   <Edit className="mr-2 h-4 w-4" /> Edit
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
-                                  onClick={() => {
+                                  onClick={async () => {
                                     if (confirm(`Delete insight for ${o.company.company_name}?`)) {
-                                      fetch(`${BASE_URL}/outcome-insights/update/${o.id}`, {
-                                        method: 'PUT',
-                                        headers: {
-                                          'Authorization': `Bearer ${token}`,
-                                          'Content-Type': 'application/json',
-                                        },
-                                        body: JSON.stringify({ is_deleted: true }),
-                                      })
-                                        .then(r => r.json())
-                                        .then(j => {
-                                          if (j.success) {
-                                            toast.success('Deleted');
-                                            fetchOutcomeInsights(pagination.page, pagination.limit);
-                                          }
+                                      try {
+                                        const res = await fetch(`${BASE_URL}/outcome-insights/update/${o.id}`, {
+                                          method: 'PUT',
+                                          headers: {
+                                            'Authorization': `Bearer ${token}`,
+                                            'Content-Type': 'application/json',
+                                          },
+                                          body: JSON.stringify({ is_deleted: true }),
                                         });
+                                        const result = await res.json();
+                                        if (result.success) {
+                                          toast.success('Insight deleted');
+                                          fetchOutcomeInsights(pagination.page, pagination.limit);
+                                        }
+                                      } catch (err) {
+                                        toast.error('Failed to delete insight');
+                                      }
                                     }
                                   }}
                                   className="text-red-600"
@@ -592,31 +694,35 @@ export default function OutcomeInsightsPage() {
             </Table>
           </div>
 
-          {/* Pagination */}
+          {/* Pagination Controls */}
           {pagination.totalPages > 1 && (
             <div className="flex items-center justify-between mt-8 text-sm">
               <p className="text-gray-600">
-                Showing {(pagination.page - 1) * pagination.limit + 1}–{Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total}
+                Showing{' '}
+                {Math.max(1, (pagination.page - 1) * pagination.limit + 1)}–
+                {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total}
               </p>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-4">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPagination(p => ({ ...p, page: p.page - 1 }))}
-                  disabled={pagination.page === 1}
+                  onClick={() => setPagination(p => ({ ...p, page: Math.max(1, p.page - 1) }))}
+                  disabled={pagination.page === 1 || loading}
                 >
-                  <ChevronLeft className="h-4 w-4" /> Previous
+                  <ChevronLeft className="h-4 w-4 mr-1" /> Previous
                 </Button>
-                <span className="px-4 py-2 bg-gray-100 rounded-md">
+
+                <span className="px-4 py-2 bg-gray-100 rounded-md font-medium">
                   Page {pagination.page} of {pagination.totalPages}
                 </span>
+
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPagination(p => ({ ...p, page: p.page + 1 }))}
-                  disabled={pagination.page === pagination.totalPages}
+                  onClick={() => setPagination(p => ({ ...p, page: Math.min(p.totalPages, p.page + 1) }))}
+                  disabled={pagination.page === pagination.totalPages || loading}
                 >
-                  Next <ChevronRight className="h-4 w-4" />
+                  Next <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
               </div>
             </div>
@@ -624,7 +730,29 @@ export default function OutcomeInsightsPage() {
         </CardContent>
       </Card>
 
-      {/* VIEW MODAL */}
+      {/* Edit Modal */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Outcome & Insight</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="mt-4">
+            {selectedOutcome && (
+              <OutcomeInsightForm
+                key={`edit-${selectedOutcome.id}`}
+                onClose={handleCloseEdit}
+                initialData={getFormInitialData(selectedOutcome)}
+                isEdit={true}
+                userRole={getUserRole()}
+                categories={categories}
+                loadingCategories={loadingCategories}
+              />
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Modal */}
       {isViewOpen && selectedOutcome && (
         <ViewOutcomeModal outcome={selectedOutcome} onClose={() => setIsViewOpen(false)} />
       )}

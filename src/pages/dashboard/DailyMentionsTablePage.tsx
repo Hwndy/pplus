@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Eye, Edit, Trash2, Filter, X, Loader2, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { Plus, Eye, Edit, Trash2, Filter, X, Loader2, ChevronLeft, ChevronRight, RefreshCw, Check, ChevronsUpDown } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { DataTable } from '@/components/ui/DataTable';
 import { ColumnDef } from '@tanstack/react-table';
@@ -20,6 +20,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
 
 // === Types ===
 interface MentionDetail {
@@ -44,6 +46,11 @@ interface Publication {
   id: number;
   name: string;
   type: string;
+}
+
+interface Reporter {
+  id: number;
+  name: string;
 }
 
 interface DailyMention {
@@ -84,6 +91,54 @@ axios.interceptors.request.use(
 const BASE_URL = 'https://pplus-alde.onrender.com/api';
 const ITEMS_PER_PAGE = 10;
 
+const Combobox: React.FC<{
+  options: { value: string; label: string }[];
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}> = ({ options, value, onChange, placeholder = 'Select...' }) => {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between"
+        >
+          {value ? options.find((option) => option.value === value)?.label : placeholder}
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-full p-0">
+        <Command>
+          <CommandInput placeholder="Search..." />
+          <CommandEmpty>No item found.</CommandEmpty>
+          <CommandGroup>
+            {options.map((option) => (
+              <CommandItem
+                key={option.value}
+                value={option.value}
+                onSelect={(currentValue) => {
+                  onChange(currentValue === value ? '' : currentValue);
+                  setOpen(false);
+                }}
+              >
+                <Check
+                  className={`mr-2 h-4 w-4 ${value === option.value ? 'opacity-100' : 'opacity-0'}`}
+                />
+                {option.label}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
 const DailyMentionsTablePage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -114,6 +169,7 @@ const DailyMentionsTablePage: React.FC = () => {
 
   const [companies, setCompanies] = useState<Company[]>([]);
   const [publications, setPublications] = useState<Publication[]>([]);
+  const [reporters, setReporters] = useState<Reporter[]>([]);
 
   // === FILTER STATES ===
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -235,13 +291,14 @@ const DailyMentionsTablePage: React.FC = () => {
     fetchDailyMentions();
   }, [fetchDailyMentions]);
 
-  // === Fetch Companies & Publications ===
+  // === Fetch Companies, Publications & Reporters ===
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [compRes, pubRes] = await Promise.all([
+        const [compRes, pubRes, repRes] = await Promise.all([
           axios.get(`${BASE_URL}/companies`),
           axios.get(`${BASE_URL}/publications`),
+          axios.get(`${BASE_URL}/data-parameters/category/Reporters`),
         ]);
 
         const compData = compRes.data?.data?.data || compRes.data?.data || [];
@@ -249,10 +306,14 @@ const DailyMentionsTablePage: React.FC = () => {
 
         const pubArray = pubRes.data?.data?.publication || pubRes.data?.data || [];
         setPublications(Array.isArray(pubArray) ? pubArray : []);
+
+        const repData = repRes.data?.data || [];
+        setReporters(Array.isArray(repData) ? repData : []);
       } catch (err) {
-        toast({ title: 'Warning', description: 'Failed to load companies/publications', variant: 'default' });
+        toast({ title: 'Warning', description: 'Failed to load companies/publications/reporters', variant: 'default' });
         setCompanies([]);
         setPublications([]);
+        setReporters([]);
       }
     };
     fetchData();
@@ -319,8 +380,22 @@ const DailyMentionsTablePage: React.FC = () => {
     <div className="space-y-3">
       <div><Label>Headline</Label><Input value={(formData[category] as MentionDetail[])[idx]?.headline || ''} onChange={(e) => updateMention(category, idx, 'headline', e.target.value)} /></div>
       <div><Label>Content</Label><Textarea value={(formData[category] as MentionDetail[])[idx]?.content || ''} onChange={(e) => updateMention(category, idx, 'content', e.target.value || null)} /></div>
-      <div><Label>Reporter</Label><Input value={(formData[category] as MentionDetail[])[idx]?.reporter || ''} onChange={(e) => updateMention(category, idx, 'reporter', e.target.value || null)} /></div>
-      <div><Label>Source</Label><Input value={(formData[category] as MentionDetail[])[idx]?.source || ''} onChange={(e) => updateMention(category, idx, 'source', e.target.value || null)} /></div>
+      <div>
+        <Label>Reporter</Label>
+        <Combobox
+          options={reporters.map((r) => ({ value: r.name, label: r.name }))}
+          value={(formData[category] as MentionDetail[])[idx]?.reporter || ''}
+          onChange={(v) => updateMention(category, idx, 'reporter', v || null)}
+        />
+      </div>
+      <div>
+        <Label>Source</Label>
+        <Combobox
+          options={publications.map((p) => ({ value: p.name, label: p.name }))}
+          value={(formData[category] as MentionDetail[])[idx]?.source || ''}
+          onChange={(v) => updateMention(category, idx, 'source', v || null)}
+        />
+      </div>
       <div><Label>Sentiment</Label>
         <Select value={(formData[category] as MentionDetail[])[idx]?.sentiment || 'neutral'} onValueChange={(v) => updateMention(category, idx, 'sentiment', v as any)}>
           <SelectTrigger><SelectValue /></SelectTrigger>
@@ -369,7 +444,6 @@ const DailyMentionsTablePage: React.FC = () => {
       company_id: undefined,
       publication: '',
       date: '',
-      status: 'pending',
       industry: [{ headline: '', content: null, reporter: null, source: null, sentiment: 'neutral', page: null, publication_date: null, urls: [''] }],
       competitors: [], subsidiaries: [], passive: [], advert: [],
     });
@@ -527,23 +601,21 @@ const DailyMentionsTablePage: React.FC = () => {
               <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
                 <div>
                   <Label>Company *</Label>
-                  <Select value={formData.company_id?.toString()} onValueChange={(v) => setFormData({ ...formData, company_id: parseInt(v) })}>
-                    <SelectTrigger><SelectValue placeholder="Select company" /></SelectTrigger>
-                    <SelectContent>{companies.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.company_name}</SelectItem>)}</SelectContent>
-                  </Select>
+                  <Combobox
+                    options={companies.map((c) => ({ value: c.id.toString(), label: c.company_name }))}
+                    value={formData.company_id?.toString() || ''}
+                    onChange={(v) => setFormData({ ...formData, company_id: v ? parseInt(v) : undefined })}
+                  />
                   {formErrors.company_id && <p className="text-red-500 text-sm">{formErrors.company_id}</p>}
                 </div>
 
                 <div>
                   <Label>Publication *</Label>
-                  <Select value={formData.publication as string} onValueChange={(v) => setFormData({ ...formData, publication: v })}>
-                    <SelectTrigger><SelectValue placeholder="Select publication" /></SelectTrigger>
-                    <SelectContent>
-                      {publications.map(p => (
-                        <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Combobox
+                    options={publications.map((p) => ({ value: p.name, label: p.name }))}
+                    value={formData.publication as string || ''}
+                    onChange={(v) => setFormData({ ...formData, publication: v })}
+                  />
                   {formErrors.publication && <p className="text-red-500 text-sm">{formErrors.publication}</p>}
                 </div>
 
@@ -551,18 +623,6 @@ const DailyMentionsTablePage: React.FC = () => {
                   <Label>Date *</Label>
                   <Input type="date" value={formData.date?.slice(0,10) || ''} onChange={(e) => setFormData({ ...formData, date: e.target.value })} />
                   {formErrors.date && <p className="text-red-500 text-sm">{formErrors.date}</p>}
-                </div>
-
-                <div>
-                  <Label>Status</Label>
-                  <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v as any })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="approved">Approved</SelectItem>
-                      <SelectItem value="rejected">Rejected</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
 
                 {renderCategorySection('industry', 'Industry')}
@@ -699,23 +759,21 @@ const DailyMentionsTablePage: React.FC = () => {
           <form onSubmit={(e) => handleSubmit(e, true)} className="space-y-6">
             <div>
               <Label>Company *</Label>
-              <Select value={formData.company_id?.toString()} onValueChange={(v) => setFormData({ ...formData, company_id: parseInt(v) })}>
-                <SelectTrigger><SelectValue placeholder="Select company" /></SelectTrigger>
-                <SelectContent>{companies.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.company_name}</SelectItem>)}</SelectContent>
-              </Select>
+              <Combobox
+                options={companies.map((c) => ({ value: c.id.toString(), label: c.company_name }))}
+                value={formData.company_id?.toString() || ''}
+                onChange={(v) => setFormData({ ...formData, company_id: v ? parseInt(v) : undefined })}
+              />
               {formErrors.company_id && <p className="text-red-500 text-sm">{formErrors.company_id}</p>}
             </div>
 
             <div>
               <Label>Publication *</Label>
-              <Select value={formData.publication as string} onValueChange={(v) => setFormData({ ...formData, publication: v })}>
-                <SelectTrigger><SelectValue placeholder="Select publication" /></SelectTrigger>
-                <SelectContent>
-                  {publications.map(p => (
-                    <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Combobox
+                options={publications.map((p) => ({ value: p.name, label: p.name }))}
+                value={formData.publication as string || ''}
+                onChange={(v) => setFormData({ ...formData, publication: v })}
+              />
               {formErrors.publication && <p className="text-red-500 text-sm">{formErrors.publication}</p>}
             </div>
 
@@ -723,18 +781,6 @@ const DailyMentionsTablePage: React.FC = () => {
               <Label>Date *</Label>
               <Input type="date" value={formData.date?.slice(0,10) || ''} onChange={(e) => setFormData({ ...formData, date: e.target.value })} />
               {formErrors.date && <p className="text-red-500 text-sm">{formErrors.date}</p>}
-            </div>
-
-            <div>
-              <Label>Status</Label>
-              <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v as any })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
 
             {renderCategorySection('industry', 'Industry')}

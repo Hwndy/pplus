@@ -43,6 +43,7 @@ interface OutcomeInsightFormProps {
     insights?: { category: string; analysis: string }[];
   };
   isEdit?: boolean;
+  userRole?: string; // 'Analyst' | 'Supervisor' | 'Admin'
 }
 
 /* --------------------------------------------------------------- */
@@ -52,13 +53,17 @@ export function OutcomeInsightForm({
   onClose,
   initialData,
   isEdit = false,
+  userRole = 'Analyst',
 }: OutcomeInsightFormProps) {
   const { token } = useAuth();
   const BASE_URL = 'https://pplus-alde.onrender.com/api';
 
+  const isAnalyst = userRole === 'Analyst';
+  const isSupervisor = userRole === 'Supervisor';
+
   /* --------------------- STATE --------------------- */
   const [companies, setCompanies] = useState<Company[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<string[]>([]); // Only Analysis category values
   const [loadingCompanies, setLoadingCompanies] = useState(true);
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -83,6 +88,7 @@ export function OutcomeInsightForm({
       analysis: i.analysis || '',
     }));
   };
+
   const [entries, setEntries] = useState<InsightEntry[]>(getInitialEntries());
 
   /* --------------------- FETCH COMPANIES --------------------- */
@@ -95,15 +101,7 @@ export function OutcomeInsightForm({
       const json = await res.json();
 
       if (json.success && Array.isArray(json.data?.data)) {
-        const rawCompanies = json.data.data;
-
-        // Optional: Deduplicate by id (uncomment if needed)
-        // const uniqueCompanies = Array.from(
-        //   new Map(rawCompanies.map((c: Company) => [c.id, c])).values()
-        // );
-        // setCompanies(uniqueCompanies);
-
-        setCompanies(rawCompanies);
+        setCompanies(json.data.data);
       } else {
         toast.error(json.message ?? 'Failed to load companies');
         setCompanies([]);
@@ -117,7 +115,7 @@ export function OutcomeInsightForm({
     }
   };
 
-  /* --------------------- FETCH CATEGORIES (Analysis only) --------------------- */
+  /* --------------------- FETCH CATEGORIES (Only from "Analysis") --------------------- */
   const fetchCategories = async () => {
     setLoadingCategories(true);
     try {
@@ -130,16 +128,21 @@ export function OutcomeInsightForm({
       const json = await res.json();
 
       if (json.success && Array.isArray(json.data?.data)) {
-        const analysisCat = json.data.data.find(
-          (c: any) => c.name === 'Analysis'
+        // Find the "Analysis" category only
+        const analysisCategory = json.data.data.find(
+          (cat: any) => cat.name === 'Analysis'
         );
-        if (analysisCat?.values?.length) {
-          const cats = analysisCat.values
-            .map((v: any) => ({ name: v.value }))
-            .filter((c: Category) => c.name?.trim());
-          setCategories(cats);
+
+        if (analysisCategory?.values?.length) {
+          const analysisValues = analysisCategory.values
+            .map((v: any) => v.value)
+            .filter((value: string) => value && value.trim() !== '');
+
+          // Sort alphabetically
+          analysisValues.sort();
+          setCategories(analysisValues);
         } else {
-          toast.error('No “Analysis” category found');
+          toast.error('No "Analysis" category values found');
           setCategories([]);
         }
       } else {
@@ -160,7 +163,6 @@ export function OutcomeInsightForm({
       fetchCompanies();
       fetchCategories();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   /* --------------------- COMPANY SEARCH & DISPLAY --------------------- */
@@ -212,12 +214,13 @@ export function OutcomeInsightForm({
   const buildPayload = () => {
     const insights = entries
       .filter((e) => e.category && e.analysis.trim())
-      .map((e) => ({ category: e.category, insight: e.analysis.trim() }));
+      .map((e) => ({
+        category: e.category,
+        insight: e.analysis.trim(), // Backend expects "insight"
+      }));
 
     if (insights.length === 0) {
-      toast.error(
-        'At least one insight with category & analysis is required'
-      );
+      toast.error('At least one insight with category & analysis is required');
       return null;
     }
 
@@ -256,9 +259,7 @@ export function OutcomeInsightForm({
       const json = await res.json();
 
       if (json.success) {
-        toast.success(
-          isEdit ? 'Updated successfully' : 'Created successfully'
-        );
+        toast.success(isEdit ? 'Updated successfully' : 'Created successfully');
         onClose(true);
       } else {
         toast.error(json.message ?? 'Operation failed');
@@ -276,7 +277,7 @@ export function OutcomeInsightForm({
     <div className="flex flex-col h-full overflow-hidden">
       <Card className="flex-1 flex flex-col overflow-hidden">
         <CardContent className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* ---------- Company + Date ---------- */}
+          {/* Company + Date */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Company Search */}
             <div className="relative">
@@ -300,13 +301,12 @@ export function OutcomeInsightForm({
                 className="cursor-pointer"
               />
 
-              {/* DROPDOWN */}
               {showDropdown && (
                 <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto">
                   {loadingCompanies ? (
                     <div className="p-3 text-center text-muted-foreground">
                       <Loader2 className="inline h-4 w-4 animate-spin mr-2" />
-                      Loading companies...
+                      Loading...
                     </div>
                   ) : filteredCompanies.length === 0 ? (
                     <div className="p-3 text-center text-muted-foreground">
@@ -342,15 +342,15 @@ export function OutcomeInsightForm({
             </div>
           </div>
 
-          {/* ---------- Insight Rows ---------- */}
+          {/* Insights */}
           <div className="space-y-4">
+            <Label className="text-base font-medium">Insights</Label>
             {entries.map((entry, idx) => (
               <div
                 key={entry.id}
                 className="grid grid-cols-12 gap-4 items-start"
               >
-                {/* + / – button */}
-                <div className="col-span-1">
+                <div className="col-span-1 flex items-center">
                   {idx === 0 ? (
                     <Button
                       type="button"
@@ -374,7 +374,6 @@ export function OutcomeInsightForm({
                   )}
                 </div>
 
-                {/* Category Select */}
                 <div className="col-span-3">
                   <Select
                     value={entry.category}
@@ -393,12 +392,12 @@ export function OutcomeInsightForm({
                         </SelectItem>
                       ) : categories.length === 0 ? (
                         <SelectItem value="empty" disabled>
-                          No categories
+                          No categories available
                         </SelectItem>
                       ) : (
                         categories.map((cat) => (
-                          <SelectItem key={cat.name} value={cat.name}>
-                            {cat.name}
+                          <SelectItem key={cat} value={cat}>
+                            {cat}
                           </SelectItem>
                         ))
                       )}
@@ -406,10 +405,9 @@ export function OutcomeInsightForm({
                   </Select>
                 </div>
 
-                {/* Analysis Textarea */}
                 <div className="col-span-8">
                   <Textarea
-                    placeholder="Analysis"
+                    placeholder="Enter analysis..."
                     value={entry.analysis}
                     onChange={(e) =>
                       handleEntry(entry.id, 'analysis', e.target.value)
@@ -421,34 +419,52 @@ export function OutcomeInsightForm({
             ))}
           </div>
 
-          {/* ---------- Notes ---------- */}
+          {/* Notes */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label>Analyst Note</Label>
+              <Label>
+                Analyst Note
+                {isSupervisor && isEdit && ' (read-only)'}
+              </Label>
               <Textarea
                 value={formData.analyst_note}
-                onChange={(e) =>
-                  handleField('analyst_note', e.target.value)
-                }
+                onChange={(e) => handleField('analyst_note', e.target.value)}
+                disabled={isSupervisor && isEdit}
+                placeholder="Your observations and recommendations"
                 className="min-h-[100px] resize-none"
               />
             </div>
+
             <div>
-              <Label>Supervisor Note</Label>
+              <Label>
+                Supervisor Note
+                {isAnalyst ? ' (read-only)' : ''}
+              </Label>
               <Textarea
                 value={formData.supervisor_note}
-                onChange={(e) =>
-                  handleField('supervisor_note', e.target.value)
+                onChange={(e) => handleField('supervisor_note', e.target.value)}
+                disabled={isAnalyst}
+                placeholder={
+                  isAnalyst
+                    ? 'Supervisor will add feedback during review'
+                    : 'Your feedback and approval notes'
                 }
-                className="min-h-[100px] resize-none"
+                className={`min-h-[100px] resize-none ${isAnalyst ? 'bg-gray-50' : ''}`}
               />
+              {isAnalyst && (
+                <p className="text-xs text-gray-500 mt-1">
+                  This field is managed by your supervisor.
+                </p>
+              )}
             </div>
           </div>
         </CardContent>
 
-        {/* ---------- Footer ---------- */}
+        {/* Footer */}
         <div className="border-t bg-card p-6 flex justify-end gap-3">
-          <Button onClick={handleSave}>Save &amp; Send</Button>
+          <Button onClick={handleSave}>
+            {isEdit ? 'Update & Send' : 'Save & Send'}
+          </Button>
           <Button variant="outline" onClick={() => onClose(false)}>
             Cancel
           </Button>
