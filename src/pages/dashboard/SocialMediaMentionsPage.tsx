@@ -1,11 +1,11 @@
-// SocialMediaMentionsPage.tsx - FINAL PRODUCTION VERSION
-import React, { useState, useEffect } from 'react';
+// SocialMediaMentionsPage.tsx - FIXED & CLEAN PRODUCTION VERSION
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Facebook, Twitter, Instagram, Eye, MoreHorizontal, Trash2, RefreshCw, Plus, Filter } from "lucide-react";
+import { Facebook, Instagram, Twitter, Eye, MoreHorizontal, Trash2, RefreshCw, Plus, Filter } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { SocialMediaMentionForm } from '../dashboard/components/SocialMediaMentionForm';
 import { toast } from 'sonner';
@@ -64,19 +64,19 @@ export default function SocialMediaMentionsPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingMention, setEditingMention] = useState<SocialMediaMention | null>(null);
 
-  // === FILTER STATES ===
+  // Filter states
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
 
-  // === FIX: Auto-open edit modal when navigated from Analyst Dashboard ===
+  // Auto-open edit modal when coming from dashboard
   useEffect(() => {
     if (location.state?.editingMention) {
       setEditingMention(location.state.editingMention);
     }
   }, [location.state]);
 
-  const fetchMentions = async (page = 1, limit = 10) => {
+  const fetchMentions = useCallback(async (page = 1, limit = 10) => {
     if (!user || !token) {
       setError('Please log in to continue.');
       setLoading(false);
@@ -87,26 +87,24 @@ export default function SocialMediaMentionsPage() {
     setError(null);
 
     try {
-      const endpoint = user.role.name === 'Supervisor'
-        ? `${API_BASE}/social-media-mentions/supervisor-mentions`
-        : user.role.name === 'Analyst'
-        ? `${API_BASE}/social-media-mentions/my-social-media-mentions`
-        : `${API_BASE}/social-media-mentions`;
+      const role = user.role?.name || (typeof user.role === 'string' ? user.role : 'Analyst');
+      let endpoint = `${API_BASE}/social-media-mentions`;
 
-      // Build query parameters with filters
+      if (role === 'Supervisor') {
+        endpoint = `${API_BASE}/social-media-mentions/supervisor-mentions`;
+      } else if (role === 'Analyst') {
+        endpoint = `${API_BASE}/social-media-mentions/my-social-media-mentions`;
+      }
+
+      const safePage = isNaN(page) || page < 1 ? 1 : page;
+
       const params = new URLSearchParams();
-      params.append('page', page.toString());
+      params.append('page', safePage.toString());
       params.append('limit', limit.toString());
 
-      if (statusFilter && statusFilter !== 'all') {
-        params.append('status', statusFilter);
-      }
-      if (dateFrom) {
-        params.append('date_from', dateFrom);
-      }
-      if (dateTo) {
-        params.append('date_to', dateTo);
-      }
+      if (statusFilter && statusFilter !== 'all') params.append('status', statusFilter);
+      if (dateFrom) params.append('date_from', dateFrom);
+      if (dateTo) params.append('date_to', dateTo);
 
       const url = `${endpoint}?${params.toString()}`;
 
@@ -125,18 +123,23 @@ export default function SocialMediaMentionsPage() {
       const result = await response.json();
 
       let items: SocialMediaMention[] = [];
-      let meta: Pagination = { total: 0, page, limit, totalPages: 0 };
+      let meta: Pagination = { total: 0, page: safePage, limit, totalPages: 0 };
 
       if (result.success && result.data) {
         if (result.data.data && Array.isArray(result.data.data)) {
           items = result.data.data;
-          meta = result.data.pagination || meta;
-        }
-        else if (Array.isArray(result.data)) {
+          // Normalize API pagination keys → our internal structure
+          meta = {
+            total: result.data.pagination.total,
+            page: result.data.pagination.currentPage,
+            limit: result.data.pagination.pageSize,
+            totalPages: result.data.pagination.totalPages,
+          };
+        } else if (Array.isArray(result.data)) {
           items = result.data;
           meta = result.pagination || {
             total: items.length,
-            page,
+            page: safePage,
             limit,
             totalPages: Math.ceil(items.length / limit),
           };
@@ -147,26 +150,20 @@ export default function SocialMediaMentionsPage() {
 
       setMentions(items);
       setPagination(meta);
-
     } catch (err: any) {
       console.error('Fetch error:', err);
-      setError(err.message);
+      setError(err.message || 'Failed to load mentions');
       toast.error(err.message || 'Failed to load mentions');
       setMentions([]);
-      setPagination({ total: 0, page, limit, totalPages: 0 });
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, token, statusFilter, dateFrom, dateTo]);
 
-  // Fetch on mount, page change, or filter change
+  // Initial fetch + refetch when filters change
   useEffect(() => {
-    if (user && token) fetchMentions(1, 10);
-  }, [user, token]);
-
-  useEffect(() => {
-    if (user && token) fetchMentions(pagination.page, pagination.limit);
-  }, [pagination.page, statusFilter, dateFrom, dateTo]);
+    fetchMentions(1, 10);
+  }, [fetchMentions]);
 
   const handleDelete = async (id: number) => {
     if (!confirm('Delete this mention permanently?')) return;
@@ -187,7 +184,7 @@ export default function SocialMediaMentionsPage() {
         toast.success('Mention deleted');
         fetchMentions(pagination.page, pagination.limit);
       } else {
-        toast.error(data.message);
+        toast.error(data.message || 'Delete failed');
       }
     } catch (err: any) {
       toast.error(err.message || 'Failed to delete');
@@ -212,7 +209,7 @@ export default function SocialMediaMentionsPage() {
         toast.success(`Marked as ${status}`);
         fetchMentions(pagination.page, pagination.limit);
       } else {
-        toast.error(data.message);
+        toast.error(data.message || 'Update failed');
       }
     } catch (err: any) {
       toast.error(err.message || 'Update failed');
@@ -244,7 +241,11 @@ export default function SocialMediaMentionsPage() {
           <p className="text-gray-600 mt-1">Track and manage brand mentions across platforms</p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" onClick={() => fetchMentions(pagination.page, pagination.limit)} disabled={loading}>
+          <Button
+            variant="outline"
+            onClick={() => fetchMentions(pagination.page, pagination.limit)}
+            disabled={loading}
+          >
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
@@ -264,7 +265,7 @@ export default function SocialMediaMentionsPage() {
                 onSuccess={() => {
                   setIsCreateOpen(false);
                   fetchMentions(1, 10);
-                  toast.success("Mention created!");
+                  toast.success("Mention created successfully!");
                 }}
               />
             </DialogContent>
@@ -272,13 +273,19 @@ export default function SocialMediaMentionsPage() {
         </div>
       </div>
 
-      {/* FILTER SECTION */}
+      {/* Filters */}
       <Card className="mb-6">
         <CardContent className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <Label htmlFor="sm-status">Status</Label>
-              <Select value={statusFilter} onValueChange={(value) => { setStatusFilter(value); setPagination(prev => ({ ...prev, page: 1 })); }}>
+              <Select
+                value={statusFilter}
+                onValueChange={(value) => {
+                  setStatusFilter(value);
+                  setPagination(p => ({ ...p, page: 1 }));
+                }}
+              >
                 <SelectTrigger id="sm-status">
                   <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
@@ -297,7 +304,10 @@ export default function SocialMediaMentionsPage() {
                 id="sm-dateFrom"
                 type="date"
                 value={dateFrom}
-                onChange={(e) => { setDateFrom(e.target.value); setPagination(prev => ({ ...prev, page: 1 })); }}
+                onChange={(e) => {
+                  setDateFrom(e.target.value);
+                  setPagination(p => ({ ...p, page: 1 }));
+                }}
               />
             </div>
 
@@ -307,7 +317,10 @@ export default function SocialMediaMentionsPage() {
                 id="sm-dateTo"
                 type="date"
                 value={dateTo}
-                onChange={(e) => { setDateTo(e.target.value); setPagination(prev => ({ ...prev, page: 1 })); }}
+                onChange={(e) => {
+                  setDateTo(e.target.value);
+                  setPagination(p => ({ ...p, page: 1 }));
+                }}
               />
             </div>
 
@@ -321,14 +334,14 @@ export default function SocialMediaMentionsPage() {
         </CardContent>
       </Card>
 
-      {/* Error */}
+      {/* Error Message */}
       {error && (
         <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
           {error}
         </div>
       )}
 
-      {/* Table */}
+      {/* Main Table Card */}
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle>All Mentions</CardTitle>
@@ -338,7 +351,6 @@ export default function SocialMediaMentionsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ID</TableHead>
                   <TableHead>Company</TableHead>
                   <TableHead>Platform</TableHead>
                   <TableHead>Date</TableHead>
@@ -350,7 +362,7 @@ export default function SocialMediaMentionsPage() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-16">
+                    <TableCell colSpan={6} className="text-center py-16">
                       <div className="flex items-center justify-center gap-3">
                         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
                         <span className="text-gray-600">Loading mentions...</span>
@@ -359,7 +371,7 @@ export default function SocialMediaMentionsPage() {
                   </TableRow>
                 ) : mentions.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-16 text-gray-500">
+                    <TableCell colSpan={6} className="text-center py-16 text-gray-500">
                       <p className="text-lg font-medium">No mentions found</p>
                       <p className="text-sm mt-2">Create your first mention or adjust filters</p>
                     </TableCell>
@@ -367,7 +379,6 @@ export default function SocialMediaMentionsPage() {
                 ) : (
                   mentions.map((mention) => (
                     <TableRow key={mention.id} className="hover:bg-gray-50">
-                      <TableCell className="font-mono text-sm">{mention.id}</TableCell>
                       <TableCell className="font-medium">
                         {mention.company_data?.company_name || 'N/A'}
                       </TableCell>
@@ -382,8 +393,12 @@ export default function SocialMediaMentionsPage() {
                         <div className="text-sm space-y-1">
                           {mention.metrics[0] && (
                             <>
-                              {mention.metrics[0].followers && <div>Followers: {mention.metrics[0].followers.toLocaleString()}</div>}
-                              {mention.metrics[0].page_likes && <div>Likes: {mention.metrics[0].page_likes.toLocaleString()}</div>}
+                              {mention.metrics[0].followers && (
+                                <div>Followers: {mention.metrics[0].followers.toLocaleString()}</div>
+                              )}
+                              {mention.metrics[0].page_likes && (
+                                <div>Likes: {mention.metrics[0].page_likes.toLocaleString()}</div>
+                              )}
                               {mention.metrics[0].posts && <div>Posts: {mention.metrics[0].posts}</div>}
                             </>
                           )}
@@ -443,31 +458,35 @@ export default function SocialMediaMentionsPage() {
             </Table>
           </div>
 
-          {/* Pagination */}
+          {/* Pagination Controls */}
           {pagination.totalPages > 1 && (
             <div className="flex items-center justify-between mt-8 text-sm">
               <p className="text-gray-600">
-                Showing {(pagination.page - 1) * pagination.limit + 1}–{Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total}
+                Showing{' '}
+                {Math.max(1, (pagination.page - 1) * pagination.limit + 1)}–
+                {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total}
               </p>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-4">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPagination(p => ({ ...p, page: p.page - 1 }))}
+                  onClick={() => setPagination(p => ({ ...p, page: Math.max(1, p.page - 1) }))}
                   disabled={pagination.page === 1 || loading}
                 >
-                  Previous
+                  <span className="mr-1">Previous</span>
                 </Button>
-                <span className="px-4 py-2 bg-gray-100 rounded-md">
+
+                <span className="px-4 py-2 bg-gray-100 rounded-md font-medium">
                   Page {pagination.page} of {pagination.totalPages}
                 </span>
+
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPagination(p => ({ ...p, page: p.page + 1 }))}
+                  onClick={() => setPagination(p => ({ ...p, page: Math.min(p.totalPages, p.page + 1) }))}
                   disabled={pagination.page === pagination.totalPages || loading}
                 >
-                  Next
+                  <span className="ml-1">Next</span>
                 </Button>
               </div>
             </div>
@@ -475,7 +494,7 @@ export default function SocialMediaMentionsPage() {
         </CardContent>
       </Card>
 
-      {/* === BEAUTIFUL VIEW/EDIT MODAL === */}
+      {/* View/Edit Modal */}
       <Dialog open={!!editingMention} onOpenChange={() => setEditingMention(null)}>
         <DialogContent className="max-w-5xl max-h-[92vh] overflow-y-auto bg-white">
           {editingMention && (
@@ -489,7 +508,6 @@ export default function SocialMediaMentionsPage() {
                   </Badge>
                 </DialogTitle>
                 <p className="text-sm text-gray-500 mt-2">
-                  ID: <span className="font-mono">{editingMention.id}</span> • 
                   Created by <strong>{editingMention.creator_data?.username}</strong> • 
                   {format(new Date(editingMention.date), 'MMMM d, yyyy')}
                 </p>
@@ -506,12 +524,42 @@ export default function SocialMediaMentionsPage() {
                           <CardTitle className="text-sm text-gray-600">Account {i + 1}</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3">
-                          {m.page_likes && <div className="flex justify-between"><span className="text-gray-600">Page Likes</span><span className="font-bold">{m.page_likes.toLocaleString()}</span></div>}
-                          {m.followers && <div className="flex justify-between"><span className="text-gray-600">Followers</span><span className="font-bold">{m.followers.toLocaleString()}</span></div>}
-                          {m.posts && <div className="flex justify-between"><span className="text-gray-600">Posts</span><span className="font-bold">{m.posts}</span></div>}
-                          {m.average_likes && <div className="flex justify-between"><span className="text-gray-600">Avg Likes</span><span className="font-bold">{m.average_likes.toLocaleString()}</span></div>}
-                          {m.average_comments && <div className="flex justify-between"><span className="text-gray-600">Avg Comments</span><span className="font-bold">{m.average_comments.toLocaleString()}</span></div>}
-                          {m.following && <div className="flex justify-between"><span className="text-gray-600">Following</span><span className="font-bold">{m.following}</span></div>}
+                          {m.page_likes && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Page Likes</span>
+                              <span className="font-bold">{m.page_likes.toLocaleString()}</span>
+                            </div>
+                          )}
+                          {m.followers && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Followers</span>
+                              <span className="font-bold">{m.followers.toLocaleString()}</span>
+                            </div>
+                          )}
+                          {m.posts && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Posts</span>
+                              <span className="font-bold">{m.posts}</span>
+                            </div>
+                          )}
+                          {m.average_likes && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Avg Likes</span>
+                              <span className="font-bold">{m.average_likes.toLocaleString()}</span>
+                            </div>
+                          )}
+                          {m.average_comments && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Avg Comments</span>
+                              <span className="font-bold">{m.average_comments.toLocaleString()}</span>
+                            </div>
+                          )}
+                          {m.following && (
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Following</span>
+                              <span className="font-bold">{m.following}</span>
+                            </div>
+                          )}
                         </CardContent>
                       </Card>
                     ))}
@@ -525,20 +573,27 @@ export default function SocialMediaMentionsPage() {
                     <div>
                       <label className="text-sm font-medium text-gray-700">Analyst Note</label>
                       <div className="mt-2 p-5 bg-amber-50 rounded-lg min-h-32 border border-amber-200">
-                        <p className="text-gray-800">{editingMention.analyst_note || <em className="text-gray-500">No note provided</em>}</p>
+                        <p className="text-gray-800">
+                          {editingMention.analyst_note || <em className="text-gray-500">No note provided</em>}
+                        </p>
                       </div>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-700">Supervisor Note</label>
                       <div className="mt-2 p-5 bg-blue-50 rounded-lg min-h-32 border border-blue-200">
-                        <p className="text-gray-800">{editingMention.supervisor_note || <em className="text-gray-500">No note provided</em>}</p>
+                        <p className="text-gray-800">
+                          {editingMention.supervisor_note || <em className="text-gray-500">No note provided</em>}
+                        </p>
                       </div>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-4 pt-4 border-t">
                     <span className="font-medium">Status:</span>
-                    <Badge variant={editingMention.status === 'Approved' ? 'default' : editingMention.status === 'Rejected' ? 'destructive' : 'secondary'} className="text-lg px-4 py-1">
+                    <Badge
+                      variant={editingMention.status === 'Approved' ? 'default' : editingMention.status === 'Rejected' ? 'destructive' : 'secondary'}
+                      className="text-lg px-4 py-1"
+                    >
                       {editingMention.status || 'Pending'}
                     </Badge>
                     {editingMention.approver_data && (
