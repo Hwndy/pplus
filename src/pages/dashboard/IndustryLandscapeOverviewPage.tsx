@@ -80,6 +80,7 @@ interface Pagination {
 
 const API_BASE = 'https://pplus-alde.onrender.com/api/industry-landscape-overview';
 const COMPANIES_API = 'https://pplus-alde.onrender.com/api/companies';
+const SECTOR_TITLE_API = 'https://pplus-alde.onrender.com/api/data-parameters/category/Industry_Landscape_Sector';
 
 /* ====================== FORM COMPONENT ====================== */
 function IndustryLandscapeForm({
@@ -93,6 +94,8 @@ function IndustryLandscapeForm({
   const [loading, setLoading] = useState(false);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [companiesLoading, setCompaniesLoading] = useState(true);
+  const [sectorTitles, setSectorTitles] = useState([]);
+  const [loadingSectors, setLoadingSectors] = useState(false);
 
   const [form, setForm] = useState({
     company_id: initialData?.company_id?.toString() || '',
@@ -128,6 +131,34 @@ function IndustryLandscapeForm({
 
     fetchCompanies();
   }, [token]);
+
+  useEffect(() => {
+  const fetchSectorTitles = async () => {
+    setLoadingSectors(true);
+    try {
+      const response = await fetch(SECTOR_TITLE_API,{
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      const data = await response.json();
+      
+      if (data.success && data.data.length > 0) {
+        // Extract values from the nested structure
+        const categories = data.data[0].categories;
+        if (categories && categories.length > 0) {
+          const values = categories[0].values.map(v => v.value);
+          setSectorTitles(values);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching sector titles:', error);
+      // Optionally show error toast/notification
+    } finally {
+      setLoadingSectors(false);
+    }
+  };
+
+  fetchSectorTitles();
+}, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -218,14 +249,22 @@ function IndustryLandscapeForm({
 
       <div>
         <label className="text-sm font-medium">Sector Title *</label>
-        <input
-          type="text"
-          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
-          value={form.sector}
-          onChange={e => setForm({ ...form, sector: e.target.value })}
-          placeholder="e.g. Nigerian Telecommunications Sector Highlights"
-          required
-        />
+        <select
+            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 bg-white"
+            value={form.sector}
+            onChange={e => setForm({ ...form, sector: e.target.value })}
+            required
+            disabled={loadingSectors}
+          >
+            <option value="">
+              {loadingSectors ? 'Loading sectors...' : 'Select a sector'}
+            </option>
+            {sectorTitles.map((title, index) => (
+              <option key={index} value={title}>
+                {title}
+              </option>
+            ))}
+          </select>
       </div>
 
       <div>

@@ -280,6 +280,8 @@ export default function OutcomeInsightsPage() {
 
   const [categories, setCategories] = useState<string[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
+  const [insights, setInsights] = useState([]);
+  const [loadingInsights, setLoadingInsights] = useState(false);
 
   // Filter states
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -287,6 +289,7 @@ export default function OutcomeInsightsPage() {
   const [dateTo, setDateTo] = useState<string>('');
 
   const BASE_URL = 'https://pplus-alde.onrender.com/api';
+  const INSIGHTS_API = 'https://pplus-alde.onrender.com/api/data-parameters/category/Insights';
 
   // Fetch categories
   useEffect(() => {
@@ -315,6 +318,35 @@ export default function OutcomeInsightsPage() {
     };
     fetchCategories();
   }, [token]);
+
+  useEffect(() => {
+  const fetchInsights = async () => {
+    setLoadingInsights(true);
+    try {
+      const response = await fetch(INSIGHTS_API, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      const data = await response.json();
+      
+      if (data.success && data.data.length > 0) {
+        // Extract values from the nested structure
+        const categories = data.data[0].categories;
+        if (categories && categories.length > 0) {
+          const values = categories[0].values.map(v => v.value);
+          setInsights(values);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching sector titles:', error);
+      // Optionally show error toast/notification
+    } finally {
+      setLoadingInsights(false);
+    }
+  };
+
+  fetchInsights();
+}, []);
+
 
   // Auto-open edit modal if navigated with state
   useEffect(() => {

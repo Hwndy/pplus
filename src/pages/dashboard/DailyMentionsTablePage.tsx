@@ -41,7 +41,7 @@ interface MentionDetail {
   headline: string;
   content: string | null;
   reporter: string | null;
-  source: string | null;
+  publication: string | null;
   sentiment: 'positive' | 'negative' | 'neutral';
   page: string | null;
   publication_date: string | null;
@@ -337,8 +337,8 @@ const DailyMentionsTablePage: React.FC = () => {
       try {
         const [compRes, pubRes, repRes] = await Promise.all([
           axios.get(`${BASE_URL}/companies`),
-          axios.get(`${BASE_URL}/publications`),
-          axios.get(`${BASE_URL}/data-parameters/category/Reporters`),
+          axios.get(`${BASE_URL}/data-parameters/category/Publications`),
+          axios.get(`${BASE_URL}/data-parameters/category/Reporter`),
         ]);
 
         setCompanies(compRes.data?.data?.data || compRes.data?.data || []);
@@ -391,7 +391,7 @@ const DailyMentionsTablePage: React.FC = () => {
       headline: '',
       content: null,
       reporter: null,
-      source: null,
+      publication: null,
       sentiment: 'neutral',
       page: null,
       publication_date: null,
@@ -436,8 +436,8 @@ const DailyMentionsTablePage: React.FC = () => {
         <Label>Source</Label>
         <Combobox
           options={publications.map((p) => ({ value: p.name, label: p.name }))}
-          value={(formData[category] as MentionDetail[])[idx]?.source || ''}
-          onChange={(v) => updateMention(category, idx, 'source', v || null)}
+          value={(formData[category] as MentionDetail[])[idx]?.publication || ''}
+          onChange={(v) => updateMention(category, idx, 'publication', v || null)}
         />
       </div>
       <div>
