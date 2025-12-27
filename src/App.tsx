@@ -14,7 +14,10 @@ import { Spinner } from '@/components/ui/spinner';
 const Index = lazy(() => import('./pages/Index'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const NotFound = lazy(() => import('./pages/NotFound'));
-const AuditPage = lazy(() => import('./components/AuditLogViewer')); 
+const AuditPage = lazy(() => import('./components/AuditLogViewer'));
+const FirstTimePasswordChangePage = lazy(() => import('./components/auth/FirstTimePasswordChange')); 
+const ForgotPasswordPage = lazy(() => import('./components/auth/ForgotPassword')); 
+const ResetPasswordPage = lazy(() => import('./components/auth/ResetPassword'));
 const SocialMediaMentionsPage = lazy(() => import('./pages/dashboard/SocialMediaMentionsPage')); 
 // Create a loading fallback component
 const LoadingFallback = () => (
@@ -47,6 +50,9 @@ const App = () => (
                 <Suspense fallback={<LoadingFallback />}>
                   <Routes>
                     <Route path="/" element={<Index />} />
+                    <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                    <Route path="/reset-password" element={<ResetPasswordPage />} />
+                    <Route path="/change-password-first-time" element={<FirstTimePasswordChangePage />} />          
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/dashboard/audit-log" element={<AuditPage />} />
                     <Route path="/dashboard/social-media-mentions" element={<SocialMediaMentionsPage />} />
