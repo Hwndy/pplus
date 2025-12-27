@@ -2,7 +2,6 @@ import { createContext, useContext, useReducer, useEffect, useCallback, useMemo,
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
-// --- TYPE DEFINITIONS ---
 export type UserRole = 'Admin' | 'Supervisor' | 'Analyst' | 'Client';
 
 export interface Role {
@@ -14,7 +13,7 @@ export interface User {
   name?: string;
   username: string;
   email: string;
-  role: Role | string; // Backend sends role as string sometimes
+  role: Role | string;
   avatar?: string;
   status?: string;
   mobileContact?: string;
@@ -26,6 +25,7 @@ export interface User {
   updatedAt?: string;
   role_id?: number;
   mobile_number?: string;
+  requires_password_change?: boolean;
 }
 
 export interface MonitoringPair {
@@ -76,7 +76,6 @@ interface AuthContextType extends AuthState {
   loadMonitoringPairs: () => Promise<void>;
 }
 
-// --- REDUCER ---
 const initialState: AuthState = {
   user: null,
   token: null,
@@ -167,6 +166,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('activePairId');
+
+    localStorage.removeItem('temp_email');
+    localStorage.removeItem('temp_password');
     dispatch({ type: 'LOG_OUT' });
   }, []);
 
@@ -299,6 +301,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const result = await response.json();
 
         if (!response.ok || !result.success) {
+          if (result.data?.requires_password_change) {
+            localStorage.setItem('temp_email', email);
+            localStorage.setItem('temp_password', password);
+            
+            dispatch({ type: 'AUTH_END' });
+            
+            toast.info('Password change required. Please set a new password.');
+            navigate('/change-password-first-time', { replace: true });
+            return;
+          }
+          
           throw new Error(result.message || 'Login failed');
         }
 

@@ -38,8 +38,17 @@ export function Layout({ children }: LayoutProps) {
     );
   }
 
+  const publicRoutes = [
+    '/',
+    '/forgot-password',
+    '/reset-password',
+    '/change-password-first-time'
+  ];
+
+  const isPublicRoute = publicRoutes.includes(location.pathname) || location.pathname.startsWith('/reset-password'); // for query params
+
   // If the user is not authenticated and not on the login page, redirect to login
-  if (!isAuthenticated && location.pathname !== '/') {
+  if (!isAuthenticated && !isPublicRoute) {
     return <Navigate to="/" replace />;
   }
 
@@ -49,7 +58,7 @@ export function Layout({ children }: LayoutProps) {
   }
 
   // On login page, don't show the layout
-  if (location.pathname === '/') {
+  if (isPublicRoute) {
     return <>{children}</>;
   }
 

@@ -188,7 +188,7 @@ export function AuditLogViewer() {
       setSelectedLog(response.data);
     } catch (error) {
       console.error('Failed to fetch log details:', error);
-      setSelectedLog(log); // Fallback to current log data
+      setSelectedLog(log);
     }
   };
 

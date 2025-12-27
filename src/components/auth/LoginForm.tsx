@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from './AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +20,7 @@ const LoginForm = ({ className }: LoginFormProps) => {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const { login } = useAuth();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,6 +37,12 @@ const LoginForm = ({ className }: LoginFormProps) => {
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
+  };
+
+  // Add this handler
+  const handleForgotPassword = (e: React.MouseEvent) => {
+    e.preventDefault();
+    navigate('/forgot-password');
   };
 
   return (
@@ -104,9 +112,13 @@ const LoginForm = ({ className }: LoginFormProps) => {
                 Remember me
               </Label>
             </div>
-            <a href="#" className="text-sm text-primary hover:underline">
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              className="text-sm text-primary hover:underline focus:outline-none"
+            >
               Forgot Password
-            </a>
+            </button>
           </div>
 
           <Button
