@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -41,19 +41,19 @@ interface Publication {
 
 const PublicationsPage: React.FC = () => {
   const { token } = useAuth();
-  const [publications, setPublications] = useState<Publication[]>([]);
+  const [allPublications, setAllPublications] = useState<Publication[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPublication, setEditingPublication] = useState<Publication | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const pageSize = 10;
 
-  const fetchPublications = async (page = 1, search = '') => {
+  // Fetch all publications from backend
+  const fetchPublications = async () => {
     if (!token) {
       setError('No token provided');
       toast.error('Authentication required');
@@ -70,7 +70,7 @@ const PublicationsPage: React.FC = () => {
       };
 
       const response = await fetch(
-        `https://pplus-alde.onrender.com/api/data-parameters/category/Publications?page=${page}&limit=${pageSize}&search=${encodeURIComponent(search)}`,
+        `https://pplus-alde.onrender.com/api/data-parameters/category/Publications`,
         { headers }
       );
 
@@ -88,26 +88,46 @@ const PublicationsPage: React.FC = () => {
           createdAt: pub.createdAt,
         }));
 
-        setPublications(formattedPublications);
-
-        const totalItems = pubsArray.length;
-        setTotalPages(Math.ceil(totalItems / pageSize) || 1);
+        setAllPublications(formattedPublications);
       } else {
         throw new Error(result.message || 'Failed to load publications');
       }
     } catch (err: any) {
       console.error('Error fetching publications:', err);
       setError(err.message || 'Something went wrong');
-      setPublications([]);
+      setAllPublications([]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchPublications(currentPage, searchTerm);
-  }, [currentPage, searchTerm, token]);
+    fetchPublications();
+  }, [token]);
 
+  // Client-side filtering based on search term
+  const filteredPublications = useMemo(() => {
+    if (!searchTerm.trim()) return allPublications;
+    
+    const lowercaseSearch = searchTerm.toLowerCase();
+    return allPublications.filter((pub) =>
+      pub.name.toLowerCase().includes(lowercaseSearch)
+    );
+  }, [allPublications, searchTerm]);
+
+  // Client-side pagination
+  const paginatedPublications = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    return filteredPublications.slice(startIndex, endIndex);
+  }, [filteredPublications, currentPage, pageSize]);
+
+  // Calculate total pages based on filtered results
+  const totalPages = useMemo(() => {
+    return Math.ceil(filteredPublications.length / pageSize) || 1;
+  }, [filteredPublications.length, pageSize]);
+
+  // Reset to page 1 when search changes
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
     setCurrentPage(1);
@@ -121,7 +141,7 @@ const PublicationsPage: React.FC = () => {
 
     try {
       setDeletingId(id);
-      const response = await fetch(`https://pplus-alde.onrender.com/api/data-parameters/value/delete/${id}`, {
+      const response = await fetch(`https://pplus-alde.onrender.com/api/data-parameters-category-value/delete/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -131,7 +151,8 @@ const PublicationsPage: React.FC = () => {
       const result = await response.json();
       if (result.success) {
         toast.success('Publication deleted successfully');
-        fetchPublications(currentPage, searchTerm);
+        // Remove from local state instead of refetching
+        setAllPublications(prev => prev.filter(pub => pub.id !== id));
       } else {
         throw new Error(result.message || 'Failed to delete publication');
       }
@@ -152,55 +173,20 @@ const PublicationsPage: React.FC = () => {
     try {
       setLoading(true);
 
-      const response = await fetch('https://pplus-alde.onrender.com/api/data-parameters', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const result = await response.json();
-
-      if (!result.success || !Array.isArray(result.data)) {
-        throw new Error('Failed to load data parameters');
-      }
-
-      const mediaMetrics = result.data.find((item: any) => item.name === 'Media Metrics');
-      if (!mediaMetrics) throw new Error('Media Metrics parameter not found');
-
-      const publicationsCategory = mediaMetrics.categories?.find((cat: any) => cat.name === 'Publications');
-      if (!publicationsCategory) throw new Error('Publications category not found');
-
-      const url = editingPublication
-        ? `https://pplus-alde.onrender.com/api/data-parameters/value/update/${editingPublication.id}`
-        : `https://pplus-alde.onrender.com/api/data-parameters/value/create`;
-
-      const payload = editingPublication
-        ? { value: publicationData.name }
-        : {
-            dataParametersCategoryId: publicationsCategory.id,
-            value: publicationData.name,
-          };
-
-      const saveResponse = await fetch(url, {
-        method: editingPublication ? 'PUT' : 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const saveResult = await saveResponse.json();
-
-      if (saveResult.success) {
-        toast.success(editingPublication ? 'Publication updated successfully' : 'Publication created successfully');
-        setIsDialogOpen(false);
-        setEditingPublication(null);
-        fetchPublications(1, searchTerm);
+      if (editingPublication) {
+        // UPDATE existing publication
+        await updatePublication(editingPublication.id, publicationData.name || '');
       } else {
-        throw new Error(saveResult.message || 'Failed to save publication');
+        // CREATE new publication
+        await createPublication(publicationData.name || '');
       }
+
+      toast.success(
+        editingPublication ? 'Publication updated successfully' : 'Publication created successfully'
+      );
+      setIsDialogOpen(false);
+      setEditingPublication(null);
+      
     } catch (err: any) {
       console.error('Error saving publication:', err);
       toast.error(err.message || 'Failed to save publication');
@@ -209,14 +195,93 @@ const PublicationsPage: React.FC = () => {
     }
   };
 
+  // Helper function for updating
+  const updatePublication = async (id: number, value: string) => {
+    const response = await fetch(
+      `https://pplus-alde.onrender.com/api/data-parameters-category-value/update/${id}`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ value }),
+      }
+    );
+
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.message || 'Failed to update publication');
+    }
+
+    // Update local state
+    setAllPublications(prev =>
+      prev.map(pub => (pub.id === id ? { ...pub, name: value, value } : pub))
+    );
+  };
+
+  // Helper function for creating
+  const createPublication = async (value: string) => {
+    // First, get the category ID
+    const paramResponse = await fetch('https://pplus-alde.onrender.com/api/data-parameters', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const paramResult = await paramResponse.json();
+
+    if (!paramResult.success || !Array.isArray(paramResult.data)) {
+      throw new Error('Failed to load data parameters');
+    }
+
+    const mediaMetrics = paramResult.data.find((item: any) => item.name === 'Media Metrics');
+    if (!mediaMetrics) throw new Error('Media Metrics parameter not found');
+
+    const publicationsCategory = mediaMetrics.categories?.find(
+      (cat: any) => cat.name === 'Publications'
+    );
+    if (!publicationsCategory) throw new Error('Publications category not found');
+
+    // Now create the publication
+    const createResponse = await fetch(
+      'https://pplus-alde.onrender.com/api/data-parameters-categoryvalue/create',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          dataParametersCategoryId: publicationsCategory.id,
+          value,
+        }),
+      }
+    );
+
+    const createResult = await createResponse.json();
+
+    if (!createResult.success) {
+      throw new Error(createResult.message || 'Failed to create publication');
+    }
+
+    // Refetch to get the new publication with proper ID
+    await fetchPublications();
+    setCurrentPage(1);
+  };
+
   return (
     <div className="p-6 h-full">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-2xl font-bold">Publications</h1>
-          <p className="text-gray-600 mt-1">Manage publication sources and media outlets</p>
+          <p className="text-gray-600 mt-1">
+            Manage publication sources and media outlets ({filteredPublications.length} total)
+          </p>
         </div>
-        <Button variant="outline" onClick={() => fetchPublications(currentPage, searchTerm)} disabled={loading}>
+        <Button variant="outline" onClick={fetchPublications} disabled={loading}>
           <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
@@ -225,7 +290,7 @@ const PublicationsPage: React.FC = () => {
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
           <p className="text-red-600">{error}</p>
-          <Button variant="outline" size="sm" onClick={() => fetchPublications(currentPage, searchTerm)} className="mt-2">
+          <Button variant="outline" size="sm" onClick={fetchPublications} className="mt-2">
             Retry
           </Button>
         </div>
@@ -240,7 +305,7 @@ const PublicationsPage: React.FC = () => {
         <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) setEditingPublication(null); }}>
           <DialogTrigger asChild>
             <Button className="bg-indigo-950">
-              {editingPublication ? 'Edit Publication' : 'Create Publication'}
+              Create Publication
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[500px]">
@@ -277,14 +342,14 @@ const PublicationsPage: React.FC = () => {
                   </div>
                 </TableCell>
               </TableRow>
-            ) : publications.length === 0 ? (
+            ) : paginatedPublications.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-8 text-gray-500">
                   {searchTerm ? 'No publications found matching your search.' : 'No publications found.'}
                 </TableCell>
               </TableRow>
             ) : (
-              publications.map((publication, index) => (
+              paginatedPublications.map((publication, index) => (
                 <TableRow key={publication.id}>
                   <TableCell>{(currentPage - 1) * pageSize + index + 1}</TableCell>
                   <TableCell className="font-medium">{publication.name}</TableCell>
@@ -327,17 +392,41 @@ const PublicationsPage: React.FC = () => {
           <Pagination>
             <PaginationContent>
               <PaginationItem>
-                <PaginationPrevious onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''} />
+                <PaginationPrevious 
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} 
+                  className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'} 
+                />
               </PaginationItem>
-              {Array.from({ length: totalPages }).map((_, i) => (
-                <PaginationItem key={i}>
-                  <PaginationLink isActive={currentPage === i + 1} onClick={() => setCurrentPage(i + 1)}>
-                    {i + 1}
-                  </PaginationLink>
-                </PaginationItem>
-              ))}
+              {Array.from({ length: Math.min(totalPages, 5) }).map((_, i) => {
+                // Show first page, last page, current page, and pages around current
+                let pageNumber;
+                if (totalPages <= 5) {
+                  pageNumber = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNumber = i + 1;
+                } else if (currentPage >= totalPages - 2) {
+                  pageNumber = totalPages - 4 + i;
+                } else {
+                  pageNumber = currentPage - 2 + i;
+                }
+                
+                return (
+                  <PaginationItem key={i}>
+                    <PaginationLink 
+                      isActive={currentPage === pageNumber} 
+                      onClick={() => setCurrentPage(pageNumber)}
+                      className="cursor-pointer"
+                    >
+                      {pageNumber}
+                    </PaginationLink>
+                  </PaginationItem>
+                );
+              })}
               <PaginationItem>
-                <PaginationNext onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))} className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''} />
+                <PaginationNext 
+                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))} 
+                  className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'} 
+                />
               </PaginationItem>
             </PaginationContent>
           </Pagination>

@@ -340,14 +340,42 @@ const DailyMentionsTablePage: React.FC = () => {
           axios.get(`${BASE_URL}/data-parameters/category/Publications`),
           axios.get(`${BASE_URL}/data-parameters/category/Reporter`),
         ]);
-
+        
+        // Extract companies
         setCompanies(compRes.data?.data?.data || compRes.data?.data || []);
-        setPublications(pubRes.data?.data?.publication || pubRes.data?.data || []);
-        setReporters(repRes.data?.data || []);
+        
+        // Extract publications from nested structure
+        if (pubRes.data?.success && pubRes.data?.data?.length > 0) {
+          const categories = pubRes.data.data[0].categories;
+          if (categories && categories.length > 0 && categories[0].values) {
+            const publicationValues = categories[0].values
+              .filter(v => !v.is_deleted)
+              .map(v => ({ id: v.id, name: v.value }));
+            setPublications(publicationValues);
+          }
+        }
+        
+        // Extract reporters from nested structure
+        if (repRes.data?.success && repRes.data?.data?.length > 0) {
+          const categories = repRes.data.data[0].categories;
+          if (categories && categories.length > 0 && categories[0].values) {
+            const reporterValues = categories[0].values
+              .filter(v => !v.is_deleted)
+              .map(v => ({ id: v.id, name: v.value }));
+            setReporters(reporterValues);
+          }
+        }
+        
       } catch (err) {
-        toast({ title: 'Warning', description: 'Failed to load supporting data', variant: 'default' });
+        console.error('Error fetching supporting data:', err);
+        toast({ 
+          title: 'Warning', 
+          description: 'Failed to load supporting data', 
+          variant: 'default' 
+        });
       }
     };
+    
     fetchSupportingData();
   }, [toast]);
 

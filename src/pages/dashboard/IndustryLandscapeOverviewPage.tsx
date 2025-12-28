@@ -133,32 +133,32 @@ function IndustryLandscapeForm({
   }, [token]);
 
   useEffect(() => {
-  const fetchSectorTitles = async () => {
-    setLoadingSectors(true);
-    try {
-      const response = await fetch(SECTOR_TITLE_API,{
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      const data = await response.json();
-      
-      if (data.success && data.data.length > 0) {
-        // Extract values from the nested structure
-        const categories = data.data[0].categories;
-        if (categories && categories.length > 0) {
-          const values = categories[0].values.map(v => v.value);
-          setSectorTitles(values);
+    const fetchSectorTitles = async () => {
+      setLoadingSectors(true);
+      try {
+        const response = await fetch(SECTOR_TITLE_API,{
+            headers: { Authorization: `Bearer ${token}` },
+          });
+        const data = await response.json();
+        
+        if (data.success && data.data.length > 0) {
+          // Extract values from the nested structure
+          const categories = data.data[0].categories;
+          if (categories && categories.length > 0) {
+            const values = categories[0].values.map(v => v.value);
+            setSectorTitles(values);
+          }
         }
+      } catch (error) {
+        console.error('Error fetching sector titles:', error);
+        // Optionally show error toast/notification
+      } finally {
+        setLoadingSectors(false);
       }
-    } catch (error) {
-      console.error('Error fetching sector titles:', error);
-      // Optionally show error toast/notification
-    } finally {
-      setLoadingSectors(false);
-    }
-  };
+    };
 
-  fetchSectorTitles();
-}, []);
+    fetchSectorTitles();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
