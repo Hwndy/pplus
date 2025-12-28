@@ -192,7 +192,7 @@ export function AuditLogViewer() {
     }
   };
 
-  const API_BASE_URL = 'https://pplus-alde.onrender.com';
+  const API_BASE_URL = 'https://pplus-oez4.onrender.com';
 
   const handleExport = async (format: 'json' | 'csv') => {
     setIsExporting(true);

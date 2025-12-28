@@ -78,9 +78,9 @@ interface Pagination {
   totalPages: number;
 }
 
-const API_BASE = 'https://pplus-alde.onrender.com/api/industry-landscape-overview';
-const COMPANIES_API = 'https://pplus-alde.onrender.com/api/companies';
-const SECTOR_TITLE_API = 'https://pplus-alde.onrender.com/api/data-parameters/category/Industry_Landscape_Sector';
+const API_BASE = 'https://pplus-oez4.onrender.com/api/industry-landscape-overview';
+const COMPANIES_API = 'https://pplus-oez4.onrender.com/api/companies';
+const SECTOR_TITLE_API = 'https://pplus-oez4.onrender.com/api/data-parameters/category/Industry_Landscape_Sector';
 
 /* ====================== FORM COMPONENT ====================== */
 function IndustryLandscapeForm({

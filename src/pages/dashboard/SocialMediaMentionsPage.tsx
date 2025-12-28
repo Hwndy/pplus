@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-const API_BASE = 'https://pplus-alde.onrender.com/api';
+const API_BASE = 'https://pplus-oez4.onrender.com/api';
 
 interface Metrics {
   page_likes?: number;

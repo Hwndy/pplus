@@ -84,7 +84,7 @@ export function DailyMentionsInboxPage() {
 
     try {
       const response = await axios.get(
-        `https://pplus-alde.onrender.com/api/report/daily-mentions`,
+        `https://pplus-oez4.onrender.com/api/report/daily-mentions`,
         {
           params: {
             pair_id: activePair.pair_id,

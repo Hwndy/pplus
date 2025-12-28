@@ -81,7 +81,7 @@ export function BrandMediaAnalysisPage() {
   const [loading, setLoading] = useState(true);
   const [hasData, setHasData] = useState(false);
 
-  const API_URL = 'https://pplus-alde.onrender.com/api/report/brand-media-analysis';
+  const API_URL = 'https://pplus-oez4.onrender.com/api/report/brand-media-analysis';
 
   const getCurrentMonthRange = () => {
     const today = new Date();

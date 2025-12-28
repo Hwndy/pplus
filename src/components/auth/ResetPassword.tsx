@@ -80,7 +80,7 @@ const ResetPassword = () => {
     setIsSubmitting(true);
     setStatus('idle');
 
-    const API_BASE_URL = 'https://pplus-alde.onrender.com/api';
+    const API_BASE_URL = 'https://pplus-oez4.onrender.com/api';
 
     try {
       const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {

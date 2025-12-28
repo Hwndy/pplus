@@ -87,7 +87,7 @@ export default function SwotAnalysisPage() {
         params.append('month', month);
       }
 
-      const url = `https://pplus-alde.onrender.com/api/report/swot-analysis?${params.toString()}`;
+      const url = `https://pplus-oez4.onrender.com/api/report/swot-analysis?${params.toString()}`;
       console.log('Fetching SWOT →', url);
 
       const response = await fetch(url, {
