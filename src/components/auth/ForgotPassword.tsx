@@ -32,7 +32,7 @@ const ForgotPassword = () => {
 
       if (data.success) {
         setStatus('success');
-        setMessage('If your email exists in our system, you will receive a password reset link shortly.');
+        setMessage('You will receive a password reset link shortly.');
       } else {
         setStatus('error');
         setMessage(data.message || 'Something went wrong. Please try again.');

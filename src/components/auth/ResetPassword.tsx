@@ -26,6 +26,8 @@ const ResetPassword = () => {
     verifyToken();
   }, [token]);
 
+  const API_BASE_URL = 'https://pplus-oez4.onrender.com/api';
+
   const verifyToken = async () => {
     if (!token) {
       setStatus('invalid');
@@ -35,7 +37,7 @@ const ResetPassword = () => {
     }
 
     try {
-      const response = await fetch(`/api/auth/verify-reset-token?token=${token}`);
+      const response = await fetch(`${API_BASE_URL}/auth/verify-reset-token?token=${token}`);
       const data = await response.json();
 
       if (data.success) {
@@ -79,8 +81,6 @@ const ResetPassword = () => {
 
     setIsSubmitting(true);
     setStatus('idle');
-
-    const API_BASE_URL = 'https://pplus-oez4.onrender.com/api';
 
     try {
       const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
