@@ -94,9 +94,8 @@ const EditorialPage = () => {
   const isSupervisor = userRole === 'Supervisor';
   const isAnalyst = userRole === 'Analyst';
 
-  // Show Create & Batch Upload only for Analysts
-  const showCreateButtons = isAnalyst;
-  const showCreateButtons = isAdmin;
+  // Show Create & Batch Upload for Analysts or Admins
+    const showCreateButtons = isAnalyst || isAdmin;
 
   // Show Delete button only for Admins
   const showDeleteButton = isAdmin;
