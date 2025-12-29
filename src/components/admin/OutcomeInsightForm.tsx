@@ -22,10 +22,6 @@ interface Company {
   company_name: string;
 }
 
-interface Category {
-  name: string;
-}
-
 interface InsightEntry {
   id: number;
   category: string;
@@ -46,9 +42,6 @@ interface OutcomeInsightFormProps {
   userRole?: string; // 'Analyst' | 'Supervisor' | 'Admin'
 }
 
-/* --------------------------------------------------------------- */
-/*                     MAIN COMPONENT                              */
-/* --------------------------------------------------------------- */
 export function OutcomeInsightForm({
   onClose,
   initialData,
@@ -63,9 +56,9 @@ export function OutcomeInsightForm({
 
   /* --------------------- STATE --------------------- */
   const [companies, setCompanies] = useState<Company[]>([]);
-  const [categories, setCategories] = useState<string[]>([]); // Only Analysis category values
+  const [insightCategories, setInsightCategories] = useState<string[]>([]);
   const [loadingCompanies, setLoadingCompanies] = useState(true);
-  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [loadingInsights, setLoadingInsights] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
 
@@ -115,53 +108,49 @@ export function OutcomeInsightForm({
     }
   };
 
-  /* --------------------- FETCH CATEGORIES (Only from "Analysis") --------------------- */
-  const fetchCategories = async () => {
-    setLoadingCategories(true);
+  /* --------------------- FETCH INSIGHTS CATEGORIES --------------------- */
+  const fetchInsightCategories = async () => {
+    setLoadingInsights(true);
     try {
-      const res = await fetch(
-        `${BASE_URL}/data-parameters/categories?page=1&limit=2000`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const res = await fetch(`${BASE_URL}/data-parameters/category/Insights`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const json = await res.json();
 
-      if (json.success && Array.isArray(json.data?.data)) {
-        // Find the "Analysis" category only
-        const analysisCategory = json.data.data.find(
-          (cat: any) => cat.name === 'Analysis'
-        );
+      if (json.success && Array.isArray(json.data)) {
+        // Extract values from: data[0].categories[0].values
+        const categoriesArray = json.data[0]?.categories || [];
+        const insightsCategory = categoriesArray.find((cat: any) => cat.name === 'Insights');
 
-        if (analysisCategory?.values?.length) {
-          const analysisValues = analysisCategory.values
-            .map((v: any) => v.value)
-            .filter((value: string) => value && value.trim() !== '');
+        if (insightsCategory?.values?.length) {
+          const values = insightsCategory.values
+            .map((v: any) => v.value?.trim())
+            .filter((val: string) => val && val !== '');
 
           // Sort alphabetically
-          analysisValues.sort();
-          setCategories(analysisValues);
+          values.sort((a: string, b: string) => a.localeCompare(b));
+          setInsightCategories(values);
         } else {
-          toast.error('No "Analysis" category values found');
-          setCategories([]);
+          toast.error('No insight options found in response');
+          setInsightCategories([]);
         }
       } else {
-        toast.error(json.message ?? 'Failed to load categories');
-        setCategories([]);
+        toast.error(json.message ?? 'Failed to load insight categories');
+        setInsightCategories([]);
       }
     } catch (err) {
-      console.error('Fetch categories error:', err);
-      toast.error('Network error loading categories');
-      setCategories([]);
+      console.error('Fetch insights error:', err);
+      toast.error('Network error loading insight categories');
+      setInsightCategories([]);
     } finally {
-      setLoadingCategories(false);
+      setLoadingInsights(false);
     }
   };
 
   useEffect(() => {
     if (token) {
       fetchCompanies();
-      fetchCategories();
+      fetchInsightCategories();
     }
   }, [token]);
 
@@ -380,22 +369,23 @@ export function OutcomeInsightForm({
                     onValueChange={(v) =>
                       handleEntry(entry.id, 'category', v)
                     }
+                    disabled={loadingInsights}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
+                      <SelectValue placeholder="Select insight type" />
                     </SelectTrigger>
                     <SelectContent>
-                      {loadingCategories ? (
+                      {loadingInsights ? (
                         <SelectItem value="loading" disabled>
                           <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
-                          Loading...
+                          Loading insights...
                         </SelectItem>
-                      ) : categories.length === 0 ? (
+                      ) : insightCategories.length === 0 ? (
                         <SelectItem value="empty" disabled>
-                          No categories available
+                          No insight types available
                         </SelectItem>
                       ) : (
-                        categories.map((cat) => (
+                        insightCategories.map((cat) => (
                           <SelectItem key={cat} value={cat}>
                             {cat}
                           </SelectItem>
