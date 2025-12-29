@@ -1,4 +1,4 @@
-// SwotMentionsPage.tsx - FIXED & CLEAN PRODUCTION VERSION
+// SwotMentionsPage.tsx - UPDATED: Role-based Create & Delete Controls
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import {
@@ -66,6 +66,16 @@ export function SwotMentionsPage() {
   const location = useLocation();
   const [currentDate] = useState(new Date());
 
+  // Role detection
+  const userRole = user?.role?.name || (typeof user?.role === 'string' ? user.role : 'Analyst');
+  const isAdmin = userRole === 'Admin';
+  const isSupervisor = userRole === 'Supervisor';
+  const isAnalyst = userRole === 'Analyst';
+
+  // Permissions
+  const showCreateButton = isAnalyst; // Only Analysts can create
+  const showDeleteOption = isAdmin;   // Only Admins can delete
+
   const [swotData, setSwotData] = useState<SwotAnalysis[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
     total: 0,
@@ -111,12 +121,11 @@ export function SwotMentionsPage() {
     setError(null);
 
     try {
-      const role = user?.role?.name || (typeof user.role === 'string' ? user.role : 'Analyst');
       let endpoint = 'https://pplus-oez4.onrender.com/api/swot-analysis';
 
-      if (role === 'Supervisor') {
+      if (isSupervisor) {
         endpoint = 'https://pplus-oez4.onrender.com/api/swot-analysis/supervisor-mentions';
-      } else if (role === 'Analyst') {
+      } else if (isAnalyst) {
         endpoint = 'https://pplus-oez4.onrender.com/api/swot-analysis/my-analysis';
       }
 
@@ -144,7 +153,6 @@ export function SwotMentionsPage() {
       if (result.success && result.data) {
         if (Array.isArray(result.data.data)) {
           items = result.data.data;
-          // Normalize API pagination keys
           meta = {
             total: result.data.pagination.total,
             page: result.data.pagination.currentPage,
@@ -174,7 +182,7 @@ export function SwotMentionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [user, token, statusFilter, dateFrom, dateTo]);
+  }, [user, token, statusFilter, dateFrom, dateTo, isSupervisor, isAnalyst]);
 
   // Initial fetch + refetch on filter/page change
   useEffect(() => {
@@ -260,7 +268,7 @@ export function SwotMentionsPage() {
               Refresh
             </Button>
 
-            {(user.role?.name === 'Admin' || user.role?.name === 'Analyst') && (
+            {showCreateButton && (
               <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
                 <DialogTrigger asChild>
                   <Button className="bg-indigo-950 hover:bg-indigo-800">
@@ -427,12 +435,14 @@ export function SwotMentionsPage() {
                             <DropdownMenuItem onClick={() => handleEdit(swot)}>
                               <Edit className="mr-2 h-4 w-4" /> Edit
                             </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleDelete(swot)}
-                              className="text-red-600"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" /> Delete
-                            </DropdownMenuItem>
+                            {showDeleteOption && (
+                              <DropdownMenuItem
+                                onClick={() => handleDelete(swot)}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>

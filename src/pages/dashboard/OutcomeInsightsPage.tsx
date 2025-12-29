@@ -263,6 +263,16 @@ export default function OutcomeInsightsPage() {
   const { user, token } = useAuth();
   const location = useLocation();
 
+  // Role detection
+  const userRole = user?.role?.name || (typeof user?.role === 'string' ? user.role : 'Analyst');
+  const isAdmin = userRole === 'Admin';
+  const isSupervisor = userRole === 'Supervisor';
+  const isAnalyst = userRole === 'Analyst';
+
+  // Permissions
+  const showCreateButton = isAnalyst;     // Only Analysts can create
+  const showDeleteOption = isAdmin;       // Only Admins can delete
+
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedOutcome, setSelectedOutcome] = useState<OutcomeInsight | null>(null);
@@ -320,33 +330,30 @@ export default function OutcomeInsightsPage() {
   }, [token]);
 
   useEffect(() => {
-  const fetchInsights = async () => {
-    setLoadingInsights(true);
-    try {
-      const response = await fetch(INSIGHTS_API, {
+    const fetchInsights = async () => {
+      setLoadingInsights(true);
+      try {
+        const response = await fetch(INSIGHTS_API, {
           headers: { Authorization: `Bearer ${token}` },
         });
-      const data = await response.json();
-      
-      if (data.success && data.data.length > 0) {
-        // Extract values from the nested structure
-        const categories = data.data[0].categories;
-        if (categories && categories.length > 0) {
-          const values = categories[0].values.map(v => v.value);
-          setInsights(values);
+        const data = await response.json();
+        
+        if (data.success && data.data.length > 0) {
+          const categories = data.data[0].categories;
+          if (categories && categories.length > 0) {
+            const values = categories[0].values.map(v => v.value);
+            setInsights(values);
+          }
         }
+      } catch (error) {
+        console.error('Error fetching sector titles:', error);
+      } finally {
+        setLoadingInsights(false);
       }
-    } catch (error) {
-      console.error('Error fetching sector titles:', error);
-      // Optionally show error toast/notification
-    } finally {
-      setLoadingInsights(false);
-    }
-  };
+    };
 
-  fetchInsights();
-}, []);
-
+    fetchInsights();
+  }, [token]);
 
   // Auto-open edit modal if navigated with state
   useEffect(() => {
@@ -388,10 +395,9 @@ export default function OutcomeInsightsPage() {
     setError(null);
 
     try {
-      const role = user.role?.name || (typeof user.role === 'string' ? user.role : 'Analyst');
       let endpoint = `${BASE_URL}/outcome-insights`;
-      if (role === 'Supervisor') endpoint = `${BASE_URL}/outcome-insights/supervisor-mentions`;
-      else if (role === 'Analyst') endpoint = `${BASE_URL}/outcome-insights/my-insights`;
+      if (isSupervisor) endpoint = `${BASE_URL}/outcome-insights/supervisor-mentions`;
+      else if (isAnalyst) endpoint = `${BASE_URL}/outcome-insights/my-insights`;
 
       const safePage = isNaN(page) || page < 1 ? 1 : page;
 
@@ -420,7 +426,6 @@ export default function OutcomeInsightsPage() {
       if (json.success && json.data) {
         if (json.data.data && Array.isArray(json.data.data)) {
           items = json.data.data;
-          // Normalize API pagination keys to our internal structure
           meta = {
             total: json.data.pagination.total,
             page: json.data.pagination.currentPage,
@@ -438,7 +443,6 @@ export default function OutcomeInsightsPage() {
         }
       }
 
-      // Normalize insights (handle both 'analysis' and 'insight' fields)
       const normalizedItems = items.map(item => ({
         ...item,
         insights: item.insights.map((insight: any) => ({
@@ -457,7 +461,7 @@ export default function OutcomeInsightsPage() {
     } finally {
       setLoading(false);
     }
-  }, [user, token, statusFilter, dateFrom, dateTo]);
+  }, [user, token, statusFilter, dateFrom, dateTo, isSupervisor, isAnalyst]);
 
   useEffect(() => {
     fetchOutcomeInsights(1, 10);
@@ -508,30 +512,32 @@ export default function OutcomeInsightsPage() {
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-indigo-950 hover:bg-indigo-800" onClick={handleCreateNew}>
-                <Plus className="mr-2 h-4 w-4" />
-                Create Insight
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Create Outcome & Insight</DialogTitle>
-              </DialogHeader>
-              <ScrollArea className="mt-4">
-                <OutcomeInsightForm
-                  key="create-new"
-                  onClose={handleCloseCreate}
-                  initialData={undefined}
-                  isEdit={false}
-                  userRole={getUserRole()}
-                  categories={categories}
-                  loadingCategories={loadingCategories}
-                />
-              </ScrollArea>
-            </DialogContent>
-          </Dialog>
+          {showCreateButton && (
+            <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-indigo-950 hover:bg-indigo-800" onClick={handleCreateNew}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Insight
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Create Outcome & Insight</DialogTitle>
+                </DialogHeader>
+                <ScrollArea className="mt-4">
+                  <OutcomeInsightForm
+                    key="create-new"
+                    onClose={handleCloseCreate}
+                    initialData={undefined}
+                    isEdit={false}
+                    userRole={getUserRole()}
+                    categories={categories}
+                    loadingCategories={loadingCategories}
+                  />
+                </ScrollArea>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
       </div>
 
@@ -688,32 +694,34 @@ export default function OutcomeInsightsPage() {
                                 <DropdownMenuItem onClick={() => handleEdit(o)}>
                                   <Edit className="mr-2 h-4 w-4" /> Edit
                                 </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={async () => {
-                                    if (confirm(`Delete insight for ${o.company.company_name}?`)) {
-                                      try {
-                                        const res = await fetch(`${BASE_URL}/outcome-insights/update/${o.id}`, {
-                                          method: 'PUT',
-                                          headers: {
-                                            'Authorization': `Bearer ${token}`,
-                                            'Content-Type': 'application/json',
-                                          },
-                                          body: JSON.stringify({ is_deleted: true }),
-                                        });
-                                        const result = await res.json();
-                                        if (result.success) {
-                                          toast.success('Insight deleted');
-                                          fetchOutcomeInsights(pagination.page, pagination.limit);
+                                {showDeleteOption && (
+                                  <DropdownMenuItem
+                                    onClick={async () => {
+                                      if (confirm(`Delete insight for ${o.company.company_name}?`)) {
+                                        try {
+                                          const res = await fetch(`${BASE_URL}/outcome-insights/update/${o.id}`, {
+                                            method: 'PUT',
+                                            headers: {
+                                              'Authorization': `Bearer ${token}`,
+                                              'Content-Type': 'application/json',
+                                            },
+                                            body: JSON.stringify({ is_deleted: true }),
+                                          });
+                                          const result = await res.json();
+                                          if (result.success) {
+                                            toast.success('Insight deleted');
+                                            fetchOutcomeInsights(pagination.page, pagination.limit);
+                                          }
+                                        } catch (err) {
+                                          toast.error('Failed to delete insight');
                                         }
-                                      } catch (err) {
-                                        toast.error('Failed to delete insight');
                                       }
-                                    }
-                                  }}
-                                  className="text-red-600"
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                </DropdownMenuItem>
+                                    }}
+                                    className="text-red-600"
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                  </DropdownMenuItem>
+                                )}
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </div>

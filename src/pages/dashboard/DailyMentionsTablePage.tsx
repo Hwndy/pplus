@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
-  Plus,
   Eye,
   Edit,
   Trash2,
@@ -165,6 +164,18 @@ const DailyMentionsTablePage: React.FC = () => {
   const { toast } = useToast();
   const { user, token } = useAuth();
 
+  // Determine user role safely
+  const userRole = user?.role?.name || (typeof user?.role === 'string' ? user.role : 'Analyst');
+  const isAdmin = userRole === 'Admin';
+  const isSupervisor = userRole === 'Supervisor';
+  const isAnalyst = userRole === 'Analyst';
+
+  // Show "Create New" button only for Analysts
+  const showCreateButton = isAnalyst;
+
+  // Show Delete button only for Admins
+  const showDeleteButton = isAdmin;
+
   // State
   const [dailyMentions, setDailyMentions] = useState<DailyMention[]>([]);
   const [tableData, setTableData] = useState<TableRow[]>([]);
@@ -225,12 +236,11 @@ const DailyMentionsTablePage: React.FC = () => {
     setLoading(true);
 
     try {
-      const role = user.role?.name || (typeof user.role === 'string' ? user.role : 'Analyst');
       let endpoint = `${BASE_URL}/daily-mentions/`;
 
-      if (role === 'Supervisor') {
+      if (isSupervisor) {
         endpoint = `${BASE_URL}/daily-mentions/supervisor-mentions`;
-      } else if (role === 'Analyst') {
+      } else if (isAnalyst) {
         endpoint = `${BASE_URL}/daily-mentions/my-mentions`;
       }
 
@@ -324,7 +334,7 @@ const DailyMentionsTablePage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [pagination.page, pagination.limit, user, token, navigate, toast, statusFilter, dateFrom, dateTo]);
+  }, [pagination.page, pagination.limit, user, token, navigate, toast, statusFilter, dateFrom, dateTo, isSupervisor, isAnalyst]);
 
   // Fetch on mount + when filters/page change
   useEffect(() => {
@@ -341,10 +351,8 @@ const DailyMentionsTablePage: React.FC = () => {
           axios.get(`${BASE_URL}/data-parameters/category/Reporter`),
         ]);
         
-        // Extract companies
         setCompanies(compRes.data?.data?.data || compRes.data?.data || []);
         
-        // Extract publications from nested structure
         if (pubRes.data?.success && pubRes.data?.data?.length > 0) {
           const categories = pubRes.data.data[0].categories;
           if (categories && categories.length > 0 && categories[0].values) {
@@ -355,7 +363,6 @@ const DailyMentionsTablePage: React.FC = () => {
           }
         }
         
-        // Extract reporters from nested structure
         if (repRes.data?.success && repRes.data?.data?.length > 0) {
           const categories = repRes.data.data[0].categories;
           if (categories && categories.length > 0 && categories[0].values) {
@@ -744,19 +751,21 @@ const DailyMentionsTablePage: React.FC = () => {
             <Button variant="ghost" size="icon" onClick={() => handleEdit(row.original.id)}>
               <Edit className="h-4 w-4" />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => handleDelete(row.original.id)}
-              className="text-red-600"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+            {showDeleteButton && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleDelete(row.original.id)}
+                className="text-red-600"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         ),
       },
     ],
-    []
+    [showDeleteButton]
   );
 
   if (loading) {
@@ -781,62 +790,64 @@ const DailyMentionsTablePage: React.FC = () => {
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Dialog open={createModalOpen} onOpenChange={setCreateModalOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={handleCreateNew} className="bg-indigo-950 hover:bg-indigo-800">
-                <Plus className="mr-2 h-4 w-4" /> Create New
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Create Daily Mention</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
-                <div>
-                  <Label>Company *</Label>
-                  <Combobox
-                    options={companies.map((c) => ({ value: c.id.toString(), label: c.company_name }))}
-                    value={formData.company_id?.toString() || ''}
-                    onChange={(v) => setFormData({ ...formData, company_id: v ? parseInt(v) : undefined })}
-                  />
-                  {formErrors.company_id && <p className="text-red-500 text-sm mt-1">{formErrors.company_id}</p>}
-                </div>
+          {showCreateButton && (
+            <Dialog open={createModalOpen} onOpenChange={setCreateModalOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={handleCreateNew} className="bg-indigo-950 hover:bg-indigo-800">
+                  Create New
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Create Daily Mention</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={(e) => handleSubmit(e, false)} className="space-y-6">
+                  <div>
+                    <Label>Company *</Label>
+                    <Combobox
+                      options={companies.map((c) => ({ value: c.id.toString(), label: c.company_name }))}
+                      value={formData.company_id?.toString() || ''}
+                      onChange={(v) => setFormData({ ...formData, company_id: v ? parseInt(v) : undefined })}
+                    />
+                    {formErrors.company_id && <p className="text-red-500 text-sm mt-1">{formErrors.company_id}</p>}
+                  </div>
 
-                <div>
-                  <Label>Publication *</Label>
-                  <Combobox
-                    options={publications.map((p) => ({ value: p.name, label: p.name }))}
-                    value={formData.publication as string || ''}
-                    onChange={(v) => setFormData({ ...formData, publication: v })}
-                  />
-                  {formErrors.publication && <p className="text-red-500 text-sm mt-1">{formErrors.publication}</p>}
-                </div>
+                  <div>
+                    <Label>Publication *</Label>
+                    <Combobox
+                      options={publications.map((p) => ({ value: p.name, label: p.name }))}
+                      value={formData.publication as string || ''}
+                      onChange={(v) => setFormData({ ...formData, publication: v })}
+                    />
+                    {formErrors.publication && <p className="text-red-500 text-sm mt-1">{formErrors.publication}</p>}
+                  </div>
 
-                <div>
-                  <Label>Date *</Label>
-                  <Input
-                    type="date"
-                    value={formData.date?.slice(0, 10) || ''}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                  />
-                  {formErrors.date && <p className="text-red-500 text-sm mt-1">{formErrors.date}</p>}
-                </div>
+                  <div>
+                    <Label>Date *</Label>
+                    <Input
+                      type="date"
+                      value={formData.date?.slice(0, 10) || ''}
+                      onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                    />
+                    {formErrors.date && <p className="text-red-500 text-sm mt-1">{formErrors.date}</p>}
+                  </div>
 
-                {renderCategorySection('industry', 'Industry')}
-                {renderCategorySection('competitors', 'Competitors')}
-                {renderCategorySection('subsidiaries', 'Subsidiaries')}
-                {renderCategorySection('passive', 'Passive')}
-                {renderCategorySection('advert', 'Advert')}
+                  {renderCategorySection('industry', 'Industry')}
+                  {renderCategorySection('competitors', 'Competitors')}
+                  {renderCategorySection('subsidiaries', 'Subsidiaries')}
+                  {renderCategorySection('passive', 'Passive')}
+                  {renderCategorySection('advert', 'Advert')}
 
-                {formErrors.urls && <p className="text-red-500 text-sm">{formErrors.urls}</p>}
-                {formErrors.industry && <p className="text-red-500 text-sm">{formErrors.industry}</p>}
+                  {formErrors.urls && <p className="text-red-500 text-sm">{formErrors.urls}</p>}
+                  {formErrors.industry && <p className="text-red-500 text-sm">{formErrors.industry}</p>}
 
-                <div className="flex justify-end">
-                  <Button type="submit">Create Mention</Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+                  <div className="flex justify-end">
+                    <Button type="submit">Create Mention</Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
       </div>
 

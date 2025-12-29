@@ -1,11 +1,11 @@
-// SocialMediaMentionsPage.tsx - FIXED & CLEAN PRODUCTION VERSION
+// SocialMediaMentionsPage.tsx - UPDATED: Role-based Create & Delete Controls
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Facebook, Instagram, Twitter, Eye, MoreHorizontal, Trash2, RefreshCw, Plus, Filter } from "lucide-react";
+import { Facebook, Instagram, Twitter, Eye, MoreHorizontal, Trash2, RefreshCw, Filter } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { SocialMediaMentionForm } from '../dashboard/components/SocialMediaMentionForm';
 import { toast } from 'sonner';
@@ -52,6 +52,16 @@ export default function SocialMediaMentionsPage() {
   const { user, token } = useAuth();
   const location = useLocation();
 
+  // Role detection
+  const userRole = user?.role?.name || (typeof user?.role === 'string' ? user.role : 'Analyst');
+  const isAdmin = userRole === 'Admin';
+  const isSupervisor = userRole === 'Supervisor';
+  const isAnalyst = userRole === 'Analyst';
+
+  // Permissions
+  const showCreateButton = isAnalyst;        // Only Analysts can create new mentions
+  const showDeleteOption = isAdmin;         // Only Admins can delete
+
   const [loading, setLoading] = useState(true);
   const [mentions, setMentions] = useState<SocialMediaMention[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
@@ -87,12 +97,11 @@ export default function SocialMediaMentionsPage() {
     setError(null);
 
     try {
-      const role = user.role?.name || (typeof user.role === 'string' ? user.role : 'Analyst');
       let endpoint = `${API_BASE}/social-media-mentions`;
 
-      if (role === 'Supervisor') {
+      if (isSupervisor) {
         endpoint = `${API_BASE}/social-media-mentions/supervisor-mentions`;
-      } else if (role === 'Analyst') {
+      } else if (isAnalyst) {
         endpoint = `${API_BASE}/social-media-mentions/my-social-media-mentions`;
       }
 
@@ -128,7 +137,6 @@ export default function SocialMediaMentionsPage() {
       if (result.success && result.data) {
         if (result.data.data && Array.isArray(result.data.data)) {
           items = result.data.data;
-          // Normalize API pagination keys → our internal structure
           meta = {
             total: result.data.pagination.total,
             page: result.data.pagination.currentPage,
@@ -158,7 +166,7 @@ export default function SocialMediaMentionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [user, token, statusFilter, dateFrom, dateTo]);
+  }, [user, token, statusFilter, dateFrom, dateTo, isSupervisor, isAnalyst]);
 
   // Initial fetch + refetch when filters change
   useEffect(() => {
@@ -249,27 +257,28 @@ export default function SocialMediaMentionsPage() {
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-indigo-950 hover:bg-indigo-800">
-                <Plus className="mr-2 h-4 w-4" />
-                Create Mention
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Create Social Media Mention</DialogTitle>
-              </DialogHeader>
-              <SocialMediaMentionForm
-                mode="create"
-                onSuccess={() => {
-                  setIsCreateOpen(false);
-                  fetchMentions(1, 10);
-                  toast.success("Mention created successfully!");
-                }}
-              />
-            </DialogContent>
-          </Dialog>
+          {showCreateButton && (
+            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-indigo-950 hover:bg-indigo-800">
+                  Create Mention
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Create Social Media Mention</DialogTitle>
+                </DialogHeader>
+                <SocialMediaMentionForm
+                  mode="create"
+                  onSuccess={() => {
+                    setIsCreateOpen(false);
+                    fetchMentions(1, 10);
+                    toast.success("Mention created successfully!");
+                  }}
+                />
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
       </div>
 
@@ -426,7 +435,7 @@ export default function SocialMediaMentionsPage() {
                             <DropdownMenuItem onClick={() => setEditingMention(mention)}>
                               <Eye className="mr-2 h-4 w-4" /> View & Edit
                             </DropdownMenuItem>
-                            {mention.status === 'Pending' && user?.role.name === 'Supervisor' && (
+                            {mention.status === 'Pending' && isSupervisor && (
                               <>
                                 <DropdownMenuItem
                                   onClick={() => handleUpdateStatus(mention.id, 'Approved')}
@@ -442,12 +451,14 @@ export default function SocialMediaMentionsPage() {
                                 </DropdownMenuItem>
                               </>
                             )}
-                            <DropdownMenuItem
-                              onClick={() => handleDelete(mention.id)}
-                              className="text-red-600"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" /> Delete
-                            </DropdownMenuItem>
+                            {showDeleteOption && (
+                              <DropdownMenuItem
+                                onClick={() => handleDelete(mention.id)}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
