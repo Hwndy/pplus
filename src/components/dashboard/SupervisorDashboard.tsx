@@ -147,15 +147,13 @@ interface GenericEntry {
   subsidiaries?: any[];
   passive?: any[];
   advert?: any[];
-  metrics?: any[];
   strengths?: any[];
   weaknesses?: any[];
   opportunities?: any[];
   threats?: any[];
-  social_media_engagement?: any[];
-  brand_awareness?: any[];
-  media_coverage?: any[];
-  competitor_analysis?: any[];
+  insights?: any[];
+  metrics?: any[];
+  highlights?: string[];
   source?: string;
   audience_reach?: number;
   brand?: string;
@@ -171,6 +169,10 @@ interface GenericEntry {
   language?: string;
   ceo_thought_leadership?: string;
   print_web_clips?: string | null;
+  social_media_engagement?: any[];
+  brand_awareness?: any[];
+  media_coverage?: any[];
+  competitor_analysis?: any[];
 }
 
 // Stats Interface
@@ -239,6 +241,16 @@ const contentTypes = {
 } as const;
 
 type ContentTypeKey = keyof typeof contentTypes;
+
+// Type-specific keys
+const typeKeys = {
+  editorials: { recentKey: 'recent_editorials', statsPrefix: 'editorials' },
+  dailyMentions: { recentKey: 'recent_mentions', statsPrefix: 'mentions' },
+  swotAnalysis: { recentKey: 'recent_analysis', statsPrefix: 'analysis' },
+  outcomeInsights: { recentKey: 'recent_insights', statsPrefix: 'insights' },
+  socialMediaMentions: { recentKey: 'recent_mentions', statsPrefix: 'mentions' },
+  industryLandscapeOverview: { recentKey: 'recent_overviews', statsPrefix: 'overviews' },
+};
 
 // Supervisor Endpoints
 const SUPERVISOR_ENDPOINTS = {
@@ -369,10 +381,10 @@ export function SupervisorDashboard() {
         status: rawEntry.status || 'pending',
         createdAt: rawEntry.date || rawEntry.createdAt || new Date().toISOString(),
         updatedAt: rawEntry.updatedAt,
-        authorName: rawEntry.analyst?.username || rawEntry.creator_data?.username || 'Unknown',
-        companyName: rawEntry.company?.company_name || rawEntry.company_data?.company_name || 'Unknown',
+        authorName: rawEntry.created_by?.username || rawEntry.creator_data?.username || 'Unknown',
+        companyName,
         comments: rawEntry.supervisor_note || '',
-        reviewedBy: rawEntry.approver_data?.username || rawEntry.approved_by?.username || 'Unknown',
+        reviewedBy: rawEntry.approved_by?.username || rawEntry.approver_data?.username || 'Unknown',
         reviewedAt: rawEntry.updatedAt,
         industry: rawEntry.industry || [],
         competitors: rawEntry.competitors || [],
@@ -383,15 +395,15 @@ export function SupervisorDashboard() {
     } else if (type === 'swotAnalysis') {
       return {
         id: rawEntry.id.toString(),
-        title: rawEntry.title || rawEntry.strengths?.[0]?.title || rawEntry.analyst_note?.slice(0, 50) || 'Untitled',
+        title: rawEntry.title || rawEntry.strengths?.[0]?.analysis || rawEntry.analyst_note?.slice(0, 50) || 'Untitled',
         content: rawEntry.analyst_note || '',
         status: rawEntry.status || 'pending',
         createdAt: rawEntry.date || rawEntry.createdAt || new Date().toISOString(),
         updatedAt: rawEntry.updatedAt,
-        authorName: rawEntry.analyst?.username || rawEntry.creator_data?.username || 'Unknown',
-        companyName: rawEntry.company?.company_name || rawEntry.company_data?.company_name || rawEntry.company?.name || 'Unknown',
+        authorName: rawEntry.created_by?.username || rawEntry.creator_data?.username || 'Unknown',
+        companyName,
         comments: rawEntry.supervisor_note || '',
-        reviewedBy: rawEntry.supervisor?.username || rawEntry.approver_data?.username || 'Unknown',
+        reviewedBy: rawEntry.approved_by?.username || rawEntry.approver_data?.username || 'Unknown',
         reviewedAt: rawEntry.updatedAt,
         strengths: rawEntry.strengths || [],
         weaknesses: rawEntry.weaknesses || [],
@@ -401,33 +413,30 @@ export function SupervisorDashboard() {
     } else if (type === 'outcomeInsights') {
       return {
         id: rawEntry.id.toString(),
-        title: rawEntry.title || rawEntry.analyst_note?.slice(0, 50) || 'Untitled',
-        content: rawEntry.analyst_note || rawEntry.insights || '',
-        status: rawEntry.status || 'pending',
-        createdAt: rawEntry.date || rawEntry.createdAt || new Date().toISOString(),
-        updatedAt: rawEntry.updatedAt,
-        authorName: rawEntry.analyst?.username || rawEntry.creator_data?.username || 'Unknown',
-        companyName: rawEntry.company?.company_name || rawEntry.company_data?.company_name || rawEntry.company?.name || 'Unknown',
-        comments: rawEntry.supervisor_note || '',
-        reviewedBy: rawEntry.approver_data?.username || rawEntry.approved_by?.username || 'Unknown',
-        reviewedAt: rawEntry.updatedAt,
-        social_media_engagement: rawEntry.social_media_engagement ? [rawEntry.social_media_engagement] : [],
-        brand_awareness: rawEntry.brand_awareness ? [rawEntry.brand_awareness] : [],
-        media_coverage: rawEntry.media_coverage ? [rawEntry.media_coverage] : [],
-        competitor_analysis: rawEntry.competitor_analysis || rawEntry.competitor_comparison ? [rawEntry.competitor_analysis || rawEntry.competitor_comparison] : [],
-      };
-    } else if (type === 'socialMediaMentions') {
-      return {
-        id: rawEntry.id.toString(),
-        title: rawEntry.title || rawEntry.analyst_note?.slice(0, 50) || rawEntry.social_media_type || 'Untitled',
+        title: rawEntry.title || rawEntry.insights?.[0]?.category || rawEntry.analyst_note?.slice(0, 50) || 'Untitled',
         content: rawEntry.analyst_note || '',
         status: rawEntry.status || 'pending',
         createdAt: rawEntry.date || rawEntry.createdAt || new Date().toISOString(),
         updatedAt: rawEntry.updatedAt,
-        authorName: rawEntry.creator_data?.username || rawEntry.analyst?.username || 'Unknown',
-        companyName: rawEntry.company_data?.company_name || rawEntry.company?.company_name || rawEntry.company?.name || 'Unknown',
+        authorName: rawEntry.created_by?.username || rawEntry.creator_data?.username || 'Unknown',
+        companyName,
         comments: rawEntry.supervisor_note || '',
-        reviewedBy: rawEntry.approver_data?.username || rawEntry.approved_by?.username || 'Unknown',
+        reviewedBy: rawEntry.approved_by?.username || rawEntry.approver_data?.username || 'Unknown',
+        reviewedAt: rawEntry.updatedAt,
+        insights: rawEntry.insights || [],
+      };
+    } else if (type === 'socialMediaMentions') {
+      return {
+        id: rawEntry.id.toString(),
+        title: rawEntry.social_media_type || rawEntry.analyst_note?.slice(0, 50) || 'Untitled',
+        content: rawEntry.analyst_note || '',
+        status: rawEntry.status || 'pending',
+        createdAt: rawEntry.date || rawEntry.createdAt || new Date().toISOString(),
+        updatedAt: rawEntry.updatedAt,
+        authorName: rawEntry.created_by?.username || rawEntry.creator_data?.username || 'Unknown',
+        companyName,
+        comments: rawEntry.supervisor_note || '',
+        reviewedBy: rawEntry.approved_by?.username || rawEntry.approver_data?.username || 'Unknown',
         reviewedAt: rawEntry.updatedAt,
         metrics: rawEntry.metrics || [],
       };
@@ -439,117 +448,97 @@ export function SupervisorDashboard() {
         status: rawEntry.status || 'pending',
         createdAt: rawEntry.date || rawEntry.createdAt || new Date().toISOString(),
         updatedAt: rawEntry.updatedAt,
-        authorName: rawEntry.creator_data?.username || rawEntry.analyst?.username || 'Unknown',
-        companyName: rawEntry.company_data?.company_name || rawEntry.company?.company_name || rawEntry.company?.name || 'Unknown',
+        authorName: rawEntry.created_by?.username || rawEntry.creator_data?.username || 'Unknown',
+        companyName,
         comments: rawEntry.supervisor_note || '',
-        reviewedBy: rawEntry.approver_data?.username || rawEntry.approved_by?.username || 'Unknown',
+        reviewedBy: rawEntry.approved_by?.username || rawEntry.approver_data?.username || 'Unknown',
         reviewedAt: rawEntry.updatedAt,
+        highlights: rawEntry.highlights || [],
       };
     }
 
+    // Fallback
     return {
-      id: rawEntry.id?.toString() || '',
-      title: rawEntry.title || rawEntry.headline || 'Untitled',
-      content: rawEntry.content || rawEntry.analyst_note || '',
+      id: rawEntry.id.toString(),
+      title: rawEntry.title || rawEntry.headline || rawEntry.sector || 'Untitled',
+      content: rawEntry.analyst_note || rawEntry.content || rawEntry.highlights?.join('\n') || '',
       status: rawEntry.status || 'pending',
-      createdAt: rawEntry.createdAt || rawEntry.date || new Date().toISOString(),
+      createdAt: rawEntry.date || rawEntry.createdAt || new Date().toISOString(),
       updatedAt: rawEntry.updatedAt,
-      authorName: rawEntry.created_by?.username || rawEntry.creator_data?.username || rawEntry.analyst?.username || 'Unknown',
-      companyName: rawEntry.company?.company_name || rawEntry.company_data?.company_name || rawEntry.company?.name || 'Unknown',
+      authorName: rawEntry.created_by?.username || rawEntry.creator_data?.username || 'Unknown',
+      companyName,
       comments: rawEntry.supervisor_note || '',
-      reviewedBy: rawEntry.approved_by?.username || rawEntry.approver_data?.username || rawEntry.supervisor?.username || 'Unknown',
+      reviewedBy: rawEntry.approved_by?.username || rawEntry.approver_data?.username || 'Unknown',
       reviewedAt: rawEntry.updatedAt,
     };
   };
 
-  // Fetch Stats
-  const fetchStats = async () => {
-    if (!token || !user?.id) return;
+  // Fetch all stats on mount for supervisor
+  useEffect(() => {
+    if (isAuthenticated && token && user?.id && isSupervisor) {
+      setLoading(true);
+      const types = Object.keys(contentTypes) as ContentTypeKey[];
+      Promise.all(
+        types.map((type) => {
+          const url = `${API_BASE}${SUPERVISOR_ENDPOINTS[type]}?page=1&limit=1`;
+          return fetch(url, { headers }).then((res) => res.json());
+        })
+      )
+        .then((responses) => {
+          let newStats: Stats = {
+            pending: 0,
+            approved: 0,
+            rejected: 0,
+            total: 0,
+            approvedToday: 0,
+            rejectedToday: 0,
+            byType: {},
+          };
+          let maxApprovedToday = 0;
+          let maxRejectedToday = 0;
+          responses.forEach((json, index) => {
+            const type = types[index];
+            const s = json?.data?.stats || {};
+            const prefix = typeKeys[type].statsPrefix;
+            const pending = s[`pending_${prefix}`] || 0;
+            const approved = s[`approved_${prefix}`] || 0;
+            const rejected = s[`rejected_${prefix}`] || 0;
+            const total = s[`total_${prefix}`] || 0;
 
-    try {
-      if (isAdmin) {
-        const [overallRes, todayRes] = await Promise.all([
-          fetch(`${API_BASE}/status/status-counts`, { headers }),
-          fetch(`${API_BASE}/status/status-counts/today`, { headers }),
-        ]);
-
-        if (overallRes.status === 401 || todayRes.status === 401) throw new Error('Unauthorized');
-        if (!overallRes.ok || !todayRes.ok) throw new Error('Failed to fetch stats');
-
-        const overallData = await overallRes.json();
-        const todayData = await todayRes.json();
-
-        if (overallData.success && todayData.success) {
-          const summary = overallData.data.summary.totalCounts;
-          const byTable = overallData.data.byTable.reduce((acc: Record<string, any>, item: any) => {
-            const tableKeyMap: Record<string, ContentTypeKey> = {
-              Editorials: 'editorials',
-              DailyMentions: 'dailyMentions',
-              SwotAnalyses: 'swotAnalysis',
-              OutcomeInsights: 'outcomeInsights',
-              SocialMediaMentions: 'socialMediaMentions',
-              IndustryLandscapeOverview: 'industryLandscapeOverview',
+            newStats.byType[type] = {
+              pending,
+              approved,
+              rejected,
+              total,
+              displayName: contentTypes[type].displayName,
             };
-            const frontendKey = tableKeyMap[item.table] || item.table;
-            acc[frontendKey] = {
-              pending: item.counts.pending,
-              approved: item.counts.approved,
-              rejected: item.counts.rejected,
-              total: item.counts.total,
-              displayName: item.displayName,
-            };
-            return acc;
-          }, {});
 
-          setStats({
-            pending: summary.pending,
-            approved: summary.approved,
-            rejected: summary.rejected,
-            total: summary.total,
-            approvedToday: todayData.data.summary.totalActivity.approved,
-            rejectedToday: todayData.data.summary.totalActivity.rejected,
-            byType: byTable,
+            newStats.pending += pending;
+            newStats.approved += approved;
+            newStats.rejected += rejected;
+            newStats.total += total;
+
+            maxApprovedToday = Math.max(maxApprovedToday, s.approved_today || 0);
+            maxRejectedToday = Math.max(maxRejectedToday, s.rejected_today || 0);
           });
-        }
-      } else if (isSupervisor) {
-        const url = `${API_BASE}${SUPERVISOR_ENDPOINTS[activeTab]}?page=1&limit=${PAGE_SIZE}`;
-        const res = await fetch(url, { headers });
-        if (!res.ok) throw new Error('Failed to fetch supervisor stats');
-        const json = await res.json();
-
-        const s = json.data?.stats || {};
-        setStats(prev => ({
-          ...prev,
-          pending: s.pending_insights ?? 0,
-          approved: s.approved_insights ?? 0,
-          rejected: s.rejected_insights ?? 0,
-          total: s.total_insights ?? 0,
-          approvedToday: s.approved_today ?? 0,
-          rejectedToday: s.rejected_today ?? 0,
-          byType: {
-            ...prev.byType,
-            [activeTab]: {
-              pending: s.pending_insights ?? 0,
-              approved: s.approved_insights ?? 0,
-              rejected: s.rejected_insights ?? 0,
-              total: s.total_insights ?? 0,
-              displayName: contentTypes[activeTab].displayName,
-            },
-          },
-        }));
-      }
-    } catch (error) {
-      console.error('Error fetching stats:', error);
-      toast.error('Failed to load stats');
-      if ((error as Error).message.includes('Unauthorized')) {
-        navigate('/login', { replace: true });
-      }
-    } finally {
+          newStats.approvedToday = maxApprovedToday;
+          newStats.rejectedToday = maxRejectedToday;
+          setStats(newStats);
+          fetchEntries(activeTab, 1);
+          setLoading(false);
+        })
+        .catch((error) => {
+          console.error('Error fetching stats:', error);
+          toast.error('Failed to load dashboard stats');
+          setLoading(false);
+        });
+    } else if (isAdmin) {
+      // Admin stats logic if needed
       setLoading(false);
     }
-  };
+  }, [isAuthenticated, token, user, isSupervisor, isAdmin, activeTab]);
 
-  // Fetch Entries for Type — Fixed for Industry Landscape
+  // Fetch Entries for Type
   const fetchEntries = async (type: ContentTypeKey, page: number = 1) => {
     if (!token || !user?.id) return;
 
@@ -567,105 +556,35 @@ export function SupervisorDashboard() {
       let entries: any[] = [];
       let paginationData: Pagination = { currentPage: page, totalPages: 1, total: 0, pageSize: PAGE_SIZE };
 
-      if (json.success) {
+      if (json.success && json.data) {
         if (isSupervisor) {
-          const keyMap: Record<ContentTypeKey, {
-            recentKey: string;
-            totalKey: string;
-            pendingKey: string;
-            approvedKey: string;
-            rejectedKey: string;
-          }> = {
-            editorials: {
-              recentKey: 'recent_editorials',
-              totalKey: 'total_editorials',
-              pendingKey: 'pending_editorials',
-              approvedKey: 'approved_editorials',
-              rejectedKey: 'rejected_editorials',
-            },
-            dailyMentions: {
-              recentKey: 'recent_mentions',
-              totalKey: 'total_mentions',
-              pendingKey: 'pending_mentions',
-              approvedKey: 'approved_mentions',
-              rejectedKey: 'rejected_mentions',
-            },
-            swotAnalysis: {
-              recentKey: 'recent_analyses',
-              totalKey: 'total_analyses',
-              pendingKey: 'pending_analyses',
-              approvedKey: 'approved_analyses',
-              rejectedKey: 'rejected_analyses',
-            },
-            outcomeInsights: {
-              recentKey: 'recent_insights',
-              totalKey: 'total_insights',
-              pendingKey: 'pending_insights',
-              approvedKey: 'approved_insights',
-              rejectedKey: 'rejected_insights',
-            },
-            socialMediaMentions: {
-              recentKey: 'recent_mentions',
-              totalKey: 'total_mentions',
-              pendingKey: 'pending_mentions',
-              approvedKey: 'approved_mentions',
-              rejectedKey: 'rejected_mentions',
-            },
-            industryLandscapeOverview: {
-              recentKey: 'recent_insights', // ← FIXED: Backend uses 'recent_insights'
-              totalKey: 'total_insights',
-              pendingKey: 'pending_insights',
-              approvedKey: 'approved_insights',
-              rejectedKey: 'rejected_insights',
-            },
-          };
-
-          const keys = keyMap[type];
-          const stats = json.data?.stats || {};
-
-          entries = json.data?.[keys.recentKey] ?? [];
-          const total = stats[keys.totalKey] ?? 0;
-
+          const keys = typeKeys[type];
+          const recent = json.data[keys.recentKey] || {};
+          entries = Array.isArray(recent.data) ? recent.data : [];
+          const pag = recent.pagination || {};
           paginationData = {
-            currentPage: page,
-            totalPages: Math.ceil(total / PAGE_SIZE),
-            total,
-            pageSize: PAGE_SIZE,
+            currentPage: pag.currentPage || page,
+            totalPages: pag.totalPages || 1,
+            total: pag.total || 0,
+            pageSize: pag.pageSize || PAGE_SIZE,
           };
 
-          setStats(prev => ({
-            ...prev,
-            pending: stats[keys.pendingKey] ?? prev.pending,
-            approved: stats[keys.approvedKey] ?? prev.approved,
-            rejected: stats[keys.rejectedKey] ?? prev.rejected,
-            total: stats[keys.totalKey] ?? prev.total,
-            approvedToday: stats.approved_today ?? prev.approvedToday,
-            rejectedToday: stats.rejected_today ?? prev.rejectedToday,
-            byType: {
-              ...prev.byType,
-              [type]: {
-                pending: stats[keys.pendingKey] ?? 0,
-                approved: stats[keys.approvedKey] ?? 0,
-                rejected: stats[keys.rejectedKey] ?? 0,
-                total: stats[keys.totalKey] ?? 0,
-                displayName: contentTypes[type].displayName,
-              },
-            },
-          }));
+          // Update per-type stats if needed (but already done in initial load)
         } else {
-          entries = Array.isArray(json.data?.data) ? json.data.data : (Array.isArray(json.data) ? json.data : []);
+          entries = Array.isArray(json.data?.data) ? json.data.data : Array.isArray(json.data) ? json.data : [];
+          const pag = json.data?.pagination || json.pagination || {};
           paginationData = {
-            currentPage: json.data?.pagination?.page || json.pagination?.page || page,
-            totalPages: json.data?.pagination?.totalPages || json.pagination?.totalPages || 1,
-            total: json.data?.pagination?.total || json.pagination?.total || 0,
-            pageSize: json.data?.pagination?.limit || json.pagination?.limit || PAGE_SIZE,
+            currentPage: pag.currentPage || page,
+            totalPages: pag.totalPages || 1,
+            total: pag.total || 0,
+            pageSize: pag.pageSize || PAGE_SIZE,
           };
         }
       }
 
-      const transformedEntries = entries.map(entry => transformToGenericEntry(type, entry));
-      setData(prev => ({ ...prev, [type]: transformedEntries }));
-      setPagination(prev => ({ ...prev, [type]: paginationData }));
+      const transformedEntries = entries.map((entry) => transformToGenericEntry(type, entry));
+      setData((prev) => ({ ...prev, [type]: transformedEntries }));
+      setPagination((prev) => ({ ...prev, [type]: paginationData }));
     } catch (error) {
       console.error(`Error fetching ${type}:`, error);
       toast.error(`Failed to load ${contentTypes[type].displayName}`);
@@ -676,18 +595,62 @@ export function SupervisorDashboard() {
 
   // Refresh Data
   const handleRefresh = () => {
-    setData({});
-    setPagination({
-      editorials: { currentPage: 1, totalPages: 1, total: 0, pageSize: PAGE_SIZE },
-      dailyMentions: { currentPage: 1, totalPages: 1, total: 0, pageSize: PAGE_SIZE },
-      swotAnalysis: { currentPage: 1, totalPages: 1, total: 0, pageSize: PAGE_SIZE },
-      outcomeInsights: { currentPage: 1, totalPages: 1, total: 0, pageSize: PAGE_SIZE },
-      socialMediaMentions: { currentPage: 1, totalPages: 1, total: 0, pageSize: PAGE_SIZE },
-      industryLandscapeOverview: { currentPage: 1, totalPages: 1, total: 0, pageSize: PAGE_SIZE },
-    });
-    fetchStats();
-    fetchEntries(activeTab, 1);
-    toast.success('Data refreshed');
+    // Re-fetch stats and current tab data
+    setData((prev) => ({ ...prev, [activeTab]: [] }));
+    // To re-fetch all stats, trigger the useEffect by some state, but for simplicity, re-run the promise.all
+    const types = Object.keys(contentTypes) as ContentTypeKey[];
+    Promise.all(
+      types.map((type) => {
+        const url = `${API_BASE}${SUPERVISOR_ENDPOINTS[type]}?page=1&limit=1`;
+        return fetch(url, { headers }).then((res) => res.json());
+      })
+    )
+      .then((responses) => {
+        let newStats: Stats = {
+          pending: 0,
+          approved: 0,
+          rejected: 0,
+          total: 0,
+          approvedToday: 0,
+          rejectedToday: 0,
+          byType: {},
+        };
+        let maxApprovedToday = 0;
+        let maxRejectedToday = 0;
+        responses.forEach((json, index) => {
+          const type = types[index];
+          const s = json?.data?.stats || {};
+          const prefix = typeKeys[type].statsPrefix;
+          const pending = s[`pending_${prefix}`] || 0;
+          const approved = s[`approved_${prefix}`] || 0;
+          const rejected = s[`rejected_${prefix}`] || 0;
+          const total = s[`total_${prefix}`] || 0;
+
+          newStats.byType[type] = {
+            pending,
+            approved,
+            rejected,
+            total,
+            displayName: contentTypes[type].displayName,
+          };
+
+          newStats.pending += pending;
+          newStats.approved += approved;
+          newStats.rejected += rejected;
+          newStats.total += total;
+
+          maxApprovedToday = Math.max(maxApprovedToday, s.approved_today || 0);
+          maxRejectedToday = Math.max(maxRejectedToday, s.rejected_today || 0);
+        });
+        newStats.approvedToday = maxApprovedToday;
+        newStats.rejectedToday = maxRejectedToday;
+        setStats(newStats);
+        fetchEntries(activeTab, 1);
+        toast.success('Data refreshed');
+      })
+      .catch((error) => {
+        toast.error('Failed to refresh stats');
+      });
   };
 
   // Update Entry Status
@@ -706,24 +669,34 @@ export function SupervisorDashboard() {
       const res = await fetch(endpoint, { method: 'PATCH', headers, body: JSON.stringify(updateBody) });
       if (!res.ok) throw new Error();
       toast.success(`${contentTypes[type].displayName} ${newStatus}`);
-      setData(prev => ({
+      setData((prev) => ({
         ...prev,
-        [type]: prev[type].map(e =>
+        [type]: prev[type].map((e) =>
           e.id === entry.id
             ? { ...e, status: newStatus, comments: comments || e.comments, reviewedBy: user.name || user.username, reviewedAt: new Date().toISOString() }
             : e
         ),
       }));
-      fetchStats();
+      fetchEntries(activeTab, pagination[activeTab].currentPage);
     } catch (error) {
       toast.error('Failed to update status');
     }
   };
 
   const handleQuickApprove = (entry: GenericEntry) => updateStatus(entry, 'approved');
-  const openRejectDialog = (entry: GenericEntry) => { setCurrentEntry(entry); setRejectReason(''); setShowRejectDialog(true); };
-  const submitRejection = () => { if (rejectReason.trim() && currentEntry) updateStatus(currentEntry, 'rejected', rejectReason); setShowRejectDialog(false); };
-  const openDetailsDialog = (entry: GenericEntry) => { setCurrentEntry(entry); setShowDetailsDialog(true); };
+  const openRejectDialog = (entry: GenericEntry) => {
+    setCurrentEntry(entry);
+    setRejectReason('');
+    setShowRejectDialog(true);
+  };
+  const submitRejection = () => {
+    if (rejectReason.trim() && currentEntry) updateStatus(currentEntry, 'rejected', rejectReason);
+    setShowRejectDialog(false);
+  };
+  const openDetailsDialog = (entry: GenericEntry) => {
+    setCurrentEntry(entry);
+    setShowDetailsDialog(true);
+  };
 
   const getColumns = (type: ContentTypeKey): ColumnDef<GenericEntry>[] => [
     {
@@ -731,10 +704,26 @@ export function SupervisorDashboard() {
       header: 'Title',
       cell: ({ row }) => <div className="max-w-xs truncate" title={row.getValue('title')}>{row.getValue('title')}</div>,
     },
-    { accessorKey: 'authorName', header: 'Author', cell: ({ row }) => row.original.authorName || 'Unknown' },
-    { accessorKey: 'companyName', header: 'Company', cell: ({ row }) => row.original.companyName || 'Unknown' },
-    { accessorKey: 'createdAt', header: 'Date', cell: ({ row }) => new Date(row.getValue('createdAt')).toLocaleDateString() },
-    { accessorKey: 'status', header: 'Status', cell: ({ row }) => <StatusBadge status={row.getValue('status')} /> },
+    {
+      accessorKey: 'authorName',
+      header: 'Author',
+      cell: ({ row }) => row.original.authorName || 'Unknown',
+    },
+    {
+      accessorKey: 'companyName',
+      header: 'Company',
+      cell: ({ row }) => row.original.companyName || 'Unknown',
+    },
+    {
+      accessorKey: 'createdAt',
+      header: 'Date',
+      cell: ({ row }) => new Date(row.getValue('createdAt')).toLocaleDateString(),
+    },
+    {
+      accessorKey: 'status',
+      header: 'Status',
+      cell: ({ row }) => <StatusBadge status={row.getValue('status')} />,
+    },
     {
       id: 'actions',
       header: 'Actions',
@@ -762,10 +751,6 @@ export function SupervisorDashboard() {
   ];
 
   useEffect(() => {
-    if (isAuthenticated && token && user?.id) fetchStats();
-  }, [isAuthenticated, token, user, isAdmin, isSupervisor]);
-
-  useEffect(() => {
     if (isAuthenticated && token && user?.id) {
       fetchEntries(activeTab, pagination[activeTab].currentPage);
     }
@@ -785,7 +770,7 @@ export function SupervisorDashboard() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{isSupervisor ? 'Supervisor' : 'Admin'} Dashboard</h1>
+        <h1 className="text-2xl font-bold">Supervisor Dashboard</h1>
         <div className="flex space-x-2">
           <Button variant="outline" onClick={handleRefresh}>
             <RefreshCw className="mr-2 h-4 w-4" />
@@ -794,7 +779,6 @@ export function SupervisorDashboard() {
         </div>
       </div>
 
-      {/* Overview Statistics */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <DataCard title="Total Pending" variant="glass" icon={<Clock size={24} />}>
           <Stat label="All Entries Pending Review" value={stats.pending} subtitle="Awaiting approval" />
@@ -810,7 +794,6 @@ export function SupervisorDashboard() {
         </DataCard>
       </div>
 
-      {/* Content Type Breakdown */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-6">
         {Object.entries(stats.byType).map(([key, typeStats]) => (
           <DataCard key={key} title={typeStats.displayName} variant="glass" icon={contentTypes[key as ContentTypeKey]?.icon || <FileText size={20} />}>
@@ -819,8 +802,7 @@ export function SupervisorDashboard() {
         ))}
       </div>
 
-      {/* Tabs for Content Types */}
-      <Tabs value={activeTab} onValueChange={(value: ContentTypeKey) => setActiveTab(value)}>
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ContentTypeKey)}>
         <TabsList className="grid w-full grid-cols-6">
           {Object.entries(contentTypes).map(([key, config]) => (
             <TabsTrigger key={key} value={key as ContentTypeKey}>
@@ -848,9 +830,7 @@ export function SupervisorDashboard() {
                     pagination={{
                       currentPage: pag.currentPage,
                       totalPages: pag.totalPages,
-                      onPageChange: (page: number) => {
-                        fetchEntries(typeKey, page);
-                      },
+                      onPageChange: (page: number) => fetchEntries(typeKey, page),
                     }}
                   />
 
@@ -868,7 +848,6 @@ export function SupervisorDashboard() {
         })}
       </Tabs>
 
-      {/* Reject Dialog */}
       <Dialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
         <DialogContent>
           <DialogHeader>
@@ -898,7 +877,6 @@ export function SupervisorDashboard() {
         </DialogContent>
       </Dialog>
 
-      {/* Details Dialog (unchanged) */}
       <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -1013,7 +991,7 @@ export function SupervisorDashboard() {
                 {currentEntry.industry && currentEntry.industry.length > 0 && (
                   <div className="space-y-2">
                     <Label>Industry Mentions</Label>
-                    {currentEntry.industry.map((item, index) => (
+                    {currentEntry.industry.map((item: any, index: number) => (
                       <Card key={index}>
                         <CardContent className="p-4">
                           <p><strong>Headline:</strong> {item.headline}</p>
@@ -1024,7 +1002,7 @@ export function SupervisorDashboard() {
                           {item.page && <p><strong>Page:</strong> {item.page}</p>}
                           {item.publication_date && <p><strong>Publication Date:</strong> {new Date(item.publication_date).toLocaleDateString()}</p>}
                           {item.urls?.length > 0 && (
-                            <div><strong>URLs:</strong> {item.urls.map((url, urlIndex) => (
+                            <div><strong>URLs:</strong> {item.urls.map((url: string, urlIndex: number) => (
                               <a key={urlIndex} href={url} target="_blank" rel="noopener noreferrer" className="block text-blue-600 hover:underline">{url}</a>
                             ))}</div>
                           )}
@@ -1036,7 +1014,7 @@ export function SupervisorDashboard() {
                 {currentEntry.competitors && currentEntry.competitors.length > 0 && (
                   <div className="space-y-2">
                     <Label>Competitors</Label>
-                    {currentEntry.competitors.map((item, index) => (
+                    {currentEntry.competitors.map((item: any, index: number) => (
                       <Card key={index}>
                         <CardContent className="p-4">
                           <p><strong>Headline:</strong> {item.headline}</p>
@@ -1047,7 +1025,7 @@ export function SupervisorDashboard() {
                           {item.page && <p><strong>Page:</strong> {item.page}</p>}
                           {item.publication_date && <p><strong>Publication Date:</strong> {new Date(item.publication_date).toLocaleDateString()}</p>}
                           {item.urls?.length > 0 && (
-                            <div><strong>URLs:</strong> {item.urls.map((url, urlIndex) => (
+                            <div><strong>URLs:</strong> {item.urls.map((url: string, urlIndex: number) => (
                               <a key={urlIndex} href={url} target="_blank" rel="noopener noreferrer" className="block text-blue-600 hover:underline">{url}</a>
                             ))}</div>
                           )}
@@ -1059,7 +1037,7 @@ export function SupervisorDashboard() {
                 {currentEntry.subsidiaries && currentEntry.subsidiaries.length > 0 && (
                   <div className="space-y-2">
                     <Label>Subsidiaries</Label>
-                    {currentEntry.subsidiaries.map((item, index) => (
+                    {currentEntry.subsidiaries.map((item: any, index: number) => (
                       <Card key={index}>
                         <CardContent className="p-4">
                           <p><strong>Headline:</strong> {item.headline}</p>
@@ -1070,7 +1048,7 @@ export function SupervisorDashboard() {
                           {item.page && <p><strong>Page:</strong> {item.page}</p>}
                           {item.publication_date && <p><strong>Publication Date:</strong> {new Date(item.publication_date).toLocaleDateString()}</p>}
                           {item.urls?.length > 0 && (
-                            <div><strong>URLs:</strong> {item.urls.map((url, urlIndex) => (
+                            <div><strong>URLs:</strong> {item.urls.map((url: string, urlIndex: number) => (
                               <a key={urlIndex} href={url} target="_blank" rel="noopener noreferrer" className="block text-blue-600 hover:underline">{url}</a>
                             ))}</div>
                           )}
@@ -1082,7 +1060,7 @@ export function SupervisorDashboard() {
                 {currentEntry.passive && currentEntry.passive.length > 0 && (
                   <div className="space-y-2">
                     <Label>Passive Mentions</Label>
-                    {currentEntry.passive.map((item, index) => (
+                    {currentEntry.passive.map((item: any, index: number) => (
                       <Card key={index}>
                         <CardContent className="p-4">
                           <p><strong>Headline:</strong> {item.headline}</p>
@@ -1093,7 +1071,7 @@ export function SupervisorDashboard() {
                           {item.page && <p><strong>Page:</strong> {item.page}</p>}
                           {item.publication_date && <p><strong>Publication Date:</strong> {new Date(item.publication_date).toLocaleDateString()}</p>}
                           {item.urls?.length > 0 && (
-                            <div><strong>URLs:</strong> {item.urls.map((url, urlIndex) => (
+                            <div><strong>URLs:</strong> {item.urls.map((url: string, urlIndex: number) => (
                               <a key={urlIndex} href={url} target="_blank" rel="noopener noreferrer" className="block text-blue-600 hover:underline">{url}</a>
                             ))}</div>
                           )}
@@ -1105,7 +1083,7 @@ export function SupervisorDashboard() {
                 {currentEntry.advert && currentEntry.advert.length > 0 && (
                   <div className="space-y-2">
                     <Label>Advert Mentions</Label>
-                    {currentEntry.advert.map((item, index) => (
+                    {currentEntry.advert.map((item: any, index: number) => (
                       <Card key={index}>
                         <CardContent className="p-4">
                           <p><strong>Headline:</strong> {item.headline}</p>
@@ -1116,7 +1094,7 @@ export function SupervisorDashboard() {
                           {item.page && <p><strong>Page:</strong> {item.page}</p>}
                           {item.publication_date && <p><strong>Publication Date:</strong> {new Date(item.publication_date).toLocaleDateString()}</p>}
                           {item.urls?.length > 0 && (
-                            <div><strong>URLs:</strong> {item.urls.map((url, urlIndex) => (
+                            <div><strong>URLs:</strong> {item.urls.map((url: string, urlIndex: number) => (
                               <a key={urlIndex} href={url} target="_blank" rel="noopener noreferrer" className="block text-blue-600 hover:underline">{url}</a>
                             ))}</div>
                           )}
@@ -1128,11 +1106,10 @@ export function SupervisorDashboard() {
                 {currentEntry.strengths && currentEntry.strengths.length > 0 && (
                   <div className="space-y-2">
                     <Label>Strengths</Label>
-                    {currentEntry.strengths.map((item, index) => (
+                    {currentEntry.strengths.map((item: any, index: number) => (
                       <Card key={index}>
                         <CardContent className="p-4">
-                          <p><strong>Title:</strong> {typeof item === 'string' ? item : item.title || item}</p>
-                          <p><strong>Description:</strong> {typeof item === 'string' ? '' : item.description || ''}</p>
+                          <p><strong>Analysis:</strong> {item.analysis || item.title || item}</p>
                         </CardContent>
                       </Card>
                     ))}
@@ -1141,11 +1118,10 @@ export function SupervisorDashboard() {
                 {currentEntry.weaknesses && currentEntry.weaknesses.length > 0 && (
                   <div className="space-y-2">
                     <Label>Weaknesses</Label>
-                    {currentEntry.weaknesses.map((item, index) => (
+                    {currentEntry.weaknesses.map((item: any, index: number) => (
                       <Card key={index}>
                         <CardContent className="p-4">
-                          <p><strong>Title:</strong> {typeof item === 'string' ? item : item.title || item}</p>
-                          <p><strong>Description:</strong> {typeof item === 'string' ? '' : item.description || ''}</p>
+                          <p><strong>Analysis:</strong> {item.analysis || item.title || item}</p>
                         </CardContent>
                       </Card>
                     ))}
@@ -1154,11 +1130,10 @@ export function SupervisorDashboard() {
                 {currentEntry.opportunities && currentEntry.opportunities.length > 0 && (
                   <div className="space-y-2">
                     <Label>Opportunities</Label>
-                    {currentEntry.opportunities.map((item, index) => (
+                    {currentEntry.opportunities.map((item: any, index: number) => (
                       <Card key={index}>
                         <CardContent className="p-4">
-                          <p><strong>Title:</strong> {typeof item === 'string' ? item : item.title || item}</p>
-                          <p><strong>Description:</strong> {typeof item === 'string' ? '' : item.description || ''}</p>
+                          <p><strong>Analysis:</strong> {item.analysis || item.title || item}</p>
                         </CardContent>
                       </Card>
                     ))}
@@ -1167,63 +1142,23 @@ export function SupervisorDashboard() {
                 {currentEntry.threats && currentEntry.threats.length > 0 && (
                   <div className="space-y-2">
                     <Label>Threats</Label>
-                    {currentEntry.threats.map((item, index) => (
+                    {currentEntry.threats.map((item: any, index: number) => (
                       <Card key={index}>
                         <CardContent className="p-4">
-                          <p><strong>Title:</strong> {typeof item === 'string' ? item : item.title || item}</p>
-                          <p><strong>Description:</strong> {typeof item === 'string' ? '' : item.description || ''}</p>
+                          <p><strong>Analysis:</strong> {item.analysis || item.title || item}</p>
                         </CardContent>
                       </Card>
                     ))}
                   </div>
                 )}
-                {currentEntry.social_media_engagement && currentEntry.social_media_engagement.length > 0 && (
+                {currentEntry.insights && currentEntry.insights.length > 0 && (
                   <div className="space-y-2">
-                    <Label>Social Media Engagement</Label>
-                    {currentEntry.social_media_engagement.map((item, index) => (
+                    <Label>Insights</Label>
+                    {currentEntry.insights.map((item: any, index: number) => (
                       <Card key={index}>
                         <CardContent className="p-4">
-                          <p><strong>Percentage:</strong> {item.percentage}</p>
-                          <p><strong>Description:</strong> {item.description}</p>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-                {currentEntry.brand_awareness && currentEntry.brand_awareness.length > 0 && (
-                  <div className="space-y-2">
-                    <Label>Brand Awareness</Label>
-                    {currentEntry.brand_awareness.map((item, index) => (
-                      <Card key={index}>
-                        <CardContent className="p-4">
-                          <p><strong>Percentage:</strong> {item.percentage}</p>
-                          <p><strong>Description:</strong> {item.description}</p>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-                {currentEntry.media_coverage && currentEntry.media_coverage.length > 0 && (
-                  <div className="space-y-2">
-                    <Label>Media Coverage</Label>
-                    {currentEntry.media_coverage.map((item, index) => (
-                      <Card key={index}>
-                        <CardContent className="p-4">
-                          <p><strong>Percentage:</strong> {item.percentage}</p>
-                          <p><strong>Description:</strong> {item.description}</p>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-                {currentEntry.competitor_analysis && currentEntry.competitor_analysis.length > 0 && (
-                  <div className="space-y-2">
-                    <Label>Competitor Analysis</Label>
-                    {currentEntry.competitor_analysis.map((item, index) => (
-                      <Card key={index}>
-                        <CardContent className="p-4">
-                          <p><strong>Percentage:</strong> {item.percentage}</p>
-                          <p><strong>Description:</strong> {item.description}</p>
+                          <p><strong>Category:</strong> {item.category}</p>
+                          <p><strong>Analysis:</strong> {item.analysis}</p>
                         </CardContent>
                       </Card>
                     ))}
@@ -1232,15 +1167,32 @@ export function SupervisorDashboard() {
                 {currentEntry.metrics && currentEntry.metrics.length > 0 && (
                   <div className="space-y-2">
                     <Label>Metrics</Label>
-                    {currentEntry.metrics.map((item, index) => (
+                    {currentEntry.metrics.map((item: any, index: number) => (
                       <Card key={index}>
                         <CardContent className="p-4">
-                          <p><strong>Page Likes:</strong> {item.page_likes}</p>
-                          <p><strong>Average Likes:</strong> {item.average_likes}</p>
-                          <p><strong>Average Comments:</strong> {item.average_comments}</p>
+                          {item.page_likes && <p><strong>Page Likes:</strong> {item.page_likes}</p>}
+                          {item.average_likes && <p><strong>Average Likes:</strong> {item.average_likes}</p>}
+                          {item.average_comments && <p><strong>Average Comments:</strong> {item.average_comments}</p>}
+                          {item.posts && <p><strong>Posts:</strong> {item.posts}</p>}
+                          {item.followers && <p><strong>Followers:</strong> {item.followers}</p>}
+                          {item.following && <p><strong>Following:</strong> {item.following}</p>}
                         </CardContent>
                       </Card>
                     ))}
+                  </div>
+                )}
+                {currentEntry.highlights && currentEntry.highlights.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Highlights</Label>
+                    <Card>
+                      <CardContent className="p-4">
+                        <ul className="list-disc pl-4 space-y-1">
+                          {currentEntry.highlights.map((h: string, index: number) => (
+                            <li key={index}>{h}</li>
+                          ))}
+                        </ul>
+                      </CardContent>
+                    </Card>
                   </div>
                 )}
                 {currentEntry.comments && (
