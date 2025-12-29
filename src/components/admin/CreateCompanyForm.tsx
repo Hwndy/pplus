@@ -13,6 +13,7 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
+  CommandList,
 } from '@/components/ui/command';
 import {
   Popover,
@@ -23,7 +24,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import axios from 'axios';
 import { X, Copy, Loader2, Plus, Minus, Check, ChevronsUpDown } from 'lucide-react';
-import { cn } from '@/lib/utils'; // Ensure you have this utility (common in shadcn setups)
+import { cn } from '@/lib/utils';
 
 interface Company {
   id: number;
@@ -63,28 +64,129 @@ interface CreateCompanyFormProps {
   isViewMode?: boolean;
 }
 
-// Reusable Searchable Combobox Component
+// Hybrid Typeable + Searchable Company Name Field (with scrolling)
+const TypeableSearchableCompanyField: React.FC<{
+  value: string;
+  onChange: (value: string) => void;
+  companies: Company[];
+  loading?: boolean;
+  disabled?: boolean;
+  placeholder?: string;
+}> = ({
+  value,
+  onChange,
+  companies,
+  loading = false,
+  disabled = false,
+  placeholder = 'Type or search company name...',
+}) => {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const filtered = companies.filter((c) =>
+    c.company_name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const isNew = search.trim() && !companies.some(c => c.company_name.toLowerCase() === search.toLowerCase().trim());
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between text-left font-normal"
+          disabled={disabled || loading}
+        >
+          <span className="truncate">
+            {loading ? 'Loading companies...' : value || placeholder}
+          </span>
+          {loading ? (
+            <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin" />
+          ) : (
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-full p-0" align="start">
+        <Command>
+          <CommandInput
+            placeholder="Search companies or type new name..."
+            value={search}
+            onValueChange={(val) => {
+              setSearch(val);
+              onChange(val); // Live update as user types
+            }}
+            autoFocus
+          />
+          <ScrollArea className="h-[300px]">
+            <CommandList>
+              <CommandEmpty>No company found.</CommandEmpty>
+
+              {filtered.length > 0 && (
+                <CommandGroup heading="Existing Companies">
+                  {filtered.map((company) => (
+                    <CommandItem
+                      key={company.id}
+                      value={company.company_name}
+                      onSelect={() => {
+                        onChange(company.company_name);
+                        setSearch(company.company_name);
+                        setOpen(false);
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          'mr-2 h-4 w-4',
+                          value === company.company_name ? 'opacity-100' : 'opacity-0'
+                        )}
+                      />
+                      {company.company_name}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              )}
+
+              {isNew && (
+                <CommandGroup heading="Create New">
+                  <CommandItem
+                    onSelect={() => {
+                      onChange(search.trim());
+                      setOpen(false);
+                    }}
+                    className="text-muted-foreground"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create "{search.trim()}" as new company
+                  </CommandItem>
+                </CommandGroup>
+              )}
+            </CommandList>
+          </ScrollArea>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
+// Reusable Searchable Combobox with proper scrolling
 const SearchableCombobox: React.FC<{
   options: { value: string; label: string }[];
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
-  searchPlaceholder?: string;
   loading?: boolean;
   disabled?: boolean;
-  emptyMessage?: string;
 }> = ({
   options,
   value,
   onChange,
   placeholder,
-  searchPlaceholder = 'Search...',
   loading = false,
   disabled = false,
-  emptyMessage = 'No options found.',
 }) => {
   const [open, setOpen] = useState(false);
-
   const selectedLabel = options.find((opt) => opt.value === value)?.label || '';
 
   return (
@@ -98,7 +200,7 @@ const SearchableCombobox: React.FC<{
           disabled={disabled || loading}
         >
           <span className="truncate">
-            {loading ? 'Loading options...' : selectedLabel || placeholder}
+            {loading ? 'Loading...' : selectedLabel || placeholder}
           </span>
           {loading ? (
             <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin" />
@@ -109,28 +211,32 @@ const SearchableCombobox: React.FC<{
       </PopoverTrigger>
       <PopoverContent className="w-full p-0" align="start">
         <Command>
-          <CommandInput placeholder={searchPlaceholder} autoFocus />
-          <CommandEmpty>{emptyMessage}</CommandEmpty>
-          <CommandGroup className="max-h-64 overflow-auto">
-            {options.map((option) => (
-              <CommandItem
-                key={option.value}
-                value={option.value}
-                onSelect={(currentValue) => {
-                  onChange(currentValue === value ? '' : currentValue);
-                  setOpen(false);
-                }}
-              >
-                <Check
-                  className={cn(
-                    'mr-2 h-4 w-4',
-                    value === option.value ? 'opacity-100' : 'opacity-0'
-                  )}
-                />
-                {option.label}
-              </CommandItem>
-            ))}
-          </CommandGroup>
+          <CommandInput placeholder="Search..." autoFocus />
+          <ScrollArea className="h-[300px]">
+            <CommandList>
+              <CommandEmpty>No options found.</CommandEmpty>
+              <CommandGroup>
+                {options.map((option) => (
+                  <CommandItem
+                    key={option.value}
+                    value={option.value}
+                    onSelect={(currentValue) => {
+                      onChange(currentValue === value ? '' : currentValue);
+                      setOpen(false);
+                    }}
+                  >
+                    <Check
+                      className={cn(
+                        'mr-2 h-4 w-4',
+                        value === option.value ? 'opacity-100' : 'opacity-0'
+                      )}
+                    />
+                    {option.label}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </ScrollArea>
         </Command>
       </PopoverContent>
     </Popover>
@@ -188,20 +294,17 @@ export default function CreateCompanyForm({
     }
   };
 
-  // Fetch subsidiary companies
   useEffect(() => {
     const fetchCompanies = async () => {
       setLoadingCompanies(true);
       try {
         const res = await axios.get('https://pplus-oez4.onrender.com/api/companies/?limit=1000');
         const companies = res.data?.data?.data || [];
-        const validCompanies = companies.filter(
-          (company: Company) => company.id && company.company_name
-        );
-        setApiCompanies(validCompanies);
+        const valid = companies.filter((c: Company) => c.id && c.company_name);
+        setApiCompanies(valid);
       } catch (error) {
-        console.error('Failed to fetch companies for subsidiaries:', error);
-        toast.error('Failed to load companies for subsidiaries');
+        console.error('Failed to fetch companies:', error);
+        toast.error('Failed to load companies');
         setApiCompanies([]);
       } finally {
         setLoadingCompanies(false);
@@ -210,91 +313,37 @@ export default function CreateCompanyForm({
     fetchCompanies();
   }, []);
 
-  // Fetch Industry options
   useEffect(() => {
-    const fetchIndustry = async () => {
-      setLoadingIndustry(true);
+    const fetchOptions = async (category: string, setter: (opts: string[]) => void, loadingSetter: (v: boolean) => void) => {
+      loadingSetter(true);
       try {
-        const res = await axios.get('https://pplus-oez4.onrender.com/api/data-parameters/category/Industry');
-        setIndustryOptions(extractStringOptions(res.data));
+        const res = await axios.get(`https://pplus-oez4.onrender.com/api/data-parameters/category/${category}`);
+        setter(extractStringOptions(res.data));
       } catch (error) {
-        console.error('Failed to fetch Industry options:', error);
-        toast.error('Failed to load Industry options');
-        setIndustryOptions([]);
+        console.error(`Failed to fetch ${category}:`, error);
+        toast.error(`Failed to load ${category} options`);
+        setter([]);
       } finally {
-        setLoadingIndustry(false);
+        loadingSetter(false);
       }
     };
-    fetchIndustry();
+
+    fetchOptions('Industry', setIndustryOptions, setLoadingIndustry);
+    fetchOptions('Sub_Industry', setSubIndustryOptions, setLoadingSubIndustry);
+    fetchOptions('CEO', setCeoOptions, setLoadingCeo);
   }, []);
 
-  // Fetch Sub-Industry options
-  useEffect(() => {
-    const fetchSubIndustry = async () => {
-      setLoadingSubIndustry(true);
-      try {
-        const res = await axios.get('https://pplus-oez4.onrender.com/api/data-parameters/category/Sub_Industry');
-        setSubIndustryOptions(extractStringOptions(res.data));
-      } catch (error) {
-        console.error('Failed to fetch Sub-Industry options:', error);
-        toast.error('Failed to load Sub-Industry options');
-        setSubIndustryOptions([]);
-      } finally {
-        setLoadingSubIndustry(false);
-      }
-    };
-    fetchSubIndustry();
-  }, []);
-
-  // Fetch CEO options
-  useEffect(() => {
-    const fetchCeo = async () => {
-      setLoadingCeo(true);
-      try {
-        const res = await axios.get('https://pplus-oez4.onrender.com/api/data-parameters/category/CEO');
-        setCeoOptions(extractStringOptions(res.data));
-      } catch (error) {
-        console.error('Failed to fetch CEO options:', error);
-        toast.error('Failed to load CEO options');
-        setCeoOptions([]);
-      } finally {
-        setLoadingCeo(false);
-      }
-    };
-    fetchCeo();
-  }, []);
-
-  // Handle initial values
   useEffect(() => {
     if (initialValues) {
-      setCompanyForms([
-        {
-          id: initialValues.id,
-          company_name: initialValues.company_name || '',
-          email: initialValues.email || '',
-          industry: initialValues.industry || '',
-          sub_industry: initialValues.sub_industry || '',
-          subsidiaries:
-            initialValues.subsidiaries?.map((sub) => ({
-              id: sub.id,
-              subsidiary_id: sub.subsidiary_id || 0,
-            })) || [],
-          office_address: initialValues.office_address || '',
-          office_state: initialValues.office_state || '',
-          office_country: initialValues.office_country || '',
-          contact_person: initialValues.contact_person || '',
-          ceo: initialValues.ceo || '',
-          phone_no: initialValues.phone_no || '',
-          website: initialValues.website || '',
-          facebook_link: initialValues.facebook_link || '',
-          instagram_link: initialValues.instagram_link || '',
-          twitter_link: initialValues.twitter_link || '',
-          linkedin_link: initialValues.linkedin_link || '',
-          youtube_link: initialValues.youtube_link || '',
-        },
-      ]);
+      setCompanyForms([initialValues]);
     }
   }, [initialValues]);
+
+  const updateCompanyForm = (index: number, field: keyof CompanyFormData, value: string) => {
+    setCompanyForms(prev =>
+      prev.map((form, i) => (i === index ? { ...form, [field]: value } : form))
+    );
+  };
 
   const handleAddCompanyForm = () => {
     if (isViewMode || companyForms.length >= 2) {
@@ -332,7 +381,7 @@ export default function CreateCompanyForm({
 
   const handleSubsidiaryChange = (formIndex: number, subIndex: number, value: string) => {
     const numValue = parseInt(value, 10);
-    setCompanyForms((prev) =>
+    setCompanyForms(prev =>
       prev.map((form, i) =>
         i === formIndex
           ? {
@@ -347,49 +396,31 @@ export default function CreateCompanyForm({
   };
 
   const handleAddSubsidiary = (formIndex: number) => {
-    setCompanyForms((prev) =>
+    setCompanyForms(prev =>
       prev.map((form, i) =>
-        i === formIndex
-          ? {
-              ...form,
-              subsidiaries: [...form.subsidiaries, { subsidiary_id: 0 }],
-            }
-          : form
+        i === formIndex ? { ...form, subsidiaries: [...form.subsidiaries, { subsidiary_id: 0 }] } : form
       )
     );
   };
 
   const handleRemoveSubsidiary = (formIndex: number, subIndex: number) => {
-    setCompanyForms((prev) =>
+    setCompanyForms(prev =>
       prev.map((form, i) =>
-        i === formIndex
-          ? {
-              ...form,
-              subsidiaries: form.subsidiaries.filter((_, j) => j !== subIndex),
-            }
-          : form
+        i === formIndex ? { ...form, subsidiaries: form.subsidiaries.filter((_, j) => j !== subIndex) } : form
       )
-    );
-  };
-
-  const updateCompanyForm = (index: number, field: keyof CompanyFormData, value: string) => {
-    setCompanyForms((prev) =>
-      prev.map((form, i) => (i === index ? { ...form, [field]: value } : form))
     );
   };
 
   const onSubmit = async () => {
     if (isViewMode || isSubmitting) return;
-
     setIsSubmitting(true);
 
     try {
       const results: any[] = [];
-      for (let index = 0; index < companyForms.length; index++) {
-        const form = companyForms[index];
 
-        const companyData = {
-          company_name: form.company_name,
+      for (const form of companyForms) {
+        const payload: any = {
+          company_name: form.company_name.trim(),
           email: form.email,
           industry: form.industry,
           sub_industry: form.sub_industry,
@@ -407,40 +438,23 @@ export default function CreateCompanyForm({
           youtube_link: form.youtube_link || 'https://youtube.com',
         };
 
-        const subsidiaryData = form.subsidiaries
-          .filter((sub) => sub.subsidiary_id > 0)
-          .map((sub) => ({ subsidiary_id: sub.subsidiary_id }));
-
-        const payload: any = { ...companyData };
-        if (subsidiaryData.length > 0) {
-          payload.subsidiaries = subsidiaryData;
+        if (form.subsidiaries.length > 0) {
+          payload.subsidiaries = form.subsidiaries
+            .filter(s => s.subsidiary_id > 0)
+            .map(s => ({ subsidiary_id: s.subsidiary_id }));
         }
 
-        let res;
-        if (initialValues && initialValues.id && index === 0) {
-          res = await axios.put(
-            `https://pplus-oez4.onrender.com/api/companies/update/${initialValues.id}`,
-            payload
-          );
-        } else {
-          res = await axios.post('https://pplus-oez4.onrender.com/api/companies/create', payload);
-        }
+        const res = initialValues && form.id
+          ? await axios.put(`https://pplus-oez4.onrender.com/api/companies/update/${form.id}`, payload)
+          : await axios.post('https://pplus-oez4.onrender.com/api/companies/create', payload);
+
         results.push(res.data);
       }
 
       onSave(results.length === 1 ? results[0] : results);
-      toast.success(
-        initialValues
-          ? 'Company updated successfully'
-          : `${results.length} company(ies) created successfully`
-      );
+      toast.success(initialValues ? 'Company updated successfully' : `${results.length} company(ies) created successfully`);
     } catch (error: any) {
-      console.error('Error saving company:', error);
-      toast.error(
-        `Failed to ${initialValues ? 'update' : 'create'} company: ${
-          error.response?.data?.message || error.message
-        }`
-      );
+      toast.error(`Failed to save: ${error.response?.data?.message || error.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -470,10 +484,11 @@ export default function CreateCompanyForm({
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <FormLabel>Company Name *</FormLabel>
-                    <Input
+                    <TypeableSearchableCompanyField
                       value={companyForm.company_name}
-                      onChange={(e) => updateCompanyForm(formIndex, 'company_name', e.target.value)}
-                      placeholder="Company Name"
+                      onChange={(val) => updateCompanyForm(formIndex, 'company_name', val)}
+                      companies={apiCompanies}
+                      loading={loadingCompanies}
                       disabled={isDisabled}
                     />
                   </div>
@@ -481,11 +496,10 @@ export default function CreateCompanyForm({
                   <div>
                     <FormLabel>Industry *</FormLabel>
                     <SearchableCombobox
-                      options={industryOptions.map((opt) => ({ value: opt, label: opt }))}
+                      options={industryOptions.map(o => ({ value: o, label: o }))}
                       value={companyForm.industry}
                       onChange={(val) => updateCompanyForm(formIndex, 'industry', val)}
-                      placeholder="Select or search industry..."
-                      searchPlaceholder="Search industries..."
+                      placeholder="Select industry..."
                       loading={loadingIndustry}
                       disabled={isDisabled}
                     />
@@ -494,11 +508,10 @@ export default function CreateCompanyForm({
                   <div>
                     <FormLabel>Sub-Industry *</FormLabel>
                     <SearchableCombobox
-                      options={subIndustryOptions.map((opt) => ({ value: opt, label: opt }))}
+                      options={subIndustryOptions.map(o => ({ value: o, label: o }))}
                       value={companyForm.sub_industry}
                       onChange={(val) => updateCompanyForm(formIndex, 'sub_industry', val)}
-                      placeholder="Select or search sub-industry..."
-                      searchPlaceholder="Search sub-industries..."
+                      placeholder="Select sub-industry..."
                       loading={loadingSubIndustry}
                       disabled={isDisabled}
                     />
@@ -558,11 +571,10 @@ export default function CreateCompanyForm({
                   <div>
                     <FormLabel>CEO *</FormLabel>
                     <SearchableCombobox
-                      options={ceoOptions.map((opt) => ({ value: opt, label: opt }))}
+                      options={ceoOptions.map(o => ({ value: o, label: o }))}
                       value={companyForm.ceo}
                       onChange={(val) => updateCompanyForm(formIndex, 'ceo', val)}
-                      placeholder="Select or search CEO..."
-                      searchPlaceholder="Search CEOs..."
+                      placeholder="Select CEO..."
                       loading={loadingCeo}
                       disabled={isDisabled}
                     />
@@ -589,58 +601,20 @@ export default function CreateCompanyForm({
                     />
                   </div>
 
-                  <div>
-                    <FormLabel>Facebook Link</FormLabel>
-                    <Input
-                      value={companyForm.facebook_link}
-                      onChange={(e) => updateCompanyForm(formIndex, 'facebook_link', e.target.value)}
-                      placeholder="https://facebook.com"
-                      disabled={isDisabled}
-                    />
-                  </div>
-
-                  <div>
-                    <FormLabel>Instagram Link</FormLabel>
-                    <Input
-                      value={companyForm.instagram_link}
-                      onChange={(e) => updateCompanyForm(formIndex, 'instagram_link', e.target.value)}
-                      placeholder="https://instagram.com"
-                      disabled={isDisabled}
-                    />
-                  </div>
-
-                  <div>
-                    <FormLabel>Twitter Link</FormLabel>
-                    <Input
-                      value={companyForm.twitter_link}
-                      onChange={(e) => updateCompanyForm(formIndex, 'twitter_link', e.target.value)}
-                      placeholder="https://twitter.com"
-                      disabled={isDisabled}
-                    />
-                  </div>
-
-                  <div>
-                    <FormLabel>LinkedIn Link</FormLabel>
-                    <Input
-                      value={companyForm.linkedin_link}
-                      onChange={(e) => updateCompanyForm(formIndex, 'linkedin_link', e.target.value)}
-                      placeholder="https://linkedin.com"
-                      disabled={isDisabled}
-                    />
-                  </div>
-
-                  <div>
-                    <FormLabel>YouTube Link</FormLabel>
-                    <Input
-                      value={companyForm.youtube_link}
-                      onChange={(e) => updateCompanyForm(formIndex, 'youtube_link', e.target.value)}
-                      placeholder="https://youtube.com"
-                      disabled={isDisabled}
-                    />
-                  </div>
+                  {['facebook', 'instagram', 'twitter', 'linkedin', 'youtube'].map((platform) => (
+                    <div key={platform}>
+                      <FormLabel>{platform.charAt(0).toUpperCase() + platform.slice(1)} Link</FormLabel>
+                      <Input
+                        value={companyForm[`${platform}_link` as keyof CompanyFormData] as string}
+                        onChange={(e) => updateCompanyForm(formIndex, `${platform}_link` as keyof CompanyFormData, e.target.value)}
+                        placeholder={`https://${platform}.com`}
+                        disabled={isDisabled}
+                      />
+                    </div>
+                  ))}
                 </div>
 
-                <div className="border-t pt-4 mt-4">
+                <div className="border-t pt-4 mt-6">
                   <div className="flex justify-between items-center mb-4">
                     <FormLabel>Subsidiaries</FormLabel>
                     {!isViewMode && (
@@ -664,20 +638,17 @@ export default function CreateCompanyForm({
                         <div className="flex-1">
                           <FormLabel>Subsidiary Company</FormLabel>
                           <SearchableCombobox
-                            options={apiCompanies.map((company) => ({
-                              value: company.id.toString(),
-                              label: company.company_name,
+                            options={apiCompanies.map((c) => ({
+                              value: c.id.toString(),
+                              label: c.company_name,
                             }))}
                             value={sub.subsidiary_id ? sub.subsidiary_id.toString() : ''}
                             onChange={(val) => handleSubsidiaryChange(formIndex, subIndex, val)}
-                            placeholder="Select or search company..."
-                            searchPlaceholder="Search companies..."
+                            placeholder="Select company..."
                             loading={loadingCompanies}
                             disabled={isDisabled}
-                            emptyMessage="No companies found"
                           />
                         </div>
-
                         {!isViewMode && (
                           <Button
                             type="button"
@@ -711,7 +682,6 @@ export default function CreateCompanyForm({
             )}
 
             <div className="border-t pt-4 mt-4"></div>
-
             <div className="flex justify-end space-x-2 pt-4">
               {isViewMode ? (
                 <Button type="button" onClick={onCancel} disabled={isSubmitting}>
