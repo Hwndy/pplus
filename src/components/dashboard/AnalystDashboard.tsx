@@ -23,6 +23,8 @@ import {
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Link, useNavigate } from 'react-router-dom';
+import { Card, CardContent } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 
 // Base URL for API
 const BASE_URL = 'https://pplus-oez4.onrender.com/api';
@@ -83,62 +85,400 @@ function StatusBadge({ status }: { status?: string | null }) {
   );
 }
 
-// View Details Dialog Component
+// View Details Dialog Component (updated for UI consistency with Supervisor)
 function ViewDetailsDialog({ open, onClose, entry, type }: { open: boolean; onClose: () => void; entry: Submission | null; type: string }) {
   if (!entry) return null;
 
+  const rawEntry = entry.rawData;
+
+  // Helper to get company name
+  const getCompanyName = () => {
+    return (
+      rawEntry.company?.company_name ||
+      rawEntry.company?.name ||
+      rawEntry.company_data?.company_name ||
+      rawEntry.company_data?.name ||
+      rawEntry.companyName ||
+      'Unknown'
+    );
+  };
+
+  const companyName = getCompanyName();
+
+  let specificContent = null;
+
+  switch (entry.type) {
+    case 'Editorial':
+      specificContent = (
+        <>
+          {rawEntry.source && (
+            <div className="space-y-2">
+              <Label>Source</Label>
+              <Card><CardContent className="p-4"><p>{rawEntry.source}</p></CardContent></Card>
+            </div>
+          )}
+          {rawEntry.audience_reach && (
+            <div className="space-y-2">
+              <Label>Audience Reach</Label>
+              <Card><CardContent className="p-4"><p>{rawEntry.audience_reach.toLocaleString()}</p></CardContent></Card>
+            </div>
+          )}
+          {rawEntry.brand && (
+            <div className="space-y-2">
+              <Label>Brand</Label>
+              <Card><CardContent className="p-4"><p>{rawEntry.brand}</p></CardContent></Card>
+            </div>
+          )}
+          {rawEntry.placement && (
+            <div className="space-y-2">
+              <Label>Placement</Label>
+              <Card><CardContent className="p-4"><p>{rawEntry.placement}</p></CardContent></Card>
+            </div>
+          )}
+          {rawEntry.reporter && (
+            <div className="space-y-2">
+              <Label>Reporter</Label>
+              <Card><CardContent className="p-4"><p>{rawEntry.reporter}</p></CardContent></Card>
+            </div>
+          )}
+          {rawEntry.country && (
+            <div className="space-y-2">
+              <Label>Country</Label>
+              <Card><CardContent className="p-4"><p>{rawEntry.country}</p></CardContent></Card>
+            </div>
+          )}
+          {rawEntry.spokesperson && (
+            <div className="space-y-2">
+              <Label>Spokesperson</Label>
+              <Card><CardContent className="p-4"><p>{rawEntry.spokesperson}</p></CardContent></Card>
+            </div>
+          )}
+          {rawEntry.activity && (
+            <div className="space-y-2">
+              <Label>Activity</Label>
+              <Card><CardContent className="p-4"><p>{rawEntry.activity}</p></CardContent></Card>
+            </div>
+          )}
+          {rawEntry.sentiment && (
+            <div className="space-y-2">
+              <Label>Sentiment</Label>
+              <Card><CardContent className="p-4"><p>{rawEntry.sentiment}</p></CardContent></Card>
+            </div>
+          )}
+          {rawEntry.advert_spend && (
+            <div className="space-y-2">
+              <Label>Advert Spend</Label>
+              <Card><CardContent className="p-4"><p>{rawEntry.advert_spend.toLocaleString()}</p></CardContent></Card>
+            </div>
+          )}
+          {rawEntry.circulation && (
+            <div className="space-y-2">
+              <Label>Circulation</Label>
+              <Card><CardContent className="p-4"><p>{rawEntry.circulation.toLocaleString()}</p></CardContent></Card>
+            </div>
+          )}
+          {rawEntry.page_size && (
+            <div className="space-y-2">
+              <Label>Page Size</Label>
+              <Card><CardContent className="p-4"><p>{rawEntry.page_size}</p></CardContent></Card>
+            </div>
+          )}
+          {rawEntry.language && (
+            <div className="space-y-2">
+              <Label>Language</Label>
+              <Card><CardContent className="p-4"><p>{rawEntry.language}</p></CardContent></Card>
+            </div>
+          )}
+          {rawEntry.ceo_thought_leadership && (
+            <div className="space-y-2">
+              <Label>CEO Thought Leadership</Label>
+              <Card><CardContent className="p-4"><p>{rawEntry.ceo_thought_leadership}</p></CardContent></Card>
+            </div>
+          )}
+          {rawEntry.print_web_clips && (
+            <div className="space-y-2">
+              <Label>Print/Web Clips</Label>
+              <Card><CardContent className="p-4"><a href={rawEntry.print_web_clips} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{rawEntry.print_web_clips}</a></CardContent></Card>
+            </div>
+          )}
+        </>
+      );
+      break;
+
+    case 'Daily Mention':
+      specificContent = (
+        <>
+          {rawEntry.industry && rawEntry.industry.length > 0 && (
+            <div className="space-y-2">
+              <Label>Industry Mentions</Label>
+              {rawEntry.industry.map((item: any, index: number) => (
+                <Card key={index}>
+                  <CardContent className="p-4">
+                    <p><strong>Headline:</strong> {item.headline}</p>
+                    <p><strong>Content:</strong> {item.content}</p>
+                    <p><strong>Reporter:</strong> {item.reporter ?? 'N/A'}</p>
+                    <p><strong>Source:</strong> {item.source}</p>
+                    <p><strong>Sentiment:</strong> {item.sentiment}</p>
+                    {item.page && <p><strong>Page:</strong> {item.page}</p>}
+                    {item.publication_date && <p><strong>Publication Date:</strong> {new Date(item.publication_date).toLocaleDateString()}</p>}
+                    {item.urls?.length > 0 && (
+                      <div><strong>URLs:</strong> {item.urls.map((url: string, urlIndex: number) => (
+                        <a key={urlIndex} href={url} target="_blank" rel="noopener noreferrer" className="block text-blue-600 hover:underline">{url}</a>
+                      ))}</div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+          {rawEntry.competitors && rawEntry.competitors.length > 0 && (
+            <div className="space-y-2">
+              <Label>Competitors</Label>
+              {rawEntry.competitors.map((item: any, index: number) => (
+                <Card key={index}>
+                  <CardContent className="p-4">
+                    <p><strong>Headline:</strong> {item.headline}</p>
+                    <p><strong>Content:</strong> {item.content}</p>
+                    <p><strong>Reporter:</strong> {item.reporter ?? 'N/A'}</p>
+                    <p><strong>Source:</strong> {item.source}</p>
+                    <p><strong>Sentiment:</strong> {item.sentiment}</p>
+                    {item.page && <p><strong>Page:</strong> {item.page}</p>}
+                    {item.publication_date && <p><strong>Publication Date:</strong> {new Date(item.publication_date).toLocaleDateString()}</p>}
+                    {item.urls?.length > 0 && (
+                      <div><strong>URLs:</strong> {item.urls.map((url: string, urlIndex: number) => (
+                        <a key={urlIndex} href={url} target="_blank" rel="noopener noreferrer" className="block text-blue-600 hover:underline">{url}</a>
+                      ))}</div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+          {rawEntry.subsidiaries && rawEntry.subsidiaries.length > 0 && (
+            <div className="space-y-2">
+              <Label>Subsidiaries</Label>
+              {rawEntry.subsidiaries.map((item: any, index: number) => (
+                <Card key={index}>
+                  <CardContent className="p-4">
+                    <p><strong>Headline:</strong> {item.headline}</p>
+                    <p><strong>Content:</strong> {item.content}</p>
+                    <p><strong>Reporter:</strong> {item.reporter ?? 'N/A'}</p>
+                    <p><strong>Source:</strong> {item.source}</p>
+                    <p><strong>Sentiment:</strong> {item.sentiment}</p>
+                    {item.page && <p><strong>Page:</strong> {item.page}</p>}
+                    {item.publication_date && <p><strong>Publication Date:</strong> {new Date(item.publication_date).toLocaleDateString()}</p>}
+                    {item.urls?.length > 0 && (
+                      <div><strong>URLs:</strong> {item.urls.map((url: string, urlIndex: number) => (
+                        <a key={urlIndex} href={url} target="_blank" rel="noopener noreferrer" className="block text-blue-600 hover:underline">{url}</a>
+                      ))}</div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+          {rawEntry.passive && rawEntry.passive.length > 0 && (
+            <div className="space-y-2">
+              <Label>Passive Mentions</Label>
+              {rawEntry.passive.map((item: any, index: number) => (
+                <Card key={index}>
+                  <CardContent className="p-4">
+                    <p><strong>Headline:</strong> {item.headline}</p>
+                    <p><strong>Content:</strong> {item.content}</p>
+                    <p><strong>Reporter:</strong> {item.reporter ?? 'N/A'}</p>
+                    <p><strong>Source:</strong> {item.source}</p>
+                    <p><strong>Sentiment:</strong> {item.sentiment}</p>
+                    {item.page && <p><strong>Page:</strong> {item.page}</p>}
+                    {item.publication_date && <p><strong>Publication Date:</strong> {new Date(item.publication_date).toLocaleDateString()}</p>}
+                    {item.urls?.length > 0 && (
+                      <div><strong>URLs:</strong> {item.urls.map((url: string, urlIndex: number) => (
+                        <a key={urlIndex} href={url} target="_blank" rel="noopener noreferrer" className="block text-blue-600 hover:underline">{url}</a>
+                      ))}</div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+          {rawEntry.advert && rawEntry.advert.length > 0 && (
+            <div className="space-y-2">
+              <Label>Advert Mentions</Label>
+              {rawEntry.advert.map((item: any, index: number) => (
+                <Card key={index}>
+                  <CardContent className="p-4">
+                    <p><strong>Headline:</strong> {item.headline}</p>
+                    <p><strong>Content:</strong> {item.content}</p>
+                    <p><strong>Reporter:</strong> {item.reporter ?? 'N/A'}</p>
+                    <p><strong>Source:</strong> {item.source}</p>
+                    <p><strong>Sentiment:</strong> {item.sentiment}</p>
+                    {item.page && <p><strong>Page:</strong> {item.page}</p>}
+                    {item.publication_date && <p><strong>Publication Date:</strong> {new Date(item.publication_date).toLocaleDateString()}</p>}
+                    {item.urls?.length > 0 && (
+                      <div><strong>URLs:</strong> {item.urls.map((url: string, urlIndex: number) => (
+                        <a key={urlIndex} href={url} target="_blank" rel="noopener noreferrer" className="block text-blue-600 hover:underline">{url}</a>
+                      ))}</div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </>
+      );
+      break;
+
+    case 'SWOT Analysis':
+      specificContent = (
+        <>
+          {rawEntry.strengths && rawEntry.strengths.length > 0 && (
+            <div className="space-y-2">
+              <Label>Strengths</Label>
+              {rawEntry.strengths.map((item: any, index: number) => (
+                <Card key={index}>
+                  <CardContent className="p-4">
+                    <p><strong>Analysis:</strong> {item.analysis || item.title || item}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+          {rawEntry.weaknesses && rawEntry.weaknesses.length > 0 && (
+            <div className="space-y-2">
+              <Label>Weaknesses</Label>
+              {rawEntry.weaknesses.map((item: any, index: number) => (
+                <Card key={index}>
+                  <CardContent className="p-4">
+                    <p><strong>Analysis:</strong> {item.analysis || item.title || item}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+          {rawEntry.opportunities && rawEntry.opportunities.length > 0 && (
+            <div className="space-y-2">
+              <Label>Opportunities</Label>
+              {rawEntry.opportunities.map((item: any, index: number) => (
+                <Card key={index}>
+                  <CardContent className="p-4">
+                    <p><strong>Analysis:</strong> {item.analysis || item.title || item}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+          {rawEntry.threats && rawEntry.threats.length > 0 && (
+            <div className="space-y-2">
+              <Label>Threats</Label>
+              {rawEntry.threats.map((item: any, index: number) => (
+                <Card key={index}>
+                  <CardContent className="p-4">
+                    <p><strong>Analysis:</strong> {item.analysis || item.title || item}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </>
+      );
+      break;
+
+    case 'Social Media Mention':
+      specificContent = (
+        <>
+          {rawEntry.metrics && rawEntry.metrics.length > 0 && (
+            <div className="space-y-2">
+              <Label>Metrics</Label>
+              {rawEntry.metrics.map((item: any, index: number) => (
+                <Card key={index}>
+                  <CardContent className="p-4">
+                    {item.page_likes && <p><strong>Page Likes:</strong> {item.page_likes}</p>}
+                    {item.average_likes && <p><strong>Average Likes:</strong> {item.average_likes}</p>}
+                    {item.average_comments && <p><strong>Average Comments:</strong> {item.average_comments}</p>}
+                    {item.posts && <p><strong>Posts:</strong> {item.posts}</p>}
+                    {item.followers && <p><strong>Followers:</strong> {item.followers}</p>}
+                    {item.following && <p><strong>Following:</strong> {item.following}</p>}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </>
+      );
+      break;
+
+    case 'Outcome Insight':
+      specificContent = (
+        <>
+          {rawEntry.insights && rawEntry.insights.length > 0 && (
+            <div className="space-y-2">
+              <Label>Insights</Label>
+              {rawEntry.insights.map((item: any, index: number) => (
+                <Card key={index}>
+                  <CardContent className="p-4">
+                    <p><strong>Category:</strong> {item.category}</p>
+                    <p><strong>Analysis:</strong> {item.analysis}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </>
+      );
+      break;
+
+    case 'Industry Landscape':
+      specificContent = (
+        <>
+          {rawEntry.highlights && rawEntry.highlights.length > 0 && (
+            <div className="space-y-2">
+              <Label>Highlights</Label>
+              <Card>
+                <CardContent className="p-4">
+                  <ul className="list-disc pl-4 space-y-1">
+                    {rawEntry.highlights.map((h: string, index: number) => (
+                      <li key={index}>{h}</li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </>
+      );
+      break;
+  }
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{type.charAt(0).toUpperCase() + type.slice(1)} Details</DialogTitle>
+          <DialogTitle>{entry.type} Details</DialogTitle>
           <DialogDescription>Detailed information about this entry.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <div className="text-sm font-medium text-muted-foreground flex items-center">
-                <Calendar className="h-4 w-4 mr-2" />
-                Date
-              </div>
-              <div className="text-sm mt-1">{entry.createdAt ? new Date(entry.createdAt).toLocaleDateString() : 'N/A'}</div>
-            </div>
-            <div>
-              <div className="text-sm font-medium text-muted-foreground flex items-center">
-                <User className="h-4 w-4 mr-2" />
-                Author
-              </div>
-              <div className="text-sm mt-1">{entry.author || 'Unknown'}</div>
-            </div>
-            <div>
-              <div className="text-sm font-medium text-muted-foreground flex items-center">
-                <MessageCircle className="h-4 w-4 mr-2" />
-                Status
-              </div>
-              <div className="text-sm mt-1 flex items-center">
-                <StatusBadge status={entry.status} />
-              </div>
-            </div>
-            <div className="md:col-span-2">
-              <div className="text-sm font-medium text-muted-foreground">Title</div>
-              <div className="text-sm mt-1">{entry.title || 'N/A'}</div>
-            </div>
-            <div className="md:col-span-2">
-              <div className="text-sm font-medium text-muted-foreground">Content</div>
-              <div className="text-sm mt-1 p-2 border rounded bg-muted/50 max-h-32 overflow-y-auto">{entry.content || 'No content provided'}</div>
-            </div>
-            {entry.comments && (
-              <div className="md:col-span-2">
-                <div className="text-sm font-medium text-muted-foreground">Supervisor Comments</div>
-                <div className="text-sm mt-1 p-2 border rounded bg-muted/50">{entry.comments}</div>
-              </div>
-            )}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2"><Label>Title</Label><p>{entry.title}</p></div>
+            <div className="space-y-2"><Label>Author</Label><p>{entry.author}</p></div>
+            <div className="space-y-2"><Label>Company</Label><p>{companyName}</p></div>
+            <div className="space-y-2"><Label>Date</Label><p>{new Date(entry.createdAt).toLocaleDateString()}</p></div>
+            <div className="space-y-2"><Label>Status</Label><StatusBadge status={entry.status} /></div>
           </div>
+          {entry.content && (
+            <div className="space-y-2">
+              <Label>Content</Label>
+              <Card><CardContent className="p-4"><p>{entry.content}</p></CardContent></Card>
+            </div>
+          )}
+          {specificContent}
+          {entry.comments && (
+            <div className="space-y-2">
+              <Label>Comments</Label>
+              <Card><CardContent className="p-4"><p>{entry.comments}</p></CardContent></Card>
+            </div>
+          )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Close
-          </Button>
+          <Button onClick={onClose}>Close</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
