@@ -142,7 +142,6 @@ function IndustryLandscapeForm({
         const data = await response.json();
         
         if (data.success && data.data.length > 0) {
-          // Extract values from the nested structure
           const categories = data.data[0].categories;
           if (categories && categories.length > 0) {
             const values = categories[0].values.map(v => v.value);
@@ -151,7 +150,6 @@ function IndustryLandscapeForm({
         }
       } catch (error) {
         console.error('Error fetching sector titles:', error);
-        // Optionally show error toast/notification
       } finally {
         setLoadingSectors(false);
       }
@@ -398,8 +396,18 @@ function ViewModal({ item, onClose }: { item: IndustryLandscape; onClose: () => 
 
 /* ====================== MAIN PAGE ====================== */
 export default function IndustryLandscapeOverviewPage() {
-  const { token } = useAuth();
+  const { user, token } = useAuth();
   const location = useLocation();
+
+  // Role detection
+  const userRole = user?.role?.name || (typeof user?.role === 'string' ? user.role : 'Analyst');
+  const isAdmin = userRole === 'Admin';
+  const isSupervisor = userRole === 'Supervisor';
+  const isAnalyst = userRole === 'Analyst';
+
+  // Permissions
+  const showCreateButton = isAnalyst;     // Only Analysts can create
+  const showDeleteOption = isAdmin;       // Only Admins can delete
 
   const [items, setItems] = useState<IndustryLandscape[]>([]);
   const [loading, setLoading] = useState(true);
@@ -420,7 +428,7 @@ export default function IndustryLandscapeOverviewPage() {
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
 
-  // === FIX: Auto-open edit dialog when navigated from Analyst Dashboard ===
+  // === Auto-open edit dialog when navigated from Analyst Dashboard ===
   useEffect(() => {
     if (location.state?.editingItem) {
       setEditingItem(location.state.editingItem);
@@ -434,7 +442,6 @@ export default function IndustryLandscapeOverviewPage() {
     setError(null);
 
     try {
-      // Build query parameters with filters
       const params = new URLSearchParams();
       params.append('page', page.toString());
       params.append('limit', '10');
@@ -537,29 +544,31 @@ export default function IndustryLandscapeOverviewPage() {
             Refresh
           </Button>
 
-          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-indigo-950 hover:bg-indigo-800">
-                <Plus className="mr-2 h-4 w-4" />
-                Create Overview
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingItem ? 'Edit' : 'Create'} Industry Overview
-                </DialogTitle>
-              </DialogHeader>
-              <IndustryLandscapeForm
-                initialData={editingItem || undefined}
-                onSuccess={() => {
-                  setIsCreateOpen(false);
-                  setEditingItem(null);
-                  fetchData(pagination.page);
-                }}
-              />
-            </DialogContent>
-          </Dialog>
+          {showCreateButton && (
+            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-indigo-950 hover:bg-indigo-800">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Overview
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingItem ? 'Edit' : 'Create'} Industry Overview
+                  </DialogTitle>
+                </DialogHeader>
+                <IndustryLandscapeForm
+                  initialData={editingItem || undefined}
+                  onSuccess={() => {
+                    setIsCreateOpen(false);
+                    setEditingItem(null);
+                    fetchData(pagination.page);
+                  }}
+                />
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
       </div>
 
@@ -694,12 +703,14 @@ export default function IndustryLandscapeOverviewPage() {
                           >
                             <Edit className="mr-2 h-4 w-4" /> Edit
                           </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleDelete(item.id)}
-                            className="text-red-600"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" /> Delete
-                          </DropdownMenuItem>
+                          {showDeleteOption && (
+                            <DropdownMenuItem
+                              onClick={() => handleDelete(item.id)}
+                              className="text-red-600"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" /> Delete
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -709,7 +720,7 @@ export default function IndustryLandscapeOverviewPage() {
             </TableBody>
           </Table>
 
-          {/* ==== PERFECT PAGINATION ==== */}
+          {/* ==== PAGINATION ==== */}
           {pagination.totalPages > 1 && (
             <div className="flex items-center justify-between mt-8">
               <p className="text-sm text-gray-600">
