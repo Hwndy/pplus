@@ -1,4 +1,4 @@
-// EditorialPage.tsx - FIXED PAGINATION + SCROLLABLE TABLE
+// EditorialPage.tsx - UPDATED: Role-based Delete & Create Buttons
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, Pencil, Trash2, FileSpreadsheet, RefreshCw, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -87,6 +87,20 @@ const EditorialPage = () => {
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
 
+  // Determine user role safely
+  const userRole = user?.role?.name || (typeof user?.role === 'string' ? user.role : 'Analyst');
+
+  const isAdmin = userRole === 'Admin';
+  const isSupervisor = userRole === 'Supervisor';
+  const isAnalyst = userRole === 'Analyst';
+
+  // Show Create & Batch Upload only for Analysts
+  const showCreateButtons = isAnalyst;
+  const showCreateButtons = isAdmin;
+
+  // Show Delete button only for Admins
+  const showDeleteButton = isAdmin;
+
   const fetchEditorials = useCallback(async () => {
     if (!token || !user) {
       toast.error("Authentication required");
@@ -98,12 +112,10 @@ const EditorialPage = () => {
     setError(null);
 
     try {
-      const role = user.role?.name || (typeof user.role === 'string' ? user.role : 'Analyst');
-
       let endpoint = `${API_BASE}/editorials`;
-      if (role === 'Supervisor') {
+      if (isSupervisor) {
         endpoint = `${API_BASE}/editorials/supervisor-mentions`;
-      } else if (role === 'Analyst') {
+      } else if (isAnalyst) {
         endpoint = `${API_BASE}/editorials/my-editorials`;
       }
 
@@ -177,7 +189,7 @@ const EditorialPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [pagination.page, pagination.limit, user, token, statusFilter, dateFrom, dateTo]);
+  }, [pagination.page, pagination.limit, user, token, statusFilter, dateFrom, dateTo, isSupervisor, isAnalyst]);
 
   useEffect(() => {
     fetchEditorials();
@@ -316,14 +328,16 @@ const EditorialPage = () => {
             <Button variant="ghost" size="icon" onClick={() => handleEdit(editorial.id)}>
               <Pencil className="h-4 w-4" />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => handleDelete(editorial.id)}
-              className="text-red-600 hover:text-red-800"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+            {showDeleteButton && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => handleDelete(editorial.id)}
+                className="text-red-600 hover:text-red-800"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         );
       },
@@ -347,14 +361,18 @@ const EditorialPage = () => {
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button variant="outline" onClick={handleBatchUpload}>
-            <FileSpreadsheet className="mr-2 h-4 w-4" />
-            Batch Upload
-          </Button>
-          <Button onClick={handleCreate} className="bg-indigo-950 hover:bg-indigo-800">
-            <Plus className="mr-2 h-4 w-4" />
-            Create Editorial
-          </Button>
+          {showCreateButtons && (
+            <>
+              <Button variant="outline" onClick={handleBatchUpload}>
+                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                Batch Upload
+              </Button>
+              <Button onClick={handleCreate} className="bg-indigo-950 hover:bg-indigo-800">
+                <Plus className="mr-2 h-4 w-4" />
+                Create Editorial
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
