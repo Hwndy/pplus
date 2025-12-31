@@ -29,10 +29,11 @@ export interface CompanyMonitoring {
   competitor_company_ids: string[];
   media_prominence: string[];
   monitoring_date: string | null;
+  subsidiary_monitorings?: SubsidiaryMonitoring[];
 }
 
 export interface SubsidiaryMonitoring {
-  subsidiary_company_id: string;
+  subsidiary_id: string;
   competitor_subsidiary_ids: string[];
   media_prominence: string[];
 }
@@ -454,10 +455,6 @@ class ApiService {
       email: data.email,
       country_code: data.country_code,
       mobile_number: data.mobile_number,
-      // expiration_date: data.expiration_date
-      //   ? new Date(data.expiration_date).toISOString()
-      //   : new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(),
-      // joinDate: data.joinDate ? new Date(data.joinDate).toISOString() : new Date().toISOString(),
       role: data.role,
       password: data.password,
       supervisor_id: data.supervisor_id ? String(data.supervisor_id) : undefined,
@@ -466,11 +463,11 @@ class ApiService {
         competitor_company_ids: cm.competitor_company_ids.map(Number),
         media_prominence: cm.media_prominence,
         monitoring_date: cm.monitoring_date ? new Date(cm.monitoring_date).toISOString() : new Date().toISOString(),
-      })),
-      subsidiary_monitorings: data.subsidiary_monitorings?.map(sm => ({
-        subsidiary_company_id: Number(sm.subsidiary_company_id),
-        competitor_subsidiary_ids: sm.competitor_subsidiary_ids.map(Number),
-        media_prominence: sm.media_prominence,
+        subsidiary_monitorings: cm.subsidiary_monitorings?.map(sm => ({
+          subsidiary_id: Number(sm.subsidiary_id),
+          competitor_subsidiary_ids: sm.competitor_subsidiary_ids.map(Number),
+          media_prominence: sm.media_prominence,
+        })) || [],
       })),
     };
 

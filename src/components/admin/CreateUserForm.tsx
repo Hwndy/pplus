@@ -228,29 +228,36 @@ export default function CreateUserForm({ onSave, onCancel }: CreateUserFormProps
 
       // Client monitoring config
       if (values.role === 'Client' && values.company_monitorings?.length) {
-        payload.company_monitorings = values.company_monitorings
-          .filter(c =>
-            c.company_id &&
-            c.competitor_company_ids.length > 0 &&
-            c.media_prominence.length > 0
-          )
-          .map((c) => ({
+        payload.company_monitorings = values.company_monitorings.map((c) => {
+          if (!c.company_id || c.competitor_company_ids.length === 0 || c.media_prominence.length === 0) {
+            throw new Error('All company monitoring fields are required');
+          }
+
+          // Process subsidiary monitorings
+          const processedSubsidiaries = (c.subsidiary_monitorings || []).map((s) => {
+            // Validate subsidiary monitoring if it exists
+            if (s.subsidiary_id || s.competitor_subsidiary_ids.length > 0 || s.media_prominence.length > 0) {
+              // If ANY field is filled, ALL must be filled
+              if (!s.subsidiary_id || s.competitor_subsidiary_ids.length === 0 || s.media_prominence.length === 0) {
+                throw new Error('All subsidiary monitoring fields must be filled if adding a subsidiary');
+              }
+            }
+
+            return {
+              subsidiary_id: Number(s.subsidiary_id),
+              competitor_subsidiary_ids: s.competitor_subsidiary_ids.map(Number),
+              media_prominence: s.media_prominence,
+            };
+          }).filter(s => s.subsidiary_id); 
+
+          return {
             company_id: Number(c.company_id),
             competitor_company_ids: c.competitor_company_ids.map(Number),
             media_prominence: c.media_prominence,
             monitoring_date: c.monitoring_date.toISOString().split('T')[0],
-            subsidiary_monitorings: (c.subsidiary_monitorings || [])
-              .filter(s =>
-                s.subsidiary_id &&
-                s.competitor_subsidiary_ids.length > 0 &&
-                s.media_prominence.length > 0
-              )
-              .map((s) => ({
-                subsidiary_id: Number(s.subsidiary_id),
-                competitor_subsidiary_ids: s.competitor_subsidiary_ids.map(Number),
-                media_prominence: s.media_prominence,
-              })),
-          }));
+            subsidiary_monitorings: processedSubsidiaries,
+          };
+        });
       }
 
       // Optional: Remove in production
