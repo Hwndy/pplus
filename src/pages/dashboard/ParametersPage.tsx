@@ -58,7 +58,7 @@ export type Parameter = {
 };
 
 // -------------------- Config --------------------
-const API_BASE = "https://pplus-oez4.onrender.com/api";
+const API_BASE = "https://pplus-oez4.onrender.com/api/v1";
 
 // -------------------- jsonFetch helper with Auth --------------------
 async function jsonFetch<T = any>(path: string, options: RequestInit = {}, token?: string | null): Promise<T> {

@@ -91,7 +91,7 @@ const UsersPage = () => {
       const queryParams = new URLSearchParams();
       queryParams.append('format', 'csv'); 
 
-      const url = `${API_BASE_URL}/api/export/users?${queryParams.toString()}`;
+      const url = `${API_BASE_URL}/api/v1/export/users?${queryParams.toString()}`;
 
       const response = await fetch(url, {
         method: 'GET',

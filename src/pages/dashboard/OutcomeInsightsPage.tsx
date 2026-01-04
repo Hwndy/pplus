@@ -298,8 +298,8 @@ export default function OutcomeInsightsPage() {
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
 
-  const BASE_URL = 'https://pplus-oez4.onrender.com/api';
-  const INSIGHTS_API = 'https://pplus-oez4.onrender.com/api/data-parameters/category/Insights';
+  const BASE_URL = 'https://pplus-oez4.onrender.com/api/v1';
+  const INSIGHTS_API = 'https://pplus-oez4.onrender.com/api/v1/data-parameters/category/Insights';
 
   // Fetch categories
   useEffect(() => {

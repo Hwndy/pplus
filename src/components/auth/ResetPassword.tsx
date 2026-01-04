@@ -26,7 +26,7 @@ const ResetPassword = () => {
     verifyToken();
   }, [token]);
 
-  const API_BASE_URL = 'https://pplus-oez4.onrender.com/api';
+  const API_BASE_URL = 'https://pplus-oez4.onrender.com/api/v1';
 
   const verifyToken = async () => {
     if (!token) {

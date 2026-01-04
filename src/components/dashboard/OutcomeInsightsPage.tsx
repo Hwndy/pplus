@@ -84,7 +84,7 @@ export default function OutcomeInsightsPage() {
         params.append('month', month);
       }
 
-      const url = `https://pplus-oez4.onrender.com/api/report/outcome-insights?${params.toString()}`;
+      const url = `https://pplus-oez4.onrender.com/api/v1/report/outcome-insights?${params.toString()}`;
       console.log('Fetching Outcome Insights →', url);
 
       const response = await fetch(url, {

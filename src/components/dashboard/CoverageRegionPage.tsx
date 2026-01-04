@@ -99,7 +99,7 @@ export function CoverageRegionPage() {
         params.append('endDate', endDate);
       }
 
-      const url = `https://pplus-oez4.onrender.com/api/report/social-stats-online-coverage?${params.toString()}`;
+      const url = `https://pplus-oez4.onrender.com/api/v1/report/social-stats-online-coverage?${params.toString()}`;
       console.log('Fetching Coverage Region →', url);
 
       const response = await fetch(url, {

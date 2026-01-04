@@ -3,7 +3,7 @@
  * Tests all pages and their API calls to ensure they work properly
  */
 
-const API_BASE_URL = 'http://localhost:3001/api';
+const API_BASE_URL = 'http://localhost:3001/api/v1';
 const FRONTEND_URL = 'http://localhost:8080';
 
 class FrontendTester {

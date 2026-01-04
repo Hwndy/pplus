@@ -126,7 +126,7 @@ function PaginationControls({
 }
 
 // API Base
-const API_BASE = 'https://pplus-oez4.onrender.com/api';
+const API_BASE = 'https://pplus-oez4.onrender.com/api/v1';
 const PAGE_SIZE = 10;
 
 // Generic Entry Interface

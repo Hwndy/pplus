@@ -19,7 +19,7 @@ const ForgotPassword = () => {
     setIsSubmitting(true);
     setStatus('idle');
 
-    const API_BASE_URL = 'https://pplus-oez4.onrender.com/api';
+    const API_BASE_URL = 'https://pplus-oez4.onrender.com/api/v1';
 
     try {
       const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {

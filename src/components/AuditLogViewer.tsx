@@ -226,7 +226,7 @@ export function AuditLogViewer() {
 
       queryParams.append('format', format);
 
-      const url = `${API_BASE_URL}/api/audit-logs/export?${queryParams.toString()}`;
+      const url = `${API_BASE_URL}/api/v1/audit-logs/export?${queryParams.toString()}`;
 
       const token = localStorage.getItem('token')
 

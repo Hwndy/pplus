@@ -70,7 +70,7 @@ const PublicationsPage: React.FC = () => {
       };
 
       const response = await fetch(
-        `https://pplus-oez4.onrender.com/api/data-parameters/category/Publications`,
+        `https://pplus-oez4.onrender.com/api/v1/data-parameters/category/Publications`,
         { headers }
       );
 
@@ -141,7 +141,7 @@ const PublicationsPage: React.FC = () => {
 
     try {
       setDeletingId(id);
-      const response = await fetch(`https://pplus-oez4.onrender.com/api/data-parameters-category-value/delete/${id}`, {
+      const response = await fetch(`https://pplus-oez4.onrender.com/api/v1/data-parameters-category-value/delete/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -198,7 +198,7 @@ const PublicationsPage: React.FC = () => {
   // Helper function for updating
   const updatePublication = async (id: number, value: string) => {
     const response = await fetch(
-      `https://pplus-oez4.onrender.com/api/data-parameters-category-value/update/${id}`,
+      `https://pplus-oez4.onrender.com/api/v1/data-parameters-category-value/update/${id}`,
       {
         method: 'PUT',
         headers: {
@@ -224,7 +224,7 @@ const PublicationsPage: React.FC = () => {
   // Helper function for creating
   const createPublication = async (value: string) => {
     // First, get the category ID
-    const paramResponse = await fetch('https://pplus-oez4.onrender.com/api/data-parameters', {
+    const paramResponse = await fetch('https://pplus-oez4.onrender.com/api/v1/data-parameters', {
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
@@ -247,7 +247,7 @@ const PublicationsPage: React.FC = () => {
 
     // Now create the publication
     const createResponse = await fetch(
-      'https://pplus-oez4.onrender.com/api/data-parameters-categoryvalue/create',
+      'https://pplus-oez4.onrender.com/api/v1/data-parameters-categoryvalue/create',
       {
         method: 'POST',
         headers: {

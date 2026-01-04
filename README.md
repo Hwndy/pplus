@@ -131,7 +131,7 @@ chmod +x setup.sh
 
 - **Frontend**: http://localhost:5173
 - **Backend API**: http://localhost:3001
-- **API Documentation**: http://localhost:3001/api-docs
+- **API Documentation**: http://localhost:3001/api/v1-docs
 
 ## 📊 Dashboard Features
 
