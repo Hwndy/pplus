@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, Pencil, Trash2, FileSpreadsheet, RefreshCw, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -70,11 +69,9 @@ const API_BASE = "https://pplus-oez4.onrender.com/api/v1";
 const EditorialPage = () => {
   const navigate = useNavigate();
   const { user, token } = useAuth();
-
   const [editorials, setEditorials] = useState<Editorial[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
   const [pagination, setPagination] = useState<Pagination>({
     total: 0,
     page: 1,
@@ -89,13 +86,12 @@ const EditorialPage = () => {
 
   // Determine user role safely
   const userRole = user?.role?.name || (typeof user?.role === 'string' ? user.role : 'Analyst');
-
   const isAdmin = userRole === 'Admin';
   const isSupervisor = userRole === 'Supervisor';
   const isAnalyst = userRole === 'Analyst';
 
   // Show Create & Batch Upload for Analysts or Admins
-    const showCreateButtons = isAnalyst || isAdmin;
+  const showCreateButtons = isAnalyst || isAdmin;
 
   // Show Delete button only for Admins
   const showDeleteButton = isAdmin;
@@ -159,6 +155,8 @@ const EditorialPage = () => {
       };
 
       // Handle different response shapes
+
+      // 1. Direct array in result.data
       if (Array.isArray(result.data)) {
         items = result.data;
         meta = result.pagination || {
@@ -167,7 +165,9 @@ const EditorialPage = () => {
           limit: safeLimit,
           totalPages: Math.ceil(items.length / safeLimit),
         };
-      } else if (result.data?.data && Array.isArray(result.data.data)) {
+      }
+      // 2. Nested result.data.data + result.data.pagination
+      else if (result.data?.data && Array.isArray(result.data.data)) {
         items = result.data.data;
         const pag = result.data.pagination;
         meta = {
@@ -176,6 +176,20 @@ const EditorialPage = () => {
           limit: pag.limit || pag.pageSize || safeLimit,
           totalPages: pag.totalPages,
         };
+      }
+      // 3. NEW: Admin endpoint shape → result.data.editorial + result.data.meta
+      else if (result.data?.editorial && Array.isArray(result.data.editorial)) {
+        items = result.data.editorial;
+        const pag = result.data.meta || {};
+        meta = {
+          total: pag.total || items.length,
+          page: pag.currentPage || safePage,
+          limit: pag.pageSize || safeLimit,
+          totalPages: pag.totalPage || Math.ceil((pag.total || items.length) / safeLimit),
+        };
+      } else {
+        console.warn('Unexpected API response structure:', result);
+        throw new Error('Invalid response structure from server');
       }
 
       setEditorials(items.filter(e => !e.is_deleted));
@@ -285,10 +299,16 @@ const EditorialPage = () => {
 
   const columns = [
     {
-      accessorKey: 'company_data.company_name',
-      header: 'Company Name',
-      cell: ({ row }: any) => row.original.company_data?.company_name || 'N/A',
-    },
+  header: 'Company Name',
+  cell: ({ row }: any) => {
+    const editorial = row.original;
+    return (
+      editorial.company?.company_name ||
+      editorial.company_data?.company_name ||
+      'N/A'
+    );
+  },
+},
     { accessorKey: 'title', header: 'Title' },
     { accessorKey: 'online_channel', header: 'Media Type' },
     {
@@ -473,11 +493,9 @@ const EditorialPage = () => {
             >
               <ChevronLeft className="h-4 w-4 mr-1" /> Previous
             </Button>
-
             <span className="px-4 py-2 bg-gray-100 rounded-md font-medium">
               Page {pagination.page} of {pagination.totalPages}
             </span>
-
             <Button
               variant="outline"
               size="sm"
