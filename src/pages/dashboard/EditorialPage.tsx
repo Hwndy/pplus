@@ -1,4 +1,4 @@
-// EditorialPage.tsx - UPDATED: Role-based Delete & Create Buttons
+
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, Pencil, Trash2, FileSpreadsheet, RefreshCw, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
