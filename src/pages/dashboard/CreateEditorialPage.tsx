@@ -214,7 +214,25 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
   apiReporters = [],
 }) => {
   const safeEditorials = Array.isArray(editorials) ? editorials : [];
-  const currentEditorial = safeEditorials[activeIndex] || {};
+  const currentEditorial: Editorial = safeEditorials[activeIndex] || {
+    date: '',
+    online_channel: '',
+    source: '',
+    media_type: '',
+    placement: '',
+    language: '',
+    ceo_thought_leadership: '',
+    title: '',
+    print_web_clips: '',
+    reporter: '',
+    country: '',
+    spokesperson: '',
+    activity: '',
+    sentiment: '',
+    audience_reach: 0,
+    advert_spend: 0,
+    circulation: 0,
+  };
 
   const isFieldReadOnly = (fieldName: string): boolean => {
     if (isReviewMode) return true;
@@ -1066,7 +1084,7 @@ const CreateEditorialPage = () => {
             activeIndex={activeIndex}
             errors={errors}
             apiCompanies={apiCompanies}
-            userRole={user?.role || ''}
+            userRole={(user?.role as string) || ''}
             onEditorialChange={handleEditorialChange}
             onSwitchEditorial={setActiveIndex}
             onFieldChange={handleFieldChange}

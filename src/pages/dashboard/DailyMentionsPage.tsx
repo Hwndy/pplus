@@ -30,6 +30,7 @@ import { Badge } from '@/components/ui/badge';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '@/components/auth/AuthContext';
+import { Company, Publication } from '@/services/apiService';
 
 // Backend expects this structure for DailyMention
 interface MentionDetail {
@@ -44,6 +45,7 @@ interface MentionDetail {
 }
 
 interface DailyMentionPayload {
+  id: any;
   company_id: number;
   publication_id: number;
   date: string;
@@ -672,13 +674,14 @@ const DailyMentionsPage: React.FC = () => {
         company_id: parseInt(report.companyId),
         publication_id: parseInt(report.publicationId),
         date: new Date(report.date).toISOString(),
-        analyst_id: user?.role === 'Analyst' ? user.id : undefined,
+        analyst_id: user?.role === 'Analyst' ? parseInt(user.id) : undefined,
         status: 'draft',
         industry: [],
         competitors: [],
         subsidiaries: [],
         passive: [],
         advert: [],
+        id: undefined
       };
 
       // Map sections to payload arrays

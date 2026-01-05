@@ -61,6 +61,7 @@ export interface Company {
 
 /** Publication interface – required for PublicationsResponse */
 export interface Publication {
+  name: ReactNode;
   id: string;
   title: string;
   source: string;

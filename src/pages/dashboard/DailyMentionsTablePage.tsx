@@ -165,7 +165,7 @@ const DailyMentionsTablePage: React.FC = () => {
   const { user, token } = useAuth();
 
   // Determine user role safely
-  const userRole = user?.role?.name || (typeof user?.role === 'string' ? user.role : 'Analyst');
+  const userRole = typeof user?.role === 'string' ? user.role : user?.role?.name || 'Analyst';
   const isAdmin = userRole === 'Admin';
   const isSupervisor = userRole === 'Supervisor';
   const isAnalyst = userRole === 'Analyst';
