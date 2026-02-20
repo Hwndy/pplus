@@ -64,7 +64,7 @@ interface Pagination {
   totalPages: number;
 }
 
-const API_BASE = "https://pplus-gl9c.onrender.com/api/v1";
+const API_BASE = "https://pplus-g19c.onrender.com//api/v1";
 
 const EditorialPage = () => {
   const navigate = useNavigate();

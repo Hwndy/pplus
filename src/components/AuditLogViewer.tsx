@@ -192,7 +192,7 @@ export function AuditLogViewer() {
     }
   };
 
-  const API_BASE_URL = 'https://pplus-gl9c.onrender.com';
+  const API_BASE_URL = 'https://pplus-g19c.onrender.com/';
 
   const handleExport = async (format: 'json' | 'csv') => {
     setIsExporting(true);

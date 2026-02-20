@@ -54,7 +54,7 @@ const FirstTimePasswordChange = () => {
     setIsSubmitting(true);
     setStatus('idle');
 
-    const API_BASE_URL = 'https://pplus-gl9c.onrender.com/api/v1';
+    const API_BASE_URL = 'https://pplus-g19c.onrender.com//api/v1';
 
     try {
       const response = await fetch(`${API_BASE_URL}/auth/first-time-password-change`, {

@@ -81,7 +81,7 @@ export default function IndustryLandscapePage() {
         params.append('endDate', endDate);
       }
 
-      const url = `https://pplus-gl9c.onrender.com/api/v1/report/industry-landscape-overview?${params.toString()}`;
+      const url = `https://pplus-g19c.onrender.com//api/v1/report/industry-landscape-overview?${params.toString()}`;
       console.log('Fetching Industry Landscape →', url);
 
       const response = await fetch(url, {
