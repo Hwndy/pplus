@@ -5,7 +5,7 @@ import { Download, Filter, Calendar, BarChart2, TrendingUp, Users, Eye, ThumbsUp
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { dashboardSummary } from '@/utils/mockData';
+// import { dashboardSummary } from '@/utils/mockData';
 
 // Sample sentiment data
 const sentimentData = [
