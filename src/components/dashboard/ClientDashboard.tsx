@@ -33,7 +33,7 @@ import { ColumnDef } from '@tanstack/react-table';
 import { ThematicDistributionBreakdown } from './ThematicDistributionBreakdown';
 import { PublicationsAnalysis } from './PublicationsAnalysis';
 import { SocialStatsRegionalCoverage } from './SocialStatsRegionalCoverage';
-import { thematicDistributionData, publicationsAnalysisData, socialStatsData } from '@/utils/thematicDistributionData';
+// import { thematicDistributionData, publicationsAnalysisData, socialStatsData } from '@/utils/thematicDistributionData';
 
 // Enhanced color palette for better visual appeal
 const COLORS = ['#4F46E5', '#06B6D4', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6'];

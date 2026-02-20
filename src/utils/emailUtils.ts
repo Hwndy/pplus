@@ -1,5 +1,5 @@
 import { EmailItem } from '@/components/dashboard/EmailListView';
-import { industryLandscapeData, insightRecommendationData } from '@/utils/clientDashboardData';
+// import { industryLandscapeData, insightRecommendationData } from '@/utils/clientDashboardData';
 
 // Function to convert industry landscape data to email format
 export const convertIndustryDataToEmailFormat = (): EmailItem[] => {
