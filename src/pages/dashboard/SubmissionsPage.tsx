@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { DataCard } from '@/components/ui/DataCard';
 import { DataTable } from '@/components/ui/DataTable';
-import { allDataEntries, clients, dataParameters, mediaChannels } from '@/utils/mockData';
+
 import { CheckCircle, XCircle, AlertCircle, Save, FileEdit } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';

@@ -4,7 +4,7 @@ import { DataCard } from '@/components/ui/DataCard';
 import { Button } from '@/components/ui/button';
 import { FileInput, Save, SendHorizontal, Loader2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
-import { clients, dataParameters, mediaChannels } from '@/utils/mockData';
+
 import {
   Select,
   SelectContent,
