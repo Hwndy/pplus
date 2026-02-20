@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Calendar, Download, Filter, TrendingUp } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
-import { dashboardSummary } from '@/utils/mockData';
+// import { dashboardSummary } from '@/utils/mockData';
 
 // Sample competitor data
 const competitorData = [
