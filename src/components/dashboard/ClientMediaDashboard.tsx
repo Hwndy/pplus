@@ -38,13 +38,14 @@ import {
   Pie,
   Legend
 } from 'recharts';
-import {
-  executiveSummaryData,
-  insightRecommendationData,
-  industryLandscapeData,
-  brandMediaSentimentData,
-  brandMediaAnalysisData
-// } from '@/utils/clientDashboardData';
+// import {
+//   executiveSummaryData,
+//   insightRecommendationData,
+//   industryLandscapeData,
+//   brandMediaSentimentData,
+//   brandMediaAnalysisData
+// // } from '@/utils/clientDashboardData';
+// ;
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
 const SENTIMENT_COLORS = {
