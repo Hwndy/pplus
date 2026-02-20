@@ -94,7 +94,7 @@ export const SwotMentionForm: React.FC<SwotMentionFormProps> = ({
       if (!token) return;
       setLoading(true);
       try {
-        const response = await fetch('https://pplus-oez4.onrender.com/api/v1/companies', {
+        const response = await fetch('https://pplus-gl9c.onrender.com/api/v1/companies', {
           headers: getAuthHeaders(),
         });
         const result = await response.json();
@@ -199,8 +199,8 @@ export const SwotMentionForm: React.FC<SwotMentionFormProps> = ({
     setLoading(true);
     try {
       const url = isEdit && initialData?.id
-        ? `https://pplus-oez4.onrender.com/api/v1/swot-analysis/update/${initialData.id}`
-        : 'https://pplus-oez4.onrender.com/api/v1/swot-analysis/create';
+        ? `https://pplus-gl9c.onrender.com/api/v1/swot-analysis/update/${initialData.id}`
+        : 'https://pplus-gl9c.onrender.com/api/v1/swot-analysis/create';
 
       const response = await fetch(url, {
         method: isEdit ? 'PUT' : 'POST',

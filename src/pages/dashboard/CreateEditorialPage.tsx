@@ -704,7 +704,7 @@ const CreateEditorialPage = () => {
   const searchParams = new URLSearchParams(location.search);
   const reviewId = searchParams.get('review');
   const isReviewMode = !!reviewId;
-  const BASE_URL = 'https://pplus-oez4.onrender.com/api/v1';
+  const BASE_URL = 'https://pplus-gl9c.onrender.com/api/v1';
   const { user, isSessionValidated } = useAuth();
 
   // Safely extract navigation state

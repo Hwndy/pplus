@@ -85,7 +85,7 @@ const UsersPage = () => {
   const handleExport = async () => {
     setIsExporting(true);
     try {
-      const API_BASE_URL = `https://pplus-oez4.onrender.com`;
+      const API_BASE_URL = `https://pplus-gl9c.onrender.com`;
       const token = localStorage.getItem('token');
 
       const queryParams = new URLSearchParams();

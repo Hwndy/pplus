@@ -37,7 +37,7 @@ export function CompetitiveSentimentPage() {
   const [loading, setLoading] = useState(true);
   const [hasData, setHasData] = useState(false);
 
-  const API_URL = 'https://pplus-oez4.onrender.com/api/v1/report/competitive-intelligence';
+  const API_URL = 'https://pplus-gl9c.onrender.com/api/v1/report/competitive-intelligence';
 
   const fetchData = useCallback(async () => {
     if (!token || !activePair) {

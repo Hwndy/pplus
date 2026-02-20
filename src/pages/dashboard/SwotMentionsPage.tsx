@@ -121,12 +121,12 @@ export function SwotMentionsPage() {
     setError(null);
 
     try {
-      let endpoint = 'https://pplus-oez4.onrender.com/api/v1/swot-analysis';
+      let endpoint = 'https://pplus-gl9c.onrender.com/api/v1/swot-analysis';
 
       if (isSupervisor) {
-        endpoint = 'https://pplus-oez4.onrender.com/api/v1/swot-analysis/supervisor-mentions';
+        endpoint = 'https://pplus-gl9c.onrender.com/api/v1/swot-analysis/supervisor-mentions';
       } else if (isAnalyst) {
-        endpoint = 'https://pplus-oez4.onrender.com/api/v1/swot-analysis/my-analysis';
+        endpoint = 'https://pplus-gl9c.onrender.com/api/v1/swot-analysis/my-analysis';
       }
 
       const safePage = isNaN(page) || page < 1 ? 1 : page;
@@ -209,7 +209,7 @@ export function SwotMentionsPage() {
     if (!window.confirm(`Delete SWOT analysis for ${swot.company.company_name}?`)) return;
 
     try {
-      const response = await fetch(`https://pplus-oez4.onrender.com/api/v1/swot-analysis/delete/${swot.id}`, {
+      const response = await fetch(`https://pplus-gl9c.onrender.com/api/v1/swot-analysis/delete/${swot.id}`, {
         method: 'PUT',
         headers: getAuthHeaders(),
       });

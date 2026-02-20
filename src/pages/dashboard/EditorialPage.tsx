@@ -64,7 +64,7 @@ interface Pagination {
   totalPages: number;
 }
 
-const API_BASE = "https://pplus-oez4.onrender.com/api/v1";
+const API_BASE = "https://pplus-gl9c.onrender.com/api/v1";
 
 const EditorialPage = () => {
   const navigate = useNavigate();
@@ -308,8 +308,8 @@ const EditorialPage = () => {
       'N/A'
     );
   },
-},
-    { accessorKey: 'title', header: 'Title' },
+},     
+    { accessorKey: 'title', header: 'Title' },  
     { accessorKey: 'online_channel', header: 'Media Type' },
     {
       accessorKey: 'date',
