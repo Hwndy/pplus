@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { DataCard } from '@/components/ui/DataCard';
 import { Stat } from '@/components/ui/Stat';
 import { DataTable } from '@/components/ui/DataTable';
-import { dashboardSummary, dataEntries, mediaChannels } from '@/utils/mockData';
+
 import {
   ArrowUpDown,
   BarChart,
