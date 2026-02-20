@@ -107,7 +107,7 @@ axios.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-const BASE_URL = 'https://pplus-g19c.onrender.com//api/v1';
+const BASE_URL = 'https://pplus-g19c.onrender.com/api/v1';
 const ITEMS_PER_PAGE = 10;
 
 const Combobox: React.FC<{

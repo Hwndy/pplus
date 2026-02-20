@@ -36,7 +36,7 @@ export function CompetitivePRDriversPage() {
   const [loading, setLoading] = useState(true);
   const [hasData, setHasData] = useState(false);
 
-  const API_URL = 'https://pplus-g19c.onrender.com//api/v1/report/competitive-intelligence';
+  const API_URL = 'https://pplus-g19c.onrender.com/api/v1/report/competitive-intelligence';
 
   const fetchData = useCallback(async () => {
     if (!token || !activePair) {
