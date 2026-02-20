@@ -68,14 +68,14 @@ interface CreateCompanyFormProps {
 const TypeableSearchableCompanyField: React.FC<{
   value: string;
   onChange: (value: string) => void;
-  companies: Company[];
+  companyOptions: string[];
   loading?: boolean;
   disabled?: boolean;
   placeholder?: string;
 }> = ({
   value,
   onChange,
-  companies,
+  companyOptions,
   loading = false,
   disabled = false,
   placeholder = 'Type or search company name...',
@@ -83,11 +83,11 @@ const TypeableSearchableCompanyField: React.FC<{
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
 
-  const filtered = companies.filter((c) =>
-    c.company_name.toLowerCase().includes(search.toLowerCase())
+  const filtered = companyOptions.filter((c) =>
+    c.toLowerCase().includes(search.toLowerCase())
   );
 
-  const isNew = search.trim() && !companies.some(c => c.company_name.toLowerCase() === search.toLowerCase().trim());
+  const isNew = search.trim() && !companyOptions.some(c => c.toLowerCase() === search.toLowerCase().trim());
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -128,21 +128,21 @@ const TypeableSearchableCompanyField: React.FC<{
                 <CommandGroup heading="Existing Companies">
                   {filtered.map((company) => (
                     <CommandItem
-                      key={company.id}
-                      value={company.company_name}
+                      key={company}
+                      value={company}
                       onSelect={() => {
-                        onChange(company.company_name);
-                        setSearch(company.company_name);
+                        onChange(company);
+                        setSearch(company);
                         setOpen(false);
                       }}
                     >
                       <Check
                         className={cn(
                           'mr-2 h-4 w-4',
-                          value === company.company_name ? 'opacity-100' : 'opacity-0'
+                          value === company ? 'opacity-100' : 'opacity-0'
                         )}
                       />
-                      {company.company_name}
+                      {company}
                     </CommandItem>
                   ))}
                 </CommandGroup>
@@ -275,11 +275,13 @@ export default function CreateCompanyForm({
   const [industryOptions, setIndustryOptions] = useState<string[]>([]);
   const [subIndustryOptions, setSubIndustryOptions] = useState<string[]>([]);
   const [ceoOptions, setCeoOptions] = useState<string[]>([]);
+  const [companyNameOptions, setCompanyNameOptions] = useState<string[]>([]);
 
   const [loadingCompanies, setLoadingCompanies] = useState(true);
   const [loadingIndustry, setLoadingIndustry] = useState(true);
   const [loadingSubIndustry, setLoadingSubIndustry] = useState(true);
   const [loadingCeo, setLoadingCeo] = useState(true);
+  const [loadingCompanyNames, setLoadingCompanyNames] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<CompanyFormData>();
@@ -331,6 +333,7 @@ export default function CreateCompanyForm({
     fetchOptions('Industry', setIndustryOptions, setLoadingIndustry);
     fetchOptions('Sub_Industry', setSubIndustryOptions, setLoadingSubIndustry);
     fetchOptions('CEO', setCeoOptions, setLoadingCeo);
+    fetchOptions('Company', setCompanyNameOptions, setLoadingCompanyNames);
   }, []);
 
   useEffect(() => {
@@ -487,8 +490,8 @@ export default function CreateCompanyForm({
                     <TypeableSearchableCompanyField
                       value={companyForm.company_name}
                       onChange={(val) => updateCompanyForm(formIndex, 'company_name', val)}
-                      companies={apiCompanies}
-                      loading={loadingCompanies}
+                      companyOptions={companyNameOptions}
+                      loading={loadingCompanyNames}
                       disabled={isDisabled}
                     />
                   </div>
