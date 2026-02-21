@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { DataCard } from '@/components/ui/DataCard';
 import { Stat } from '@/components/ui/Stat';
@@ -533,8 +534,59 @@ export function SupervisorDashboard() {
           setLoading(false);
         });
     } else if (isAdmin) {
-      // Admin stats logic if needed
-      setLoading(false);
+      // Admin stats logic
+      setLoading(true);
+      const types = Object.keys(contentTypes) as ContentTypeKey[];
+      Promise.all(
+        types.flatMap((type) => [
+          fetch(`${API_BASE}${contentTypes[type].endpoint}?status=pending&page=1&limit=1`, { headers }).then((res) => res.json()),
+          fetch(`${API_BASE}${contentTypes[type].endpoint}?status=approved&page=1&limit=1`, { headers }).then((res) => res.json()),
+          fetch(`${API_BASE}${contentTypes[type].endpoint}?status=rejected&page=1&limit=1`, { headers }).then((res) => res.json()),
+        ])
+      )
+        .then((responses) => {
+          let newStats: Stats = {
+            pending: 0,
+            approved: 0,
+            rejected: 0,
+            total: 0,
+            approvedToday: 0,
+            rejectedToday: 0,
+            byType: {},
+          };
+          let i = 0;
+          types.forEach((type) => {
+            const pendJson = responses[i++];
+            const apprJson = responses[i++];
+            const rejJson = responses[i++];
+
+            const pending = pendJson?.data?.meta?.total || pendJson?.data?.pagination?.total || 0;
+            const approved = apprJson?.data?.meta?.total || apprJson?.data?.pagination?.total || 0;
+            const rejected = rejJson?.data?.meta?.total || rejJson?.data?.pagination?.total || 0;
+            const total = pending + approved + rejected;
+
+            newStats.byType[type] = {
+              pending,
+              approved,
+              rejected,
+              total,
+              displayName: contentTypes[type].displayName,
+            };
+
+            newStats.pending += pending;
+            newStats.approved += approved;
+            newStats.rejected += rejected;
+            newStats.total += total;
+          });
+          setStats(newStats);
+          fetchEntries(activeTab, 1);
+          setLoading(false);
+        })
+        .catch((error) => {
+          console.error('Error fetching admin stats:', error);
+          toast.error('Failed to load dashboard stats');
+          setLoading(false);
+        });
     }
   }, [isAuthenticated, token, user, isSupervisor, isAdmin, activeTab]);
 
@@ -563,21 +615,30 @@ export function SupervisorDashboard() {
           entries = Array.isArray(recent.data) ? recent.data : [];
           const pag = recent.pagination || {};
           paginationData = {
-            currentPage: pag.currentPage || page,
-            totalPages: pag.totalPages || 1,
+            currentPage: pag.currentPage || pag.page || page,
+            totalPages: pag.totalPages || pag.totalPage || 1,
             total: pag.total || 0,
-            pageSize: pag.pageSize || PAGE_SIZE,
+            pageSize: pag.pageSize || pag.limit || PAGE_SIZE,
           };
 
           // Update per-type stats if needed (but already done in initial load)
         } else {
-          entries = Array.isArray(json.data?.data) ? json.data.data : Array.isArray(json.data) ? json.data : [];
-          const pag = json.data?.pagination || json.pagination || {};
+          let pag = {};
+          if (type === 'editorials') {
+            entries = Array.isArray(json.data.editorial) ? json.data.editorial : [];
+            pag = json.data.meta || {};
+          } else if (type === 'industryLandscapeOverview') {
+            entries = Array.isArray(json.data.overviews) ? json.data.overviews : [];
+            pag = json.data.pagination || {};
+          } else {
+            entries = Array.isArray(json.data?.data) ? json.data.data : Array.isArray(json.data) ? json.data : [];
+            pag = json.data?.meta || json.meta || json.data?.pagination || json.pagination || {};
+          }
           paginationData = {
-            currentPage: pag.currentPage || page,
-            totalPages: pag.totalPages || 1,
-            total: pag.total || 0,
-            pageSize: pag.pageSize || PAGE_SIZE,
+            currentPage: (pag as any).currentPage || (pag as any).page || page,
+            totalPages: (pag as any).totalPage || (pag as any).totalPages || 1,
+            total: (pag as any).total || 0,
+            pageSize: (pag as any).pageSize || (pag as any).limit || PAGE_SIZE,
           };
         }
       }
