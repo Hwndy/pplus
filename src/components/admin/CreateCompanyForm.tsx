@@ -20,7 +20,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 import axios from 'axios';
 import { X, Copy, Loader2, Plus, Minus, Check, ChevronsUpDown } from 'lucide-react';
@@ -163,6 +163,7 @@ const TypeableSearchableCompanyField: React.FC<{
                 </CommandGroup>
               )}
             </CommandList>
+            <ScrollBar orientation="vertical" />
           </ScrollArea>
         </Command>
       </PopoverContent>
@@ -236,6 +237,7 @@ const SearchableCombobox: React.FC<{
                 ))}
               </CommandGroup>
             </CommandList>
+            <ScrollBar orientation="vertical" />
           </ScrollArea>
         </Command>
       </PopoverContent>
