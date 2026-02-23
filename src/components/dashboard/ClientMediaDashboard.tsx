@@ -525,7 +525,7 @@ export function ClientMediaDashboard() {
       </Tabs>
 
       <div className="text-xs text-gray-500 mt-8 border-t pt-4">
-        <p>Copyright © 2023, P+ Measurement Services. All rights reserved. This audit report, including all its methodologies, contents, and analysis, is the intellectual property of P+ Measurement Services. It is intended solely for the use of the specifically named clients. Any unauthorized use is strictly prohibited.</p>
+        <p>Copyright © 2026, P+ Measurement Services. All rights reserved. This audit report, including all its methodologies, contents, and analysis, is the intellectual property of P+ Measurement Services. It is intended solely for the use of the specifically named clients. Any unauthorized use is strictly prohibited.</p>
       </div>
     </div>
   );

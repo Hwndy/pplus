@@ -23,18 +23,6 @@ import { DailyMentionsInboxPage } from '@/components/dashboard/DailyMentionsInbo
 import { Spinner } from '@/components/ui/spinner';
 import { Route, Routes, Navigate, useLocation } from 'react-router-dom';
 
-// Helper function to check user roles (case-insensitive and safe)
-const hasRole = (user: any, allowedRoles: string | string[]): boolean => {
-  if (!user || !user.role || !user.role.name) {
-    return false; // No user, no role object, or no role name → deny access
-  }
-
-  const userRoleName = user.role.name.toLowerCase();
-  const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
-
-  return roles.some((role) => userRoleName === role.toLowerCase());
-};
-
 // Import all page components
 import UsersPage from './dashboard/UsersPage';
 import ParametersPage from './dashboard/ParametersPage';
@@ -165,6 +153,18 @@ const Dashboard = () => {
       </Routes>
     </div>
   );
+};
+
+// Helper function to check user roles (case-insensitive and safe)
+const hasRole = (user: any, allowedRoles: string | string[]): boolean => {
+  if (!user || !user.role || !user.role.name) {
+    return false; // No user, no role object, or no role name → deny access
+  }
+
+  const userRoleName = user.role.name.toLowerCase();
+  const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
+
+  return roles.some((role) => userRoleName === role.toLowerCase());
 };
 
 export default Dashboard;
