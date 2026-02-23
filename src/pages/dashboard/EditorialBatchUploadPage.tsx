@@ -316,7 +316,7 @@ const EditorialBatchUploadPage = () => {
                     </p>
                     <ul className="list-disc pl-5 space-y-1 text-amber-700 dark:text-amber-400">
                       <li>First row must be headers matching column names exactly (case-insensitive)</li>
-                      <li>Dates must be in YYYY-MM-DD format</li>
+                      <li>Dates must be in DD-MM-YYYY format</li>
                       <li>Media Type: use only "Print" or "Online"</li>
                       <li>Sentiment: use only "Positive", "Negative", or "Neutral"</li>
                       <li>Ensure company names match exactly as in the system</li>
