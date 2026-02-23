@@ -64,7 +64,9 @@ interface CreateCompanyFormProps {
   isViewMode?: boolean;
 }
 
-// Hybrid Typeable + Searchable Company Name Field (with scrolling)
+// ──────────────────────────────────────────────
+// Typeable + Searchable Company Field (with fixed dropdown scroll)
+// ──────────────────────────────────────────────
 const TypeableSearchableCompanyField: React.FC<{
   value: string;
   onChange: (value: string) => void;
@@ -87,7 +89,9 @@ const TypeableSearchableCompanyField: React.FC<{
     c.toLowerCase().includes(search.toLowerCase())
   );
 
-  const isNew = search.trim() && !companyOptions.some(c => c.toLowerCase() === search.toLowerCase().trim());
+  const isNew = search.trim() && !companyOptions.some(
+    (c) => c.toLowerCase() === search.toLowerCase().trim()
+  );
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -109,18 +113,23 @@ const TypeableSearchableCompanyField: React.FC<{
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0" align="start">
-        <Command>
+      <PopoverContent 
+        className="w-full p-0" 
+        align="start"
+        sideOffset={4}
+        avoidCollisions={true}
+      >
+        <Command shouldFilter={false}>
           <CommandInput
             placeholder="Search companies or type new name..."
             value={search}
             onValueChange={(val) => {
               setSearch(val);
-              onChange(val); // Live update as user types
+              onChange(val);
             }}
             autoFocus
           />
-          <ScrollArea className="h-[300px]">
+          <ScrollArea className="max-h-[380px] md:max-h-[min(70vh,440px)]">
             <CommandList>
               <CommandEmpty>No company found.</CommandEmpty>
 
@@ -148,7 +157,7 @@ const TypeableSearchableCompanyField: React.FC<{
                 </CommandGroup>
               )}
 
-              {isNew && (
+              {isNew && search.trim() && (
                 <CommandGroup heading="Create New">
                   <CommandItem
                     onSelect={() => {
@@ -163,7 +172,8 @@ const TypeableSearchableCompanyField: React.FC<{
                 </CommandGroup>
               )}
             </CommandList>
-            <ScrollBar orientation="vertical" />
+            {/* Always mounted scrollbar → mouse wheel works instantly, even if scrollbar is hidden */}
+            <ScrollBar orientation="vertical" forceMount={true} />
           </ScrollArea>
         </Command>
       </PopoverContent>
@@ -171,7 +181,9 @@ const TypeableSearchableCompanyField: React.FC<{
   );
 };
 
-// Reusable Searchable Combobox with proper scrolling
+// ──────────────────────────────────────────────
+// Reusable Searchable Combobox (with fixed dropdown scroll)
+// ──────────────────────────────────────────────
 const SearchableCombobox: React.FC<{
   options: { value: string; label: string }[];
   value: string;
@@ -210,10 +222,15 @@ const SearchableCombobox: React.FC<{
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0" align="start">
+      <PopoverContent 
+        className="w-full p-0" 
+        align="start"
+        sideOffset={4}
+        avoidCollisions={true}
+      >
         <Command>
           <CommandInput placeholder="Search..." autoFocus />
-          <ScrollArea className="h-[300px]">
+          <ScrollArea className="max-h-[380px] md:max-h-[min(70vh,440px)]">
             <CommandList>
               <CommandEmpty>No options found.</CommandEmpty>
               <CommandGroup>
@@ -237,7 +254,8 @@ const SearchableCombobox: React.FC<{
                 ))}
               </CommandGroup>
             </CommandList>
-            <ScrollBar orientation="vertical" />
+            {/* Always mounted scrollbar → mouse wheel works instantly, even if scrollbar is hidden */}
+            <ScrollBar orientation="vertical" forceMount={true} />
           </ScrollArea>
         </Command>
       </PopoverContent>
@@ -251,28 +269,7 @@ export default function CreateCompanyForm({
   initialValues = null,
   isViewMode = false,
 }: CreateCompanyFormProps) {
-  const [companyForms, setCompanyForms] = useState<CompanyFormData[]>([
-    initialValues || {
-      company_name: '',
-      email: '',
-      industry: '',
-      sub_industry: '',
-      subsidiaries: [],
-      office_address: '',
-      office_state: '',
-      office_country: '',
-      contact_person: '',
-      ceo: '',
-      phone_no: '',
-      website: '',
-      facebook_link: '',
-      instagram_link: '',
-      twitter_link: '',
-      linkedin_link: '',
-      youtube_link: '',
-    },
-  ]);
-
+  const [companyForms, setCompanyForms] = useState<CompanyFormData[]>([]);
   const [apiCompanies, setApiCompanies] = useState<Company[]>([]);
   const [industryOptions, setIndustryOptions] = useState<string[]>([]);
   const [subIndustryOptions, setSubIndustryOptions] = useState<string[]>([]);
@@ -286,17 +283,39 @@ export default function CreateCompanyForm({
   const [loadingCompanyNames, setLoadingCompanyNames] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const form = useForm<CompanyFormData>();
-
-  const extractStringOptions = (data: any): string[] => {
-    try {
-      const categories = data?.data?.[0]?.categories || [];
-      const values = categories?.[0]?.values || [];
-      return values.map((v: any) => v.value?.trim() || '').filter(Boolean);
-    } catch {
-      return [];
-    }
+  const defaultEmptyForm: CompanyFormData = {
+    company_name: '',
+    email: '',
+    industry: '',
+    sub_industry: '',
+    subsidiaries: [],
+    office_address: '',
+    office_state: '',
+    office_country: '',
+    contact_person: '',
+    ceo: '',
+    phone_no: '',
+    website: '',
+    facebook_link: '',
+    instagram_link: '',
+    twitter_link: '',
+    linkedin_link: '',
+    youtube_link: '',
   };
+
+  const form = useForm<CompanyFormData>({
+    defaultValues: defaultEmptyForm,
+  });
+
+  useEffect(() => {
+    if (initialValues) {
+      form.reset(initialValues);
+      setCompanyForms([initialValues]);
+    } else {
+      form.reset(defaultEmptyForm);
+      setCompanyForms([defaultEmptyForm]);
+    }
+  }, [initialValues, form]);
 
   useEffect(() => {
     const fetchCompanies = async () => {
@@ -338,14 +357,18 @@ export default function CreateCompanyForm({
     fetchOptions('Company', setCompanyNameOptions, setLoadingCompanyNames);
   }, []);
 
-  useEffect(() => {
-    if (initialValues) {
-      setCompanyForms([initialValues]);
+  const extractStringOptions = (data: any): string[] => {
+    try {
+      const categories = data?.data?.[0]?.categories || [];
+      const values = categories?.[0]?.values || [];
+      return values.map((v: any) => v.value?.trim() || '').filter(Boolean);
+    } catch {
+      return [];
     }
-  }, [initialValues]);
+  };
 
   const updateCompanyForm = (index: number, field: keyof CompanyFormData, value: string) => {
-    setCompanyForms(prev =>
+    setCompanyForms((prev) =>
       prev.map((form, i) => (i === index ? { ...form, [field]: value } : form))
     );
   };
@@ -355,28 +378,7 @@ export default function CreateCompanyForm({
       toast.error('Maximum of 2 company forms allowed');
       return;
     }
-    setCompanyForms([
-      ...companyForms,
-      {
-        company_name: '',
-        email: '',
-        industry: '',
-        sub_industry: '',
-        subsidiaries: [],
-        office_address: '',
-        office_state: '',
-        office_country: '',
-        contact_person: '',
-        ceo: '',
-        phone_no: '',
-        website: '',
-        facebook_link: '',
-        instagram_link: '',
-        twitter_link: '',
-        linkedin_link: '',
-        youtube_link: '',
-      },
-    ]);
+    setCompanyForms([...companyForms, { ...defaultEmptyForm }]);
     toast.success('Company form added');
   };
 
@@ -386,13 +388,15 @@ export default function CreateCompanyForm({
 
   const handleSubsidiaryChange = (formIndex: number, subIndex: number, value: string) => {
     const numValue = parseInt(value, 10);
-    setCompanyForms(prev =>
+    setCompanyForms((prev) =>
       prev.map((form, i) =>
         i === formIndex
           ? {
               ...form,
               subsidiaries: form.subsidiaries.map((sub, j) =>
-                j === subIndex ? { ...sub, subsidiary_id: isNaN(numValue) ? 0 : numValue } : sub
+                j === subIndex
+                  ? { ...sub, subsidiary_id: isNaN(numValue) ? 0 : numValue }
+                  : sub
               ),
             }
           : form
@@ -401,17 +405,24 @@ export default function CreateCompanyForm({
   };
 
   const handleAddSubsidiary = (formIndex: number) => {
-    setCompanyForms(prev =>
+    setCompanyForms((prev) =>
       prev.map((form, i) =>
-        i === formIndex ? { ...form, subsidiaries: [...form.subsidiaries, { subsidiary_id: 0 }] } : form
+        i === formIndex
+          ? { ...form, subsidiaries: [...form.subsidiaries, { subsidiary_id: 0 }] }
+          : form
       )
     );
   };
 
   const handleRemoveSubsidiary = (formIndex: number, subIndex: number) => {
-    setCompanyForms(prev =>
+    setCompanyForms((prev) =>
       prev.map((form, i) =>
-        i === formIndex ? { ...form, subsidiaries: form.subsidiaries.filter((_, j) => j !== subIndex) } : form
+        i === formIndex
+          ? {
+              ...form,
+              subsidiaries: form.subsidiaries.filter((_, j) => j !== subIndex),
+            }
+          : form
       )
     );
   };
@@ -423,41 +434,48 @@ export default function CreateCompanyForm({
     try {
       const results: any[] = [];
 
-      for (const form of companyForms) {
+      for (const formData of companyForms) {
         const payload: any = {
-          company_name: form.company_name.trim(),
-          email: form.email,
-          industry: form.industry,
-          sub_industry: form.sub_industry,
-          office_address: form.office_address,
-          office_state: form.office_state,
-          office_country: form.office_country,
-          contact_person: form.contact_person,
-          ceo: form.ceo,
-          phone_no: form.phone_no,
-          website: form.website,
-          facebook_link: form.facebook_link || 'https://facebook.com',
-          instagram_link: form.instagram_link || 'https://instagram.com',
-          twitter_link: form.twitter_link || 'https://twitter.com',
-          linkedin_link: form.linkedin_link || 'https://linkedin.com',
-          youtube_link: form.youtube_link || 'https://youtube.com',
+          company_name: formData.company_name.trim(),
+          email: formData.email,
+          industry: formData.industry,
+          sub_industry: formData.sub_industry,
+          office_address: formData.office_address,
+          office_state: formData.office_state,
+          office_country: formData.office_country,
+          contact_person: formData.contact_person,
+          ceo: formData.ceo,
+          phone_no: formData.phone_no,
+          website: formData.website,
+          facebook_link: formData.facebook_link || 'https://facebook.com',
+          instagram_link: formData.instagram_link || 'https://instagram.com',
+          twitter_link: formData.twitter_link || 'https://twitter.com',
+          linkedin_link: formData.linkedin_link || 'https://linkedin.com',
+          youtube_link: formData.youtube_link || 'https://youtube.com',
         };
 
-        if (form.subsidiaries.length > 0) {
-          payload.subsidiaries = form.subsidiaries
-            .filter(s => s.subsidiary_id > 0)
-            .map(s => ({ subsidiary_id: s.subsidiary_id }));
+        if (formData.subsidiaries.length > 0) {
+          payload.subsidiaries = formData.subsidiaries
+            .filter((s) => s.subsidiary_id > 0 && !isNaN(s.subsidiary_id))
+            .map((s) => ({ subsidiary_id: s.subsidiary_id }));
         }
 
-        const res = initialValues && form.id
-          ? await axios.put(`https://pplus-g19c.onrender.com/api/v1/companies/update/${form.id}`, payload)
-          : await axios.post('https://pplus-g19c.onrender.com/api/v1/companies/create', payload);
+        const endpoint = formData.id && initialValues
+          ? `https://pplus-g19c.onrender.com/api/v1/companies/update/${formData.id}`
+          : 'https://pplus-g19c.onrender.com/api/v1/companies/create';
+
+        const method = formData.id && initialValues ? 'put' : 'post';
+        const res = await axios[method](endpoint, payload);
 
         results.push(res.data);
       }
 
       onSave(results.length === 1 ? results[0] : results);
-      toast.success(initialValues ? 'Company updated successfully' : `${results.length} company(ies) created successfully`);
+      toast.success(
+        initialValues
+          ? 'Company updated successfully'
+          : `${results.length} company(ies) created successfully`
+      );
     } catch (error: any) {
       toast.error(`Failed to save: ${error.response?.data?.message || error.message}`);
     } finally {
@@ -468,25 +486,28 @@ export default function CreateCompanyForm({
   const isDisabled = isViewMode;
 
   return (
-    <ScrollArea className="h-[calc(100vh-300px)]">
-      <div className="p-1">
+    <ScrollArea className="h-[calc(100vh-280px)] md:h-[calc(100vh-240px)]">
+      <div className="p-1 pb-10">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit as any)} className="space-y-8">
             {companyForms.map((companyForm, formIndex) => (
-              <div key={formIndex} className="border p-4 rounded-md relative mb-6">
+              <div
+                key={formIndex}
+                className="border p-5 md:p-6 rounded-lg relative mb-8 shadow-sm"
+              >
                 {formIndex > 0 && !isViewMode && (
                   <Button
                     type="button"
                     size="icon"
                     variant="ghost"
-                    className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+                    className="absolute top-3 right-3 text-red-500 hover:text-red-700 hover:bg-red-50"
                     onClick={() => handleRemoveCompanyForm(formIndex)}
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-5 w-5" />
                   </Button>
                 )}
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
                   <div>
                     <FormLabel>Company Name *</FormLabel>
                     <TypeableSearchableCompanyField
@@ -501,10 +522,10 @@ export default function CreateCompanyForm({
                   <div>
                     <FormLabel>Industry *</FormLabel>
                     <SearchableCombobox
-                      options={industryOptions.map(o => ({ value: o, label: o }))}
+                      options={industryOptions.map((o) => ({ value: o, label: o }))}
                       value={companyForm.industry}
                       onChange={(val) => updateCompanyForm(formIndex, 'industry', val)}
-                      placeholder="Select industry..."
+                      placeholder="Select or search industry..."
                       loading={loadingIndustry}
                       disabled={isDisabled}
                     />
@@ -513,22 +534,23 @@ export default function CreateCompanyForm({
                   <div>
                     <FormLabel>Sub-Industry *</FormLabel>
                     <SearchableCombobox
-                      options={subIndustryOptions.map(o => ({ value: o, label: o }))}
+                      options={subIndustryOptions.map((o) => ({ value: o, label: o }))}
                       value={companyForm.sub_industry}
                       onChange={(val) => updateCompanyForm(formIndex, 'sub_industry', val)}
-                      placeholder="Select sub-industry..."
+                      placeholder="Select or search sub-industry..."
                       loading={loadingSubIndustry}
                       disabled={isDisabled}
                     />
                   </div>
 
-                  <div className="col-span-2">
+                  <div className="md:col-span-2">
                     <FormLabel>Office Address *</FormLabel>
                     <Textarea
                       value={companyForm.office_address}
                       onChange={(e) => updateCompanyForm(formIndex, 'office_address', e.target.value)}
-                      placeholder="Office Address"
+                      placeholder="Full office address"
                       disabled={isDisabled}
+                      className="min-h-[84px]"
                     />
                   </div>
 
@@ -537,7 +559,7 @@ export default function CreateCompanyForm({
                     <Input
                       value={companyForm.office_state}
                       onChange={(e) => updateCompanyForm(formIndex, 'office_state', e.target.value)}
-                      placeholder="Office State"
+                      placeholder="e.g. Lagos"
                       disabled={isDisabled}
                     />
                   </div>
@@ -547,7 +569,7 @@ export default function CreateCompanyForm({
                     <Input
                       value={companyForm.office_country}
                       onChange={(e) => updateCompanyForm(formIndex, 'office_country', e.target.value)}
-                      placeholder="Office Country"
+                      placeholder="e.g. Nigeria"
                       disabled={isDisabled}
                     />
                   </div>
@@ -557,7 +579,7 @@ export default function CreateCompanyForm({
                     <Input
                       value={companyForm.email}
                       onChange={(e) => updateCompanyForm(formIndex, 'email', e.target.value)}
-                      placeholder="Email"
+                      placeholder="company@example.com"
                       type="email"
                       disabled={isDisabled}
                     />
@@ -568,7 +590,7 @@ export default function CreateCompanyForm({
                     <Input
                       value={companyForm.contact_person}
                       onChange={(e) => updateCompanyForm(formIndex, 'contact_person', e.target.value)}
-                      placeholder="Contact Person"
+                      placeholder="Full name"
                       disabled={isDisabled}
                     />
                   </div>
@@ -576,10 +598,10 @@ export default function CreateCompanyForm({
                   <div>
                     <FormLabel>CEO *</FormLabel>
                     <SearchableCombobox
-                      options={ceoOptions.map(o => ({ value: o, label: o }))}
+                      options={ceoOptions.map((o) => ({ value: o, label: o }))}
                       value={companyForm.ceo}
                       onChange={(val) => updateCompanyForm(formIndex, 'ceo', val)}
-                      placeholder="Select CEO..."
+                      placeholder="Select or search CEO..."
                       loading={loadingCeo}
                       disabled={isDisabled}
                     />
@@ -590,38 +612,48 @@ export default function CreateCompanyForm({
                     <Input
                       value={companyForm.phone_no}
                       onChange={(e) => updateCompanyForm(formIndex, 'phone_no', e.target.value)}
-                      placeholder="Phone"
+                      placeholder="+234 123 456 7890"
                       type="tel"
                       disabled={isDisabled}
                     />
                   </div>
 
-                  <div className="col-span-2">
+                  <div className="md:col-span-2">
                     <FormLabel>Website *</FormLabel>
                     <Input
                       value={companyForm.website}
                       onChange={(e) => updateCompanyForm(formIndex, 'website', e.target.value)}
-                      placeholder="Website"
+                      placeholder="https://example.com"
                       disabled={isDisabled}
                     />
                   </div>
 
                   {['facebook', 'instagram', 'twitter', 'linkedin', 'youtube'].map((platform) => (
                     <div key={platform}>
-                      <FormLabel>{platform.charAt(0).toUpperCase() + platform.slice(1)} Link</FormLabel>
+                      <FormLabel>
+                        {platform.charAt(0).toUpperCase() + platform.slice(1)} Link
+                      </FormLabel>
                       <Input
-                        value={companyForm[`${platform}_link` as keyof CompanyFormData] as string}
-                        onChange={(e) => updateCompanyForm(formIndex, `${platform}_link` as keyof CompanyFormData, e.target.value)}
-                        placeholder={`https://${platform}.com`}
+                        value={
+                          companyForm[`${platform}_link` as keyof CompanyFormData] as string
+                        }
+                        onChange={(e) =>
+                          updateCompanyForm(
+                            formIndex,
+                            `${platform}_link` as keyof CompanyFormData,
+                            e.target.value
+                          )
+                        }
+                        placeholder={`https://${platform}.com/...`}
                         disabled={isDisabled}
                       />
                     </div>
                   ))}
                 </div>
 
-                <div className="border-t pt-4 mt-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <FormLabel>Subsidiaries</FormLabel>
+                <div className="border-t pt-6 mt-8">
+                  <div className="flex justify-between items-center mb-5">
+                    <FormLabel className="text-lg font-medium">Subsidiaries</FormLabel>
                     {!isViewMode && (
                       <Button
                         type="button"
@@ -629,17 +661,22 @@ export default function CreateCompanyForm({
                         size="sm"
                         onClick={() => handleAddSubsidiary(formIndex)}
                       >
-                        <Plus className="h-4 w-4 mr-1" />
+                        <Plus className="h-4 w-4 mr-1.5" />
                         Add Subsidiary
                       </Button>
                     )}
                   </div>
 
                   {companyForm.subsidiaries.length === 0 ? (
-                    <p className="text-gray-500 text-sm">No subsidiaries added.</p>
+                    <p className="text-gray-500 text-sm italic">
+                      No subsidiaries added yet.
+                    </p>
                   ) : (
                     companyForm.subsidiaries.map((sub, subIndex) => (
-                      <div key={subIndex} className="flex gap-4 items-end mb-4 p-3 border rounded-md">
+                      <div
+                        key={subIndex}
+                        className="flex gap-4 items-end mb-5 p-4 border rounded-lg bg-gray-50/50"
+                      >
                         <div className="flex-1">
                           <FormLabel>Subsidiary Company</FormLabel>
                           <SearchableCombobox
@@ -648,8 +685,10 @@ export default function CreateCompanyForm({
                               label: c.company_name,
                             }))}
                             value={sub.subsidiary_id ? sub.subsidiary_id.toString() : ''}
-                            onChange={(val) => handleSubsidiaryChange(formIndex, subIndex, val)}
-                            placeholder="Select company..."
+                            onChange={(val) =>
+                              handleSubsidiaryChange(formIndex, subIndex, val)
+                            }
+                            placeholder="Search subsidiary company..."
                             loading={loadingCompanies}
                             disabled={isDisabled}
                           />
@@ -658,11 +697,11 @@ export default function CreateCompanyForm({
                           <Button
                             type="button"
                             variant="ghost"
-                            size="sm"
+                            size="icon"
                             onClick={() => handleRemoveSubsidiary(formIndex, subIndex)}
-                            className="text-red-500"
+                            className="text-red-600 hover:text-red-800 hover:bg-red-50"
                           >
-                            <Minus className="h-4 w-4" />
+                            <Minus className="h-5 w-5" />
                           </Button>
                         )}
                       </div>
@@ -673,23 +712,24 @@ export default function CreateCompanyForm({
             ))}
 
             {!initialValues && !isViewMode && (
-              <div className="flex justify-center">
+              <div className="flex justify-center my-8">
                 <Button
                   type="button"
                   onClick={handleAddCompanyForm}
-                  className="bg-blue-500 hover:bg-blue-600"
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
                   disabled={companyForms.length >= 2}
                 >
                   <Copy className="mr-2 h-4 w-4" />
-                  Clone Company Form
+                  Clone Current Form
                 </Button>
               </div>
             )}
 
-            <div className="border-t pt-4 mt-4"></div>
-            <div className="flex justify-end space-x-2 pt-4">
+            <div className="border-t pt-6 mt-8"></div>
+
+            <div className="flex justify-end gap-4 pt-4">
               {isViewMode ? (
-                <Button type="button" onClick={onCancel} disabled={isSubmitting}>
+                <Button type="button" variant="outline" onClick={onCancel}>
                   Close
                 </Button>
               ) : (
@@ -698,21 +738,24 @@ export default function CreateCompanyForm({
                     type="button"
                     variant="outline"
                     onClick={onCancel}
-                    className="bg-gray-50 hover:bg-gray-100 text-gray-800"
                     disabled={isSubmitting}
                   >
                     Discard
                   </Button>
-                  <Button type="submit" className="bg-indigo-950" disabled={isSubmitting}>
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="min-w-[140px]"
+                  >
                     {isSubmitting ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         {initialValues ? 'Updating...' : 'Creating...'}
                       </>
                     ) : initialValues ? (
-                      'Update'
+                      'Update Company'
                     ) : (
-                      'Save'
+                      'Create Company'
                     )}
                   </Button>
                 </>
@@ -721,6 +764,8 @@ export default function CreateCompanyForm({
           </form>
         </Form>
       </div>
+      {/* Main form scroll – always scrollable with wheel, scrollbar always mounted */}
+      <ScrollBar orientation="vertical" forceMount={true} />
     </ScrollArea>
   );
 }

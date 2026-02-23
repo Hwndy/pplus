@@ -19,77 +19,155 @@ import {
 } from '@/components/ui/pagination';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
-  Eye, Pencil, Trash2, Search, Plus, RefreshCw, Building2, Mail, Phone, Loader2, MapPin, Users
+  Eye, Pencil, Trash2, Search, Plus, RefreshCw, Building2, Mail, Phone, Loader2, MapPin, Users,
+  Globe, Facebook, Instagram, Twitter, Linkedin, Youtube
 } from 'lucide-react';
 import CreateCompanyForm from "@/components/admin/CreateCompanyForm";
 import { toast } from 'sonner';
 
-// ViewCompanyDetails Component for read-only view
+// ViewCompanyDetails (kept enhanced version from previous fix)
 const ViewCompanyDetails: React.FC<{ company: any; onCancel: () => void }> = ({ company, onCancel }) => {
   if (!company) return null;
 
+  const socialLinks = [
+    { key: 'facebook_link', icon: Facebook, label: 'Facebook' },
+    { key: 'instagram_link', icon: Instagram, label: 'Instagram' },
+    { key: 'twitter_link', icon: Twitter, label: 'Twitter' },
+    { key: 'linkedin_link', icon: Linkedin, label: 'LinkedIn' },
+    { key: 'youtube_link', icon: Youtube, label: 'YouTube' },
+  ];
+
   return (
-    <div className="space-y-6">
-      <div className="grid gap-4">
-        <div className="flex items-center gap-2">
-          <Building2 className="h-5 w-5 text-indigo-600" />
-          <div>
-            <p className="text-sm text-gray-500">Company Name</p>
-            <p className="text-base font-medium">{company.company_name || 'N/A'}</p>
+    <ScrollArea className="h-[70vh] pr-4">
+      <div className="space-y-6 pb-6">
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div className="flex items-start gap-3">
+            <Building2 className="h-5 w-5 text-indigo-600 mt-0.5" />
+            <div>
+              <p className="text-sm text-gray-500">Company Name</p>
+              <p className="font-medium">{company.company_name || '—'}</p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <Users className="h-5 w-5 text-indigo-600 mt-0.5" />
+            <div>
+              <p className="text-sm text-gray-500">Industry / Sub-industry</p>
+              <p className="font-medium">
+                {company.industry || '—'}
+                {company.sub_industry && ` → ${company.sub_industry}`}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <Mail className="h-5 w-5 text-indigo-600 mt-0.5" />
+            <div>
+              <p className="text-sm text-gray-500">Email</p>
+              <p className="font-medium break-all">{company.email || '—'}</p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <Phone className="h-5 w-5 text-indigo-600 mt-0.5" />
+            <div>
+              <p className="text-sm text-gray-500">Phone</p>
+              <p className="font-medium">{company.phone_no || '—'}</p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3 sm:col-span-2">
+            <MapPin className="h-5 w-5 text-indigo-600 mt-0.5" />
+            <div>
+              <p className="text-sm text-gray-500">Office Address</p>
+              <p className="font-medium">
+                {company.office_address || '—'}
+                {(company.office_state || company.office_country) && (
+                  <span className="text-gray-600">
+                    {company.office_address && ', '}
+                    {company.office_state}
+                    {company.office_state && company.office_country && ', '}
+                    {company.office_country}
+                  </span>
+                )}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <Users className="h-5 w-5 text-indigo-600 mt-0.5" />
+            <div>
+              <p className="text-sm text-gray-500">Contact Person</p>
+              <p className="font-medium">{company.contact_person || '—'}</p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <Users className="h-5 w-5 text-indigo-600 mt-0.5" />
+            <div>
+              <p className="text-sm text-gray-500">CEO</p>
+              <p className="font-medium">{company.ceo || '—'}</p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <Globe className="h-5 w-5 text-indigo-600 mt-0.5" />
+            <div>
+              <p className="text-sm text-gray-500">Website</p>
+              <p className="font-medium break-all">
+                {company.website ? (
+                  <a href={company.website} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">
+                    {company.website}
+                  </a>
+                ) : '—'}
+              </p>
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Users className="h-5 w-5 text-indigo-600" />
-          <div>
-            <p className="text-sm text-gray-500">Industry</p>
-            <p className="text-base font-medium">{company.industry || 'N/A'}</p>
+
+        <div className="pt-4 border-t">
+          <h3 className="text-sm font-medium text-gray-700 mb-3">Social Media</h3>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {socialLinks.map(({ key, icon: Icon, label }) => {
+              const url = company[key as keyof typeof company];
+              return (
+                <div key={key} className="flex items-center gap-3">
+                  <Icon className="h-5 w-5 text-indigo-600" />
+                  <div>
+                    <p className="text-sm text-gray-500">{label}</p>
+                    {url && url !== `https://${label.toLowerCase()}.com` ? (
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-indigo-600 hover:underline text-sm break-all"
+                      >
+                        {url}
+                      </a>
+                    ) : (
+                      <p className="text-sm text-gray-400">Not provided</p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Mail className="h-5 w-5 text-indigo-600" />
-          <div>
-            <p className="text-sm text-gray-500">Email</p>
-            <p className="text-base font-medium">{company.email || 'N/A'}</p>
+
+        {company.additional_info && (
+          <div className="pt-4 border-t">
+            <h3 className="text-sm font-medium text-gray-700 mb-2">Additional Information</h3>
+            <p className="text-gray-700 whitespace-pre-wrap">{company.additional_info}</p>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Phone className="h-5 w-5 text-indigo-600" />
-          <div>
-            <p className="text-sm text-gray-500">Contact Person</p>
-            <p className="text-base font-medium">{company.contact_person || 'N/A'}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Users className="h-5 w-5 text-indigo-600" />
-          <div>
-            <p className="text-sm text-gray-500">CEO</p>
-            <p className="text-base font-medium">{company.ceo || 'N/A'}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <MapPin className="h-5 w-5 text-indigo-600" />
-          <div>
-            <p className="text-sm text-gray-500">Status</p>
-            <span
-              className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                company.status === 'ACTIVE'
-                  ? 'bg-green-100 text-green-800'
-                  : company.status === 'INACTIVE'
-                  ? 'bg-gray-100 text-gray-800'
-                  : 'bg-red-100 text-red-800'
-              }`}
-            >
-              {company.status || 'N/A'}
-            </span>
-          </div>
+        )}
+
+        <div className="flex justify-end pt-6">
+          <Button variant="outline" onClick={onCancel}>
+            Close
+          </Button>
         </div>
       </div>
-      <div className="flex justify-end">
-        <Button variant="outline" onClick={onCancel}>
-          Close
-        </Button>
-      </div>
-    </div>
+    </ScrollArea>
   );
 };
 
@@ -141,22 +219,29 @@ const CompaniesPage = () => {
     searchTimeout.current = setTimeout(() => setCurrentPage(1), 500);
   };
 
-  const openFormDialog = async (company: any = null, viewMode = false) => {
-    if (company && !viewMode) {
-      try {
-        const res = await axios.get(`https://pplus-g19c.onrender.com/api/v1/companies/${company.id}`);
-        setSelectedCompany(res.data.company);
-      } catch (err) {
-        toast.error('Failed to load company details');
-        return;
-      }
-    } else if (company && viewMode) {
-      setSelectedCompany(company);
+  const openFormDialog = (company: any = null, viewMode = false) => {
+    // Critical fix: always clear previous selection first
+    setSelectedCompany(null);
+
+    if (company) {
+      // For edit or view → fetch fresh data
+      axios.get(`https://pplus-g19c.onrender.com/api/v1/companies/${company.id}`)
+        .then(res => {
+          // Support both possible response shapes you showed
+          const companyData = res.data?.data?.company || res.data?.company || res.data;
+          setSelectedCompany(companyData);
+          setIsViewMode(viewMode);
+          setIsFormDialogOpen(true);
+        })
+        .catch(err => {
+          toast.error('Failed to load company details');
+          console.error(err);
+        });
     } else {
-      setSelectedCompany(null);
+      // Create mode → explicitly empty
+      setIsViewMode(false);
+      setIsFormDialogOpen(true);
     }
-    setIsViewMode(viewMode);
-    setIsFormDialogOpen(true);
   };
 
   const handleView = (company: any) => {
@@ -167,7 +252,11 @@ const CompaniesPage = () => {
     openFormDialog(company, false);
   };
 
-  const handleDelete = async (id: string, companyName: string) => {
+  const handleCreate = () => {
+    openFormDialog(); // no company → create mode
+  };
+
+  const handleDelete = async (id: string | number, companyName: string) => {
     try {
       await axios.put(`https://pplus-g19c.onrender.com/api/v1/companies/delete/${id}`);
       toast.success(`${companyName} deleted successfully`);
@@ -179,25 +268,29 @@ const CompaniesPage = () => {
 
   const handleFormSave = () => {
     setIsFormDialogOpen(false);
-    setSelectedCompany(null);
-    toast.success(isViewMode ? 'Company viewed' : selectedCompany ? 'Company updated successfully' : 'Company created successfully');
+    setSelectedCompany(null); // extra safety
     fetchCompanies();
   };
 
-  const handleFormCancel = () => {
-    setIsFormDialogOpen(false);
-    setSelectedCompany(null);
+  // Extra cleanup when modal fully closes
+  const handleDialogOpenChange = (open: boolean) => {
+    setIsFormDialogOpen(open);
+    if (!open) {
+      // When closing (any way) → clear selection
+      setTimeout(() => {
+        setSelectedCompany(null);
+      }, 100); // small delay helps React finish render cycle
+    }
   };
 
-  const dialogTitle = isViewMode 
+  const dialogTitle = isViewMode
     ? selectedCompany ? `View ${selectedCompany.company_name}` : 'View Company'
-    : selectedCompany 
-    ? 'Edit Company' 
+    : selectedCompany
+    ? 'Edit Company'
     : 'Create Company';
 
   return (
     <div className="p-6 h-full">
-      {/* Header Actions */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Companies</h1>
         <div className="flex gap-2">
@@ -214,34 +307,37 @@ const CompaniesPage = () => {
         </div>
       )}
 
-      {/* Search + Create */}
       <div className="flex justify-between mb-4">
         <div className="relative w-64">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Search companies..." className="pl-8" value={searchTerm} onChange={handleSearch} />
         </div>
-        <Dialog open={isFormDialogOpen} onOpenChange={setIsFormDialogOpen}>
+
+        <Dialog open={isFormDialogOpen} onOpenChange={handleDialogOpenChange}>
           <DialogTrigger asChild>
-            <Button className="bg-indigo-950">
+            <Button className="bg-indigo-950" onClick={handleCreate}>
               <Plus className="mr-2 h-4 w-4" /> Create Company
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[1500px]">
             <DialogHeader>
               <DialogTitle>{dialogTitle}</DialogTitle>
-              {isViewMode && (
-                <DialogDescription>View details of {selectedCompany?.company_name || 'the company'}.</DialogDescription>
+              {isViewMode && selectedCompany && (
+                <DialogDescription>
+                  Full details of {selectedCompany.company_name}.
+                </DialogDescription>
               )}
             </DialogHeader>
-            <ScrollArea className="max-h-[calc(100vh-200px)] pr-4">
+
+            <ScrollArea className="max-h-[calc(100vh-180px)] pr-4">
               {isViewMode && selectedCompany ? (
-                <ViewCompanyDetails company={selectedCompany} onCancel={handleFormCancel} />
+                <ViewCompanyDetails company={selectedCompany} onCancel={() => setIsFormDialogOpen(false)} />
               ) : (
                 <CreateCompanyForm
-                  initialValues={selectedCompany}
+                  initialValues={selectedCompany} // will be null for create
                   isViewMode={isViewMode}
                   onSave={handleFormSave}
-                  onCancel={handleFormCancel}
+                  onCancel={() => setIsFormDialogOpen(false)}
                 />
               )}
             </ScrollArea>
@@ -249,8 +345,8 @@ const CompaniesPage = () => {
         </Dialog>
       </div>
 
-      {/* Table */}
-      <div className="border rounded-md">
+      {/* Table - unchanged */}
+      <div className="border rounded-md overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
@@ -258,21 +354,21 @@ const CompaniesPage = () => {
               <TableHead>Company</TableHead>
               <TableHead>Industry</TableHead>
               <TableHead>Contact</TableHead>
-              <TableHead>Status (CEO)</TableHead>
+              <TableHead>CEO</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8">
+                <TableCell colSpan={6} className="text-center py-12">
                   <Loader2 className="h-8 w-8 animate-spin text-indigo-600 mx-auto" />
-                  <p className="text-gray-500">Loading companies...</p>
+                  <p className="mt-3 text-gray-500">Loading companies...</p>
                 </TableCell>
               </TableRow>
             ) : companies.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                <TableCell colSpan={6} className="text-center py-12 text-gray-500">
                   No companies found
                 </TableCell>
               </TableRow>
@@ -280,33 +376,21 @@ const CompaniesPage = () => {
               companies.map((company, index) => (
                 <TableRow key={company.id}>
                   <TableCell>{(currentPage - 1) * companiesPerPage + index + 1}</TableCell>
-                  <TableCell>{company.company_name}</TableCell>
+                  <TableCell className="font-medium">{company.company_name}</TableCell>
                   <TableCell>{company.industry}</TableCell>
                   <TableCell>
                     <div className="space-y-1 text-sm">
-                      <p className="flex items-center gap-1">
-                        <Mail className="h-4 w-4" /> {company.email}
+                      <p className="flex items-center gap-1.5">
+                        <Mail className="h-3.5 w-3.5" /> {company.email}
                       </p>
-                      <p className="flex items-center gap-1">
-                        <Phone className="h-4 w-4" /> {company.contact_person}
+                      <p className="flex items-center gap-1.5">
+                        <Phone className="h-3.5 w-3.5" /> {company.contact_person}
                       </p>
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs ${
-                        company.status === 'ACTIVE'
-                          ? 'bg-green-100 text-green-800'
-                          : company.status === 'INACTIVE'
-                          ? 'bg-gray-100 text-gray-800'
-                          : 'bg-red-100 text-red-800'
-                      }`}
-                    >
-                      {company.ceo}
-                    </span>
-                  </TableCell>
+                  <TableCell>{company.ceo || '—'}</TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
+                    <div className="flex justify-end gap-1">
                       <Button variant="ghost" size="icon" onClick={() => handleView(company)}>
                         <Eye className="h-4 w-4" />
                       </Button>
@@ -346,9 +430,8 @@ const CompaniesPage = () => {
         </Table>
       </div>
 
-      {/* Pagination */}
       {totalPages > 1 && (
-        <div className="mt-4">
+        <div className="mt-6">
           <Pagination>
             <PaginationContent>
               <PaginationItem>
@@ -357,16 +440,20 @@ const CompaniesPage = () => {
                   className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
                 />
               </PaginationItem>
-              {Array.from({ length: totalPages }).map((_, i) => (
-                <PaginationItem key={i + 1}>
-                  <PaginationLink
-                    isActive={currentPage === i + 1}
-                    onClick={() => setCurrentPage(i + 1)}
-                  >
-                    {i + 1}
-                  </PaginationLink>
-                </PaginationItem>
-              ))}
+              {Array.from({ length: Math.min(totalPages, 7) }).map((_, i) => {
+                const page = i + 1;
+                return (
+                  <PaginationItem key={page}>
+                    <PaginationLink
+                      isActive={currentPage === page}
+                      onClick={() => setCurrentPage(page)}
+                    >
+                      {page}
+                    </PaginationLink>
+                  </PaginationItem>
+                );
+              })}
+              {totalPages > 7 && <span className="px-4 py-2">...</span>}
               <PaginationItem>
                 <PaginationNext
                   onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
@@ -378,8 +465,7 @@ const CompaniesPage = () => {
         </div>
       )}
 
-      {/* Footer */}
-      <div className="mt-4 text-sm text-gray-500">
+      <div className="mt-5 text-sm text-gray-500 text-center md:text-left">
         Showing {(currentPage - 1) * companiesPerPage + 1} to {Math.min(currentPage * companiesPerPage, totalItems)} of {totalItems} results
       </div>
     </div>
