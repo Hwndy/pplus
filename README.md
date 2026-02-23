@@ -15,7 +15,7 @@ A comprehensive media monitoring and analytics dashboard for tracking media ment
 ### Backend (Node.js + Express + PostgreSQL)
 - **RESTful API**: Comprehensive REST API with OpenAPI documentation
 - **Authentication**: JWT-based authentication with role-based access control
-- **Database**: PostgreSQL with Prisma ORM
+
 - **File Upload**: Secure file upload and management
 - **Audit Logging**: Complete audit trail of all system actions
 - **Data Analytics**: Advanced analytics and reporting endpoints
@@ -48,7 +48,7 @@ A comprehensive media monitoring and analytics dashboard for tracking media ment
 - **Express.js** - Web framework
 - **TypeScript** - Type safety
 - **PostgreSQL** - Database
-- **Prisma** - Database ORM
+
 - **JWT** - Authentication
 - **Multer** - File upload
 - **Swagger/OpenAPI** - API documentation
@@ -208,7 +208,7 @@ docker-compose up -d
 - **API Documentation**: Available at `/api-docs` when the server is running
 - **Frontend Components**: Check the `src/components` directory
 - **Backend API**: Detailed documentation in `server/README.md`
-- **Database Schema**: Prisma schema in `server/prisma/schema.prisma`
+
 
 ## 🤝 Contributing
 
