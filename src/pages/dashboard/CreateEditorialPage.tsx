@@ -236,7 +236,7 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
 
   const isFieldReadOnly = (fieldName: string): boolean => {
     if (isReviewMode) return true;
-    if (fieldName === 'analyst_note' && userRole !== 'Analyst') return true;
+    // if (fieldName === 'analyst_note' && userRole !== 'Analyst') return true;
     if (fieldName === 'supervisor_note' && userRole !== 'Supervisor') return true;
     if (fieldName === 'admin_note' && userRole !== 'Admin') return true;
     return false;
@@ -642,38 +642,8 @@ const EditorialForm: React.FC<EditorialFormProps> = ({
                   onChange={(e) => onFieldChange(activeIndex, 'analyst_note', e.target.value)}
                   className="h-32 resize-none"
                   placeholder="Add analyst notes here..."
-                  readOnly={isFieldReadOnly('analyst_note')}
+                  // readOnly={isFieldReadOnly('analyst_note')}
                   disabled={isFieldReadOnly('analyst_note')}
-                />
-              </div>
-              <div>
-                <Label htmlFor="supervisor_note" className="flex items-center mb-2">
-                  Supervisor Note
-                </Label>
-                <Textarea
-                  id="supervisor_note"
-                  name="supervisor_note"
-                  value={currentEditorial.supervisor_note || ''}
-                  onChange={(e) => onFieldChange(activeIndex, 'supervisor_note', e.target.value)}
-                  className="h-32 resize-none"
-                  placeholder="Add supervisor notes here..."
-                  readOnly={isFieldReadOnly('supervisor_note')}
-                  disabled={isFieldReadOnly('supervisor_note')}
-                />
-              </div>
-              <div>
-                <Label htmlFor="admin_note" className="flex items-center mb-2">
-                  Admin Note
-                </Label>
-                <Textarea
-                  id="admin_note"
-                  name="admin_note"
-                  value={currentEditorial.admin_note || ''}
-                  onChange={(e) => onFieldChange(activeIndex, 'admin_note', e.target.value)}
-                  className="h-32 resize-none"
-                  placeholder="Add admin notes here..."
-                  readOnly={isFieldReadOnly('admin_note')}
-                  disabled={isFieldReadOnly('admin_note')}
                 />
               </div>
             </div>
