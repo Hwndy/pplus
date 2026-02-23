@@ -10,8 +10,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Bell, Settings, User, LogOut, Clock, CheckCircle } from 'lucide-react';
+import { Bell, Settings, User, LogOut, Clock, CheckCircle, Menu } from 'lucide-react';
 import { ReactNode, useState } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { useSidebar } from '@/components/ui/sidebar'; // ← now safe inside SidebarProvider
 
 interface HeaderProps {
   children?: ReactNode;
@@ -19,6 +21,8 @@ interface HeaderProps {
 
 export function Header({ children }: HeaderProps) {
   const { user, logout, activePair, monitoringPairs, setActivePair } = useAuth();
+  const isMobile = useIsMobile();
+  const { toggleSidebar } = useSidebar(); // This works now
 
   const [notifications, setNotifications] = useState([
     {
@@ -73,7 +77,6 @@ export function Header({ children }: HeaderProps) {
 
   if (!user) return null;
 
-  // Safe fallback letters
   const getFallbackLetter = (str?: string) => {
     return str && str.trim() ? str.trim()[0].toUpperCase() : '?';
   };
@@ -85,6 +88,17 @@ export function Header({ children }: HeaderProps) {
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 md:px-6">
       <div className="flex items-center gap-2 md:gap-4">
+        {isMobile && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            onClick={toggleSidebar}
+          >
+            <Menu className="h-5 w-5" />
+            <span className="sr-only">Toggle sidebar</span>
+          </Button>
+        )}
         {children}
         <div className="hidden md:flex items-center gap-3">
           <h1 className="text-lg font-semibold">P+Analytics Dashboard</h1>
@@ -103,16 +117,7 @@ export function Header({ children }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-4">
-        {/* <div className="hidden md:flex relative"> */}
-          {/* <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <input
-            type="search"
-            placeholder="Search..."
-            className="rounded-md border border-input bg-background pl-8 pr-3 py-2 text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" */}
-          {/* /> */}
-        {/* </div> */}
-
-        {/* Notifications */}
+        {/* Notifications Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="btn-icon relative">
@@ -192,7 +197,6 @@ export function Header({ children }: HeaderProps) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-80">
-            {/* Current Active Company */}
             <div className="flex items-center gap-3 p-4 border-b">
               <Avatar className="h-10 w-10">
                 <AvatarFallback className="bg-primary text-white text-sm">
@@ -208,7 +212,6 @@ export function Header({ children }: HeaderProps) {
               {activePair && <CheckCircle className="h-5 w-5 text-green-600" />}
             </div>
 
-            {/* Switch Company */}
             <DropdownMenuLabel className="text-xs font-medium text-muted-foreground px-4 pt-4">
               Switch monitoring company
             </DropdownMenuLabel>

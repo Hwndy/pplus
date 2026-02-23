@@ -1,58 +1,48 @@
-import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/auth/AuthContext';
 import { cn } from '@/lib/utils';
 import { Link, useLocation } from 'react-router-dom';
-import { useIsMobile } from '@/hooks/use-mobile';
 import {
   BarChart3,
+  BarChart2,
   FileText,
   Users,
   Settings,
   PieChart,
   CheckSquare,
-  FileInput,
-  ArrowRightLeft,
   LayoutDashboard,
-  BarChart,
-  BarChart2,
-  LineChart,
   Newspaper,
   Share2,
   Target,
-  FileCog,
-  BookOpen,
-  ThumbsUp,
-  AlertTriangle,
-  Building2,
-  Building,
-  Briefcase,
-  ShieldCheck,
-  BookOpenText,
-  Mountain,
-  Megaphone,
+  LineChart,
   Globe,
-  FileText as FileIcon,
-  ClipboardList,
-  ClipboardCheck,
-  History,
-  ChevronLeft,
-  Menu,
-  ArrowLeft,
-  ArrowRight,
+  Building2,
+  BookOpenText,
   Shield,
   PenTool,
-  Search,
-  TrendingUp,
   Inbox,
-  LogOut,
+  TrendingUp,
+  Search,
+  BookOpen,
+  ArrowLeft,
+  ArrowRight,
 } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Sidebar as ShadSidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  useSidebar,
+} from '@/components/ui/sidebar';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface NavItem {
   name: string;
@@ -64,7 +54,6 @@ interface NavItem {
 
 const defaultNavigation: NavItem[] = [];
 
-// Supervisor-specific navigation items
 const supervisorItems: NavItem[] = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Editorial', href: '/dashboard/editorial', icon: Newspaper },
@@ -75,16 +64,10 @@ const supervisorItems: NavItem[] = [
   { name: 'Industry Landscape', href: '/dashboard/industry-landscape', icon: Globe },
 ];
 
-export function Sidebar({ className, isOpen = true, onClose }: { className?: string; isOpen?: boolean; onClose?: () => void }) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+export function Sidebar() {
   const { user } = useAuth();
   const location = useLocation();
-  const isMobile = useIsMobile();
-
-  useEffect(() => {
-    const savedState = localStorage.getItem('sidebarState');
-    if (savedState === 'collapsed') setIsCollapsed(true);
-  }, []);
+  const { state: sidebarState, toggleSidebar } = useSidebar(); // shadcn toggle function
 
   if (!user) return null;
 
@@ -101,7 +84,7 @@ export function Sidebar({ className, isOpen = true, onClose }: { className?: str
       { name: 'Parameters', href: '/dashboard/parameters', icon: Settings },
     ];
 
-    const supervisorItems: NavItem[] = [
+    const supervisorItemsForAdmin: NavItem[] = [
       { name: 'Content Review', href: '/dashboard/supervisordashboard', icon: CheckSquare },
     ];
 
@@ -117,15 +100,13 @@ export function Sidebar({ className, isOpen = true, onClose }: { className?: str
     navigation = [
       ...adminItems,
       { name: 'Supervisor Features', href: '', icon: Shield, disabled: true },
-      ...supervisorItems,
+      ...supervisorItemsForAdmin,
       { name: 'Analyst Features', href: '', icon: PenTool, disabled: true },
       ...analystItems,
     ];
-  }
-  else if (userRole === 'supervisor') {
+  } else if (userRole === 'supervisor') {
     navigation = supervisorItems;
-  }
-  else if (userRole === 'analyst') {
+  } else if (userRole === 'analyst') {
     navigation = [
       { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
       { name: 'Editorial', href: '/dashboard/editorial', icon: Newspaper },
@@ -135,8 +116,7 @@ export function Sidebar({ className, isOpen = true, onClose }: { className?: str
       { name: 'Outcome & Insights', href: '/dashboard/outcome-insights', icon: LineChart },
       { name: 'Industry Landscape', href: '/dashboard/industry-landscape', icon: Globe },
     ];
-  }
-  else if (userRole === 'client') {
+  } else if (userRole === 'client') {
     const clientItems: NavItem[] = [
       { name: 'Executive Summary', href: '/dashboard', icon: LayoutDashboard },
       { name: 'Daily Mentions Inbox', href: '/dashboard/mentions-inbox', icon: Inbox },
@@ -158,76 +138,85 @@ export function Sidebar({ className, isOpen = true, onClose }: { className?: str
     navigation = clientItems;
   }
 
-  const toggleCollapse = () => {
-    const newState = !isCollapsed;
-    setIsCollapsed(newState);
-    localStorage.setItem('sidebarState', newState ? 'collapsed' : 'expanded');
+  const handleToggle = () => {
+    toggleSidebar(); // sync with shadcn state
+    const newState = sidebarState === 'expanded' ? 'collapsed' : 'expanded';
+    localStorage.setItem('sidebarState', newState);
+    document.documentElement.setAttribute('data-sidebar-state', newState);
   };
 
   return (
-    <aside className={cn(
-      "flex flex-col border-r bg-white pt-5 transition-all duration-300 h-[calc(100vh-4rem)]",
-      isCollapsed ? "!w-12" : "w-[240px]",
-      isMobile && !isOpen && "w-0 opacity-0 pointer-events-none",
-      isMobile && isOpen && "fixed z-40 left-0 shadow-xl w-[80%] max-w-[300px]",
-      className
-    )}>
-      <ScrollArea className={cn("flex flex-col h-full py-2", isCollapsed ? "!px-0" : "px-3")}>
-        <nav className="grid gap-1">
+    <ShadSidebar collapsible="icon" className="border-r bg-white">
+      <SidebarContent className="flex flex-col h-full">
+        <ScrollArea className="flex-1 py-2">
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {navigation.map((item) => {
+                  const isActive = location.pathname === item.href;
+                  const isDisabled = item.disabled;
+                  const Icon = item.icon;
+
+                  if (isDisabled) {
+                    return (
+                      <SidebarMenuItem key={item.name}>
+                        <div
+                          className={cn(
+                            "flex items-center rounded-md py-2 px-3 text-sm font-medium text-gray-400 cursor-not-allowed gap-3",
+                            sidebarState === 'collapsed' && "justify-center px-0"
+                          )}
+                        >
+                          <Icon className="h-5 w-5 text-gray-500" />
+                          {sidebarState !== 'collapsed' && <span>{item.name}</span>}
+                        </div>
+                      </SidebarMenuItem>
+                    );
+                  }
+
+                  return (
+                    <SidebarMenuItem key={item.name}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={isActive}
+                        tooltip={sidebarState === 'collapsed' ? item.name : undefined}
+                      >
+                        <Link to={item.href}>
+                          <Icon className={cn("h-5 w-5", isActive ? "text-indigo-600" : "text-gray-500")} />
+                          <span>{item.name}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </ScrollArea>
+
+        {/* Restored desktop collapse/expand button at bottom */}
+        <div className="mt-auto border-t py-3 px-4 flex justify-center hidden md:flex">
           <TooltipProvider>
-            {navigation.map((item) => {
-              const Icon = item.icon;
-              const isActive = location.pathname === item.href;
-              const isDisabled = item.disabled;
-
-              return (
-                <Tooltip key={item.name}>
-                  <TooltipTrigger asChild>
-                    <Link
-                      to={isDisabled ? '#' : item.href}
-                      className={cn(
-                        "flex items-center rounded-md py-2 text-sm font-medium transition-all",
-                        isCollapsed ? "justify-center !px-0" : "px-3 gap-3",
-                        isActive
-                          ? "bg-indigo-950 text-white"
-                          : isDisabled
-                            ? "text-gray-400 cursor-not-allowed"
-                            : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
-                      )}
-                      onClick={(e) => {
-                        if (isDisabled) e.preventDefault();
-                        if (isMobile && !isDisabled) onClose?.();
-                      }}
-                    >
-                      <Icon className={cn("h-5 w-5", isActive ? "text-white" : "text-gray-500")} />
-                      <span className={isCollapsed ? "hidden" : "block"}>{item.name}</span>
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">{item.name}</TooltipContent>
-                </Tooltip>
-              );
-            })}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  className="p-2 rounded-full hover:bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  onClick={handleToggle}
+                  aria-label={sidebarState === 'collapsed' ? 'Expand sidebar' : 'Collapse sidebar'}
+                >
+                  {sidebarState === 'collapsed' ? (
+                    <ArrowRight size={20} className="text-gray-700" />
+                  ) : (
+                    <ArrowLeft size={20} className="text-gray-700" />
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                {sidebarState === 'collapsed' ? 'Expand sidebar' : 'Collapse sidebar'}
+              </TooltipContent>
+            </Tooltip>
           </TooltipProvider>
-        </nav>
-      </ScrollArea>
-
-      {!isMobile && (
-        <div className="mt-auto border-t py-3 px-4 flex justify-center">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                className="p-2 rounded-full hover:bg-gray-200 transition-colors"
-                onClick={toggleCollapse}
-              >
-                {isCollapsed ? <ArrowRight size={20} /> : <ArrowLeft size={20} />}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right">
-              {isCollapsed ? 'Expand' : 'Collapse'} sidebar
-            </TooltipContent>
-          </Tooltip>
         </div>
-      )}
-    </aside>
+      </SidebarContent>
+    </ShadSidebar>
   );
 }
