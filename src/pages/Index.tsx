@@ -13,7 +13,7 @@ const Index = () => {
         {/* Right side - Illustration */}
         <div className="order-1 md:order-2 flex flex-col items-center justify-center">
           <img 
-            src="/lovable-uploads/loginpagepic.png" 
+            src="/uploads/loginpagepic.png" 
             alt="Analytics illustration" 
             className="max-w-full h-auto"
           />
