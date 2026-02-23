@@ -6,6 +6,7 @@ import { Mail, MailOpen, Clock, Eye, Target, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuth } from '@/components/auth/AuthContext';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface SwotItem {
   id: string;
@@ -32,11 +33,15 @@ export default function SwotAnalysisPage() {
   const [loading, setLoading] = useState(false);
   const [readStatus, setReadStatus] = useState<Record<string, boolean>>({});
 
-  const hasValidDateRange = filterValues.dateRange && Array.isArray(filterValues.dateRange) && filterValues.dateRange[0] && filterValues.dateRange[1];
+  const hasValidDateRange = filterValues.dateRange && 
+    Array.isArray(filterValues.dateRange) && 
+    filterValues.dateRange[0] && 
+    filterValues.dateRange[1];
+
   const startDate = (hasValidDateRange ? filterValues.dateRange[0] : '') as string;
   const endDate = (hasValidDateRange ? filterValues.dateRange[1] : '') as string;
 
-  // Load read status from localStorage
+  // Load read status
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -48,7 +53,7 @@ export default function SwotAnalysisPage() {
     }
   }, []);
 
-  // Save read status to localStorage
+  // Save read status
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(readStatus));
@@ -64,7 +69,6 @@ export default function SwotAnalysisPage() {
       return;
     }
 
-    // Only fetch if both dates are selected
     if (filterValues.dateRange) {
       const [start, end] = filterValues.dateRange as [string | null, string | null];
       if (new Date(start) > new Date(end)) {
@@ -81,7 +85,6 @@ export default function SwotAnalysisPage() {
       params.append('pair_id', String(activePair.pair_id));
 
       if (hasValidDateRange) {
-        // Convert to month format for API
         const startDateObj = new Date(startDate);
         const month = `${startDateObj.getFullYear()}-${String(startDateObj.getMonth() + 1).padStart(2, '0')}`;
         params.append('month', month);
@@ -147,10 +150,10 @@ export default function SwotAnalysisPage() {
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'approved': return 'bg-green-100 text-green-800';
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'draft': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'approved': return 'bg-green-100 text-green-800 border-green-200';
+      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'draft': return 'bg-gray-100 text-gray-800 border-gray-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
@@ -163,7 +166,7 @@ export default function SwotAnalysisPage() {
       label: 'Select Date Range',
       type: 'daterange',
       placeholder: 'Pick date range',
-      closeOnSelect: true,        // ← This makes the calendar close after ANY date selection
+      closeOnSelect: true,
     },
   ];
 
@@ -193,16 +196,17 @@ export default function SwotAnalysisPage() {
   const displayDates = getDisplayDates();
 
   return (
-    <div className="space-y-8 animate-fade-in relative">
+    <div className="space-y-6 md:space-y-8 pb-6 animate-fade-in relative">
+      {/* Full-screen loading overlay */}
       {loading && (
-        <div className="fixed inset-0 bg-white/60 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 flex flex-col items-center space-y-4 border border-gray-100">
-            <Loader2 className="w-12 h-12 animate-spin text-indigo-600" />
+        <div className="fixed inset-0 bg-white/70 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 md:p-8 flex flex-col items-center space-y-4 border border-gray-100 max-w-sm mx-4">
+            <Loader2 className="w-10 h-10 md:w-12 md:h-12 animate-spin text-indigo-600" />
             <div className="text-center">
-              <p className="text-lg font-semibold text-gray-800">
-                Loading SWOT analyses for {activePair?.base_company.company_name || 'your company'}
+              <p className="text-base md:text-lg font-semibold text-gray-800">
+                Loading SWOT analyses...
               </p>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-xs md:text-sm text-gray-500 mt-1">
                 {formatDate(displayDates.start)} – {formatDate(displayDates.end)}
               </p>
             </div>
@@ -210,30 +214,40 @@ export default function SwotAnalysisPage() {
         </div>
       )}
 
-      {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 rounded-2xl p-8 text-white relative overflow-hidden">
+      {/* Header - Responsive */}
+      <div className="bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 rounded-xl md:rounded-2xl p-5 md:p-8 text-white relative overflow-hidden">
         <div className="absolute inset-0 bg-black/10"></div>
-        <div className="relative z-10 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold mb-2 tracking-tight">SWOT Analysis</h1>
-            <p className="text-purple-100 text-lg">Strategic insights and analysis</p>
-            {activePair && (
-              <p className="text-purple-200 text-sm mt-1">Currently viewing: <strong>{activePair.base_company.company_name}</strong></p>
-            )}
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="bg-white/20 backdrop-blur-sm rounded-full p-4">
-              <Target size={32} className="text-white" />
+        <div className="relative z-10">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 md:gap-0">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold mb-1 md:mb-2 tracking-tight">
+                SWOT Analysis
+              </h1>
+              <p className="text-purple-100 text-base md:text-lg">
+                Strategic insights and analysis
+              </p>
+              {activePair && (
+                <p className="text-purple-200 text-sm mt-1">
+                  Currently viewing: <strong>{activePair.base_company.company_name}</strong>
+                </p>
+              )}
             </div>
-            <div className="text-right">
-              <div className="text-sm text-purple-100">Total Analyses</div>
-              <div className="text-2xl font-bold text-white">{totalCount}</div>
-              <div className="text-sm text-purple-200">{unreadCount} unread</div>
+
+            <div className="flex items-center gap-4 md:gap-6">
+              <div className="bg-white/20 backdrop-blur-sm rounded-full p-3 md:p-4">
+                <Target size={28} className="md:size-32 text-white" />
+              </div>
+              <div className="text-right">
+                <div className="text-xs md:text-sm text-purple-100">Total Analyses</div>
+                <div className="text-xl md:text-2xl font-bold text-white">{totalCount}</div>
+                <div className="text-xs text-purple-200">{unreadCount} unread</div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
+      {/* Filter */}
       <UniversalFilter
         filters={filterOptions}
         values={filterValues}
@@ -241,19 +255,20 @@ export default function SwotAnalysisPage() {
         onReset={() => setFilterValues({})}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* List */}
+      {/* Main content - stack on mobile, side-by-side on desktop */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+        {/* SWOT List */}
         <div className="lg:col-span-2 space-y-4">
           {swotItems.length === 0 ? (
             <Card className="border-0 shadow-lg">
-              <CardContent className="flex flex-col items-center justify-center h-96 text-center">
-                <Target size={64} className="text-gray-400 mb-6" />
-                <h3 className="text-xl font-semibold text-gray-800 mb-3">
+              <CardContent className="flex flex-col items-center justify-center h-64 md:h-96 text-center p-6">
+                <Target size={48} className="md:size-64 text-gray-400 mb-6" />
+                <h3 className="text-lg md:text-xl font-semibold text-gray-800 mb-3">
                   {hasValidDateRange
                     ? 'No SWOT analyses found for the selected period'
                     : 'Select a date range to load SWOT analyses'}
                 </h3>
-                <p className="text-gray-500 max-w-md">
+                <p className="text-sm md:text-base text-gray-500 max-w-md">
                   {hasValidDateRange
                     ? `No analyses found for ${activePair?.base_company.company_name || 'this company'} in the selected period.`
                     : 'Use the date picker above to fetch SWOT analyses.'}
@@ -265,33 +280,42 @@ export default function SwotAnalysisPage() {
               <Card
                 key={swot.id}
                 className={cn(
-                  "border-0 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer border-l-4",
+                  "border-0 shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer border-l-4",
                   !swot.isRead
-                    ? 'bg-white border-l-purple-500 font-medium'
-                    : 'bg-gray-50/70 border-l-gray-300 text-gray-600',
-                  selectedSwot?.id === swot.id ? 'ring-2 ring-purple-500' : ''
+                    ? 'bg-white border-l-purple-500'
+                    : 'bg-gray-50/80 border-l-gray-300',
+                  selectedSwot?.id === swot.id && 'ring-2 ring-purple-400 shadow-purple-100'
                 )}
                 onClick={() => handleSwotClick(swot)}
               >
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-3">
+                <CardContent className="p-4 md:p-6">
+                  {/* Top row: date + read icon */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2.5">
                       {swot.isRead ? (
-                        <MailOpen size={16} className="text-gray-400" />
+                        <MailOpen size={16} className="text-gray-400 flex-shrink-0" />
                       ) : (
-                        <Mail size={16} className="text-purple-600" />
+                        <Mail size={16} className="text-purple-600 flex-shrink-0" />
                       )}
-                      <span className={cn("text-sm font-medium", swot.isRead ? 'text-gray-500' : 'text-gray-900')}>
+                      <span className={cn(
+                        "text-xs md:text-sm font-medium",
+                        swot.isRead ? 'text-gray-500' : 'text-gray-900'
+                      )}>
                         {format(new Date(swot.date), 'MMM dd, yyyy')}
                       </span>
                     </div>
                   </div>
 
-                  <h3 className={cn("text-lg leading-tight mb-2", swot.isRead ? 'text-gray-700' : 'font-semibold text-gray-900')}>
+                  {/* Title */}
+                  <h3 className={cn(
+                    "text-base md:text-lg leading-tight mb-3",
+                    swot.isRead ? 'text-gray-700' : 'font-semibold text-gray-900'
+                  )}>
                     {swot.title}
                   </h3>
 
-                  <div className="grid grid-cols-2 gap-3 text-xs mb-3">
+                  {/* Counts */}
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-gray-600">
                     <div>
                       <span className="font-medium">Strengths:</span> {swot.strengths.length}
                     </div>
@@ -311,86 +335,107 @@ export default function SwotAnalysisPage() {
           )}
         </div>
 
-        {/* Detail Panel */}
-        <div className="lg:col-span-1">
+        {/* Detail View - full width on mobile, sticky on desktop */}
+        <div className={cn(
+          "lg:col-span-1",
+          selectedSwot ? "block" : "hidden lg:block"
+        )}>
           {selectedSwot ? (
-            <Card className="border-0 shadow-lg sticky top-4">
-              <CardHeader>
-                <CardTitle className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                  <Eye size={20} className="text-purple-600" />
+            <Card className="border-0 shadow-lg sticky top-4 lg:top-20">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg md:text-xl font-bold text-gray-800 flex items-center gap-2.5">
+                  <Eye size={20} className="text-purple-600 flex-shrink-0" />
                   Analysis Details
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-5 md:space-y-6 text-sm">
                 <div>
-                  <div className="flex items-start justify-between mb-3">
-                    <h3 className="font-semibold text-gray-900 text-lg leading-tight pr-4">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
+                    <h3 className="font-semibold text-gray-900 text-base md:text-lg leading-tight">
                       {selectedSwot.title}
                     </h3>
                   </div>
-                  <p className="text-sm text-gray-600">{format(new Date(selectedSwot.date), 'PPPP')}</p>
+                  <p className="text-xs md:text-sm text-gray-600">
+                    {format(new Date(selectedSwot.date), 'PPPP')}
+                  </p>
                 </div>
 
                 {/* Strengths */}
-                <div className="bg-green-50 rounded-lg p-4">
-                  <h4 className="text-sm font-semibold text-green-800 mb-2 flex items-center gap-2">
-                    <span className="w-2 h-2 bg-green-600 rounded-full"></span>
+                <div className="bg-green-50 rounded-lg p-4 md:p-5">
+                  <h4 className="text-sm font-semibold text-green-800 mb-2.5 flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 bg-green-600 rounded-full flex-shrink-0"></span>
                     Strengths ({selectedSwot.strengths.length})
                   </h4>
-                  <ul className="space-y-1">
+                  <ul className="space-y-1.5 text-sm">
                     {selectedSwot.strengths.map((s, i) => (
-                      <li key={i} className="text-sm text-green-900 leading-relaxed">• {s.analysis}</li>
+                      <li key={i} className="text-green-900 leading-relaxed">• {s.analysis}</li>
                     ))}
+                    {selectedSwot.strengths.length === 0 && (
+                      <li className="text-gray-500 italic">No strengths recorded</li>
+                    )}
                   </ul>
                 </div>
 
                 {/* Weaknesses */}
-                <div className="bg-red-50 rounded-lg p-4">
-                  <h4 className="text-sm font-semibold text-red-800 mb-2 flex items-center gap-2">
-                    <span className="w-2 h-2 bg-red-600 rounded-full"></span>
+                <div className="bg-red-50 rounded-lg p-4 md:p-5">
+                  <h4 className="text-sm font-semibold text-red-800 mb-2.5 flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 bg-red-600 rounded-full flex-shrink-0"></span>
                     Weaknesses ({selectedSwot.weaknesses.length})
                   </h4>
-                  <ul className="space-y-1">
+                  <ul className="space-y-1.5 text-sm">
                     {selectedSwot.weaknesses.map((w, i) => (
-                      <li key={i} className="text-sm text-red-900 leading-relaxed">• {w.analysis}</li>
+                      <li key={i} className="text-red-900 leading-relaxed">• {w.analysis}</li>
                     ))}
+                    {selectedSwot.weaknesses.length === 0 && (
+                      <li className="text-gray-500 italic">No weaknesses recorded</li>
+                    )}
                   </ul>
                 </div>
 
                 {/* Opportunities */}
-                <div className="bg-blue-50 rounded-lg p-4">
-                  <h4 className="text-sm font-semibold text-blue-800 mb-2 flex items-center gap-2">
-                    <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
+                <div className="bg-blue-50 rounded-lg p-4 md:p-5">
+                  <h4 className="text-sm font-semibold text-blue-800 mb-2.5 flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 bg-blue-600 rounded-full flex-shrink-0"></span>
                     Opportunities ({selectedSwot.opportunities.length})
                   </h4>
-                  <ul className="space-y-1">
+                  <ul className="space-y-1.5 text-sm">
                     {selectedSwot.opportunities.map((o, i) => (
-                      <li key={i} className="text-sm text-blue-900 leading-relaxed">• {o.analysis}</li>
+                      <li key={i} className="text-blue-900 leading-relaxed">• {o.analysis}</li>
                     ))}
+                    {selectedSwot.opportunities.length === 0 && (
+                      <li className="text-gray-500 italic">No opportunities recorded</li>
+                    )}
                   </ul>
                 </div>
 
                 {/* Threats */}
-                <div className="bg-orange-50 rounded-lg p-4">
-                  <h4 className="text-sm font-semibold text-orange-800 mb-2 flex items-center gap-2">
-                    <span className="w-2 h-2 bg-orange-600 rounded-full"></span>
+                <div className="bg-orange-50 rounded-lg p-4 md:p-5">
+                  <h4 className="text-sm font-semibold text-orange-800 mb-2.5 flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 bg-orange-600 rounded-full flex-shrink-0"></span>
                     Threats ({selectedSwot.threats.length})
                   </h4>
-                  <ul className="space-y-1">
+                  <ul className="space-y-1.5 text-sm">
                     {selectedSwot.threats.map((t, i) => (
-                      <li key={i} className="text-sm text-orange-900 leading-relaxed">• {t.analysis}</li>
+                      <li key={i} className="text-orange-900 leading-relaxed">• {t.analysis}</li>
                     ))}
+                    {selectedSwot.threats.length === 0 && (
+                      <li className="text-gray-500 italic">No threats recorded</li>
+                    )}
                   </ul>
                 </div>
               </CardContent>
             </Card>
           ) : (
-            <Card className="border-0 shadow-lg">
-              <CardContent className="flex items-center justify-center h-64">
-                <div className="text-center">
-                  <Eye size={48} className="mx-auto text-gray-400 mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-800 mb-2">Select an analysis</h3>
-                  <p className="text-gray-500">Click on a SWOT analysis to view details.</p>
+            <Card className="border-0 shadow-lg hidden lg:block">
+              <CardContent className="flex items-center justify-center h-64 md:h-96 text-center p-6">
+                <div>
+                  <Eye size={48} className="mx-auto text-gray-400 mb-6" />
+                  <h3 className="text-lg md:text-xl font-semibold text-gray-800 mb-3">
+                    Select an analysis
+                  </h3>
+                  <p className="text-sm md:text-base text-gray-500">
+                    Click on a SWOT analysis from the list to view full details.
+                  </p>
                 </div>
               </CardContent>
             </Card>

@@ -2,10 +2,11 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { UniversalFilter, FilterValues } from '@/components/ui/UniversalFilter';
-import { Mail, MailOpen, Eye, Lightbulb, Loader2 } from 'lucide-react';
+import { Mail, MailOpen, Clock, Eye, Lightbulb, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAuth } from '@/components/auth/AuthContext';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface InsightItem {
   id: string;
@@ -33,10 +34,15 @@ export default function OutcomeInsightsPage() {
   const [loading, setLoading] = useState(false);
   const [readStatus, setReadStatus] = useState<Record<string, boolean>>({});
 
-  const hasValidDateRange = filterValues.dateRange && Array.isArray(filterValues.dateRange) && filterValues.dateRange[0] && filterValues.dateRange[1];
+  const hasValidDateRange = filterValues.dateRange && 
+    Array.isArray(filterValues.dateRange) && 
+    filterValues.dateRange[0] && 
+    filterValues.dateRange[1];
+
   const startDate = (hasValidDateRange ? filterValues.dateRange[0] : '') as string;
   const endDate = (hasValidDateRange ? filterValues.dateRange[1] : '') as string;
 
+  // Load read status from localStorage
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -48,6 +54,7 @@ export default function OutcomeInsightsPage() {
     }
   }, []);
 
+  // Save read status to localStorage
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(readStatus));
@@ -66,9 +73,9 @@ export default function OutcomeInsightsPage() {
     if (filterValues.dateRange) {
       const [start, end] = filterValues.dateRange as [string | null, string | null];
       if (new Date(start) > new Date(end)) {
-      toast.error('Start date must be before or equal to end date');
-      setLoading(false);
-      return;
+        toast.error('Start date must be before or equal to end date');
+        setLoading(false);
+        return;
       }
     }
 
@@ -140,23 +147,15 @@ export default function OutcomeInsightsPage() {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'approved': return 'bg-green-100 text-green-800';
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'draft': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
   const getCategoryColor = (category: string) => {
     const colors = [
-      'bg-blue-100 text-blue-800',
-      'bg-purple-100 text-purple-800',
-      'bg-pink-100 text-pink-800',
-      'bg-indigo-100 text-indigo-800',
-      'bg-cyan-100 text-cyan-800',
-      'bg-teal-100 text-teal-800',
+      'bg-blue-100 text-blue-800 border-blue-200',
+      'bg-purple-100 text-purple-800 border-purple-200',
+      'bg-pink-100 text-pink-800 border-pink-200',
+      'bg-indigo-100 text-indigo-800 border-indigo-200',
+      'bg-cyan-100 text-cyan-800 border-cyan-200',
+      'bg-teal-100 text-teal-800 border-teal-200',
+      'bg-amber-100 text-amber-800 border-amber-200',
     ];
     const hash = category.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
     return colors[hash % colors.length];
@@ -171,7 +170,7 @@ export default function OutcomeInsightsPage() {
       label: 'Select Date Range',
       type: 'daterange',
       placeholder: 'Pick date range',
-      closeOnSelect: true,        // ← This makes the calendar close after ANY date selection
+      closeOnSelect: true,
     },
   ];
 
@@ -201,47 +200,56 @@ export default function OutcomeInsightsPage() {
   const displayDates = getDisplayDates();
 
   return (
-    <div className="space-y-8 animate-fade-in relative">
+    <div className="space-y-6 md:space-y-8 pb-6 animate-fade-in relative">
+      {/* Full-screen loading overlay */}
       {loading && (
-        <div className="fixed inset-0 bg-white/60 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 flex flex-col items-center space-y-4 border border-gray-100">
-            <Loader2 className="w-12 h-12 animate-spin text-amber-600" />
-            <div className="text-center">
-              <p className="text-lg font-semibold text-gray-800">
-                Loading outcome insights for {activePair?.base_company.company_name || 'your company'}
-              </p>
-              <p className="text-sm text-gray-500 mt-1">
-                {formatDate(displayDates.start)} – {formatDate(displayDates.end)}
-              </p>
-            </div>
+        <div className="fixed inset-0 bg-white/70 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 md:p-8 flex flex-col items-center space-y-4 border border-gray-100 max-w-sm mx-4 text-center">
+            <Loader2 className="w-10 h-10 md:w-12 md:h-12 animate-spin text-amber-600" />
+            <p className="text-base md:text-lg font-semibold text-gray-800">
+              Loading outcome insights...
+            </p>
+            <p className="text-xs md:text-sm text-gray-500">
+              {formatDate(displayDates.start)} – {formatDate(displayDates.end)}
+            </p>
           </div>
         </div>
       )}
 
-      {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 rounded-2xl p-8 text-white relative overflow-hidden">
+      {/* Header - Responsive */}
+      <div className="bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 rounded-xl md:rounded-2xl p-5 md:p-8 text-white relative overflow-hidden">
         <div className="absolute inset-0 bg-black/10"></div>
-        <div className="relative z-10 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold mb-2 tracking-tight">Outcome Insights</h1>
-            <p className="text-white text-lg">Strategic insights and recommendations</p>
-            {activePair && (
-              <p className="text-white text-sm mt-1">Currently viewing: <strong>{activePair.base_company.company_name}</strong></p>
-            )}
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="bg-white/20 backdrop-blur-sm rounded-full p-4">
-              <Lightbulb size={32} className="text-white" />
+        <div className="relative z-10">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 md:gap-0">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold mb-1 md:mb-2 tracking-tight">
+                Outcome Insights
+              </h1>
+              <p className="text-white text-base md:text-lg">
+                Strategic insights and recommendations
+              </p>
+              {activePair && (
+                <p className="text-white text-sm mt-1">
+                  Currently viewing: <strong>{activePair.base_company.company_name}</strong>
+                </p>
+              )}
             </div>
-            <div className="text-right">
-              <div className="text-sm text-white">Total Insights</div>
-              <div className="text-2xl font-bold text-white">{totalCount}</div>
-              <div className="text-sm text-white">{unreadCount} unread</div>
+
+            <div className="flex items-center gap-4 md:gap-6">
+              <div className="bg-white/20 backdrop-blur-sm rounded-full p-3 md:p-4">
+                <Lightbulb size={28} className="md:size-32 text-white" />
+              </div>
+              <div className="text-right">
+                <div className="text-xs md:text-sm text-white">Total Insights</div>
+                <div className="text-xl md:text-2xl font-bold text-white">{totalCount}</div>
+                <div className="text-xs text-white">{unreadCount} unread</div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
+      {/* Filter */}
       <UniversalFilter
         filters={filterOptions}
         values={filterValues}
@@ -249,19 +257,20 @@ export default function OutcomeInsightsPage() {
         onReset={() => setFilterValues({})}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* List */}
+      {/* Main content - stack on mobile, side-by-side on desktop */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+        {/* Insight List */}
         <div className="lg:col-span-2 space-y-4">
           {insightItems.length === 0 ? (
             <Card className="border-0 shadow-lg">
-              <CardContent className="flex flex-col items-center justify-center h-96 text-center">
-                <Lightbulb size={64} className="text-gray-400 mb-6" />
-                <h3 className="text-xl font-semibold text-gray-800 mb-3">
+              <CardContent className="flex flex-col items-center justify-center h-64 md:h-96 text-center p-6">
+                <Lightbulb size={48} className="md:size-64 text-gray-400 mb-6" />
+                <h3 className="text-lg md:text-xl font-semibold text-gray-800 mb-3">
                   {hasValidDateRange
                     ? 'No outcome insights found for the selected period'
                     : 'Select a date range to load outcome insights'}
                 </h3>
-                <p className="text-gray-500 max-w-md">
+                <p className="text-sm md:text-base text-gray-500 max-w-md">
                   {hasValidDateRange
                     ? `No insights found for ${activePair?.base_company.company_name || 'this company'} in the selected period.`
                     : 'Use the date picker above to fetch outcome insights.'}
@@ -273,33 +282,42 @@ export default function OutcomeInsightsPage() {
               <Card
                 key={insight.id}
                 className={cn(
-                  "border-0 shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer border-l-4",
+                  "border-0 shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer border-l-4",
                   !insight.isRead
-                    ? 'bg-white border-l-amber-500 font-medium'
-                    : 'bg-gray-50/70 border-l-gray-300 text-gray-600',
-                  selectedInsight?.id === insight.id ? 'ring-2 ring-amber-500' : ''
+                    ? 'bg-white border-l-amber-500'
+                    : 'bg-gray-50/80 border-l-gray-300',
+                  selectedInsight?.id === insight.id && 'ring-2 ring-amber-400 shadow-amber-100'
                 )}
                 onClick={() => handleInsightClick(insight)}
               >
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-3">
+                <CardContent className="p-4 md:p-6">
+                  {/* Top row: date + read icon */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2.5">
                       {insight.isRead ? (
-                        <MailOpen size={16} className="text-gray-400" />
+                        <MailOpen size={16} className="text-gray-400 flex-shrink-0" />
                       ) : (
-                        <Mail size={16} className="text-amber-600" />
+                        <Mail size={16} className="text-amber-600 flex-shrink-0" />
                       )}
-                      <span className={cn("text-sm font-medium", insight.isRead ? 'text-gray-500' : 'text-gray-900')}>
+                      <span className={cn(
+                        "text-xs md:text-sm font-medium",
+                        insight.isRead ? 'text-gray-500' : 'text-gray-900'
+                      )}>
                         {format(new Date(insight.date), 'MMM dd, yyyy')}
                       </span>
                     </div>
                   </div>
 
-                  <h3 className={cn("text-lg leading-tight mb-2", insight.isRead ? 'text-gray-700' : 'font-semibold text-gray-900')}>
+                  {/* Title */}
+                  <h3 className={cn(
+                    "text-base md:text-lg leading-tight mb-3",
+                    insight.isRead ? 'text-gray-700' : 'font-semibold text-gray-900'
+                  )}>
                     {insight.title}
                   </h3>
 
-                  <div className="flex items-center gap-2 mb-3">
+                  {/* Counts */}
+                  <div className="flex flex-wrap gap-2">
                     <Badge variant="secondary" className="text-xs">
                       {insight.totalInsights} insights
                     </Badge>
@@ -313,58 +331,73 @@ export default function OutcomeInsightsPage() {
           )}
         </div>
 
-        {/* Detail Panel */}
-        <div className="lg:col-span-1">
+        {/* Detail View - full width on mobile, sticky on desktop */}
+        <div className={cn(
+          "lg:col-span-1",
+          selectedInsight ? "block" : "hidden lg:block"
+        )}>
           {selectedInsight ? (
-            <Card className="border-0 shadow-lg sticky top-4">
-              <CardHeader>
-                <CardTitle className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                  <Eye size={20} className="text-amber-600" />
+            <Card className="border-0 shadow-lg sticky top-4 lg:top-20">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg md:text-xl font-bold text-gray-800 flex items-center gap-2.5">
+                  <Eye size={20} className="text-amber-600 flex-shrink-0" />
                   Insight Details
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-5 md:space-y-6 text-sm">
                 <div>
-                  <div className="flex items-start justify-between mb-3">
-                    <h3 className="font-semibold text-gray-900 text-lg leading-tight pr-4">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
+                    <h3 className="font-semibold text-gray-900 text-base md:text-lg leading-tight">
                       {selectedInsight.title}
                     </h3>
                   </div>
-                  <p className="text-sm text-gray-600">{format(new Date(selectedInsight.date), 'PPPP')}</p>
+                  <p className="text-xs md:text-sm text-gray-600">
+                    {format(new Date(selectedInsight.date), 'PPPP')}
+                  </p>
                 </div>
 
-                {/* <div className="bg-amber-50 rounded-lg p-4">
-                  <h4 className="text-sm font-semibold text-amber-800 mb-2">
-                    Total Insights: {selectedInsight.totalInsights}
-                  </h4>
-                  <p className="text-sm text-amber-900">{selectedInsight.analystNote}</p>
-                </div> */}
-
                 {/* Insights by Category */}
-                <div className="space-y-3">
-                  <h4 className="text-sm font-medium text-gray-700 border-b border-gray-200 pb-1">Insights by Category</h4>
+                <div className="space-y-4">
+                  <h4 className="text-sm font-medium text-gray-700 border-b border-gray-200 pb-1.5">
+                    Insights by Category
+                  </h4>
                   <div className="space-y-3">
-                    {selectedInsight.insights.map((insight, i) => (
-                      <div key={i} className="bg-gray-50 rounded-lg p-3">
-                        <Badge className={getCategoryColor(insight.category)} variant="secondary">
-                          {insight.category}
-                        </Badge>
-                        <p className="text-sm text-gray-700 mt-2 leading-relaxed">
-                          {insight.analysis}
-                        </p>
-                      </div>
-                    ))}
+                    {selectedInsight.insights.length === 0 ? (
+                      <p className="text-sm text-gray-500 italic text-center py-4">
+                        No insights recorded for this analysis
+                      </p>
+                    ) : (
+                      selectedInsight.insights.map((insight, i) => (
+                        <div 
+                          key={i} 
+                          className="bg-gray-50 rounded-lg p-4 md:p-5 border border-gray-100"
+                        >
+                          <Badge 
+                            className={cn("mb-2.5 text-xs", getCategoryColor(insight.category))}
+                          >
+                            {insight.category}
+                          </Badge>
+                          <p className="text-gray-700 leading-relaxed text-sm">
+                            {insight.analysis}
+                          </p>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
               </CardContent>
             </Card>
           ) : (
-            <Card className="border-0 shadow-lg">
-              <CardContent className="flex items-center justify-center h-64">
-                <div className="text-center">
-                  <Eye size={48} className="mx-auto text-gray-400 mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-800 mb-2">Select an insight</h3>
-                  <p className="text-gray-500">Click on an outcome insight to view details.</p>
+            <Card className="border-0 shadow-lg hidden lg:block">
+              <CardContent className="flex items-center justify-center h-64 md:h-96 text-center p-6">
+                <div>
+                  <Eye size={48} className="mx-auto text-gray-400 mb-6" />
+                  <h3 className="text-lg md:text-xl font-semibold text-gray-800 mb-3">
+                    Select an insight
+                  </h3>
+                  <p className="text-sm md:text-base text-gray-500">
+                    Click on an outcome insight from the list to view full details.
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -373,4 +406,4 @@ export default function OutcomeInsightsPage() {
       </div>
     </div>
   );
-}
+} 

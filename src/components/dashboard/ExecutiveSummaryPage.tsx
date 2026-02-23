@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/components/auth/AuthContext';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 const COLORS = ['#4F46E5', '#06B6D4', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 const SENTIMENT_COLORS = ['#10B981', '#F59E0B', '#EF4444'];
@@ -124,11 +125,9 @@ export function ExecutiveSummaryPage() {
 
     let shouldFetch = true;
 
-    // Only proceed if we have a complete date range
     if (filterValues.dateRange) {
       const [startDate, endDate] = filterValues.dateRange as [string | null, string | null];
 
-      // If either date is missing → do NOT fetch yet
       if (!startDate || !endDate) {
         shouldFetch = false;
       } else if (new Date(startDate) > new Date(endDate)) {
@@ -137,7 +136,6 @@ export function ExecutiveSummaryPage() {
       }
     }
 
-    // If no complete valid date range, don't trigger fetch
     if (!shouldFetch) {
       setLoading(false);
       return;
@@ -194,14 +192,12 @@ export function ExecutiveSummaryPage() {
     } finally {
       setLoading(false);
     }
-  }, [token, activePair, filterValues.dateRange]); // ← Fixed: only depend on dateRange, not full filterValues
+  }, [token, activePair, filterValues.dateRange]);
 
-  // Re-fetch when activePair changes or dateRange completes/changes
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  // Derived values
   const totalMentions =
     data.summary.totalMediaExposure ||
     data.summary.positiveMediaExposure + data.summary.negativeMediaExposure + data.summary.neutralMediaExposure;
@@ -224,7 +220,6 @@ export function ExecutiveSummaryPage() {
     { name: 'Print', value: data.summary.mediaVehicle.print },
   ];
 
-  // Weekly Trend Data — uses real data with fallback
   const weeklyTrendData = useMemo(() => {
     const trend = data.summary.weeklyTrendOnBrandMediaExposure;
     if (!trend || (!trend.online.weekly_breakdown.length && !trend.print.weekly_breakdown.length)) {
@@ -255,7 +250,6 @@ export function ExecutiveSummaryPage() {
       }));
   }, [data.summary.weeklyTrendOnBrandMediaExposure]);
 
-  // Competitive Share — safe parsing
   const competitiveShareData = useMemo(() => {
     const share = data.summary.competitiveMediaShare;
 
@@ -323,16 +317,20 @@ export function ExecutiveSummaryPage() {
   const displayDates = getDisplayDates();
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex justify-between items-center bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 rounded-2xl p-8 text-white relative overflow-hidden">
-        <h2 className="text-2xl font-bold text-white bg-clip-text">
-          Executive Summary - {data.company}
-        </h2>
-        <div className="text-sm text-white">
-          {formatDate(displayDates.start)} – {formatDate(displayDates.end)}
+    <div className="space-y-5 md:space-y-6 pb-6 animate-fade-in">
+      {/* Hero Header - Responsive */}
+      <div className="bg-gradient-to-r from-indigo-600 via-blue-600 to-cyan-600 rounded-xl md:rounded-2xl p-5 md:p-8 text-white relative overflow-hidden">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-0">
+          <h2 className="text-xl md:text-2xl lg:text-3xl font-bold">
+            Executive Summary - {data.company}
+          </h2>
+          <div className="text-sm md:text-base opacity-90">
+            {formatDate(displayDates.start)} – {formatDate(displayDates.end)}
+          </div>
         </div>
       </div>
 
+      {/* Filter - Stays full-width */}
       <UniversalFilter
         filters={filterOptions}
         values={filterValues}
@@ -346,115 +344,150 @@ export function ExecutiveSummaryPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      {/* KPI Cards - Responsive grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
         <DataCard title="Total Media Mentions" variant="glass" icon={<BarChart2 className="text-indigo-600" />}>
-          <div className="text-3xl font-bold text-indigo-600">{totalMentions.toLocaleString()}</div>
-          <div className="text-sm text-gray-500">Total mentions</div>
+          <div className="text-2xl md:text-3xl font-bold text-indigo-600">{totalMentions.toLocaleString()}</div>
+          <div className="text-xs md:text-sm text-gray-500 mt-1">Total mentions</div>
         </DataCard>
 
         <DataCard title="Reputation Score" variant="glass" icon={<Award className="text-cyan-600" />}>
-          <div className="text-3xl font-bold text-cyan-600">
+          <div className="text-2xl md:text-3xl font-bold text-cyan-600">
             {data.summary.brandMediaReputationScore.toFixed(2)}
           </div>
-          <div className="text-sm text-gray-500">out of 1.0</div>
+          <div className="text-xs md:text-sm text-gray-500 mt-1">out of 1.0</div>
         </DataCard>
 
         <DataCard title="Local Media Exposure" variant="glass" icon={<Newspaper className="text-emerald-600" />}>
-          <div className="text-3xl font-bold text-emerald-600">
+          <div className="text-2xl md:text-3xl font-bold text-emerald-600">
             {data.summary.brandExposureInLocalMedia.toLocaleString()}
           </div>
-          <div className="text-sm text-gray-500">Local mentions</div>
+          <div className="text-xs md:text-sm text-gray-500 mt-1">Local mentions</div>
         </DataCard>
 
         <DataCard title="International Media" variant="glass" icon={<Globe className="text-amber-600" />}>
-          <div className="text-3xl font-bold text-amber-600">
+          <div className="text-2xl md:text-3xl font-bold text-amber-600">
             {data.summary.brandExposureInInternationalMedia.toLocaleString()}
           </div>
-          <div className="text-sm text-gray-500">International mentions</div>
+          <div className="text-xs md:text-sm text-gray-500 mt-1">International mentions</div>
         </DataCard>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* Charts Row - Stacks on mobile, 1–3 columns */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
         <DataCard title="Sentiment Analysis" variant="glass" icon={<PieChartIcon className="text-indigo-600" />}>
-          <div className="h-80 relative p-2">
+          <div className={cn("relative", "h-64 sm:h-72 md:h-80 lg:h-96")}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={sentimentData} cx="50%" cy="50%" innerRadius="50%" outerRadius="90%" dataKey="value" paddingAngle={3}>
+                <Pie
+                  data={sentimentData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius="45%"
+                  outerRadius="85%"
+                  dataKey="value"
+                  paddingAngle={4}
+                  labelLine={false}
+                >
                   {sentimentData.map((_, i) => (
                     <Cell key={i} fill={SENTIMENT_COLORS[i]} />
                   ))}
                 </Pie>
                 <Tooltip formatter={(v: number) => `${v}%`} />
-                <Legend iconType="circle" />
+                <Legend
+                  iconType="circle"
+                  layout="horizontal"
+                  verticalAlign="bottom"
+                  wrapperStyle={{ fontSize: '0.875rem' }}
+                />
               </PieChart>
             </ResponsiveContainer>
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
-              <div className="text-2xl font-bold text-green-600">{sentimentData[0].value}%</div>
-              <div className="text-xs text-gray-500">Positive</div>
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
+              <div className="text-xl md:text-2xl lg:text-3xl font-bold text-green-600">
+                {sentimentData[0].value}%
+              </div>
+              <div className="text-xs md:text-sm text-gray-500">Positive</div>
             </div>
           </div>
         </DataCard>
 
         <DataCard title="Language Distribution" variant="glass" icon={<Globe className="text-cyan-600" />}>
-          <div className="h-80 relative p-2">
+          <div className={cn("relative", "h-64 sm:h-72 md:h-80 lg:h-96")}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={languageData.length > 0 ? languageData : [{ name: 'No Data', value: 1 }]}
                   cx="50%"
                   cy="50%"
-                  innerRadius="50%"
-                  outerRadius="90%"
+                  innerRadius="45%"
+                  outerRadius="85%"
                   dataKey="value"
-                  paddingAngle={3}
+                  paddingAngle={4}
+                  labelLine={false}
                 >
                   {(languageData.length > 0 ? languageData : [{ value: 1 }]).map((_, i) => (
                     <Cell key={i} fill={languageData.length > 0 ? COLORS[i % COLORS.length] : '#e5e7eb'} />
                   ))}
                 </Pie>
                 <Tooltip formatter={(v: number) => `${v} mentions`} />
-                <Legend iconType="circle" />
+                <Legend
+                  iconType="circle"
+                  layout="horizontal"
+                  verticalAlign="bottom"
+                  wrapperStyle={{ fontSize: '0.875rem' }}
+                />
               </PieChart>
             </ResponsiveContainer>
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
-              <div className="text-2xl font-bold text-cyan-600">{data.summary.language.english}</div>
-              <div className="text-xs text-gray-500">English</div>
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
+              <div className="text-xl md:text-2xl lg:text-3xl font-bold text-cyan-600">
+                {data.summary.language.english}
+              </div>
+              <div className="text-xs md:text-sm text-gray-500">English</div>
             </div>
           </div>
         </DataCard>
 
         <DataCard title="Media Vehicle Distribution" variant="glass" icon={<Newspaper className="text-emerald-600" />}>
-          <div className="h-80 relative p-2">
+          <div className={cn("relative", "h-64 sm:h-72 md:h-80 lg:h-96")}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={totalMentions > 0 ? mediaVehicleData : [{ name: 'No Data', value: 1 }]}
                   cx="50%"
                   cy="50%"
-                  innerRadius="50%"
-                  outerRadius="90%"
+                  innerRadius="45%"
+                  outerRadius="85%"
                   dataKey="value"
-                  paddingAngle={3}
+                  paddingAngle={4}
+                  labelLine={false}
                 >
                   {(totalMentions > 0 ? mediaVehicleData : [{ value: 1 }]).map((_, i) => (
                     <Cell key={i} fill={totalMentions > 0 ? COLORS[i] : '#e5e7eb'} />
                   ))}
                 </Pie>
                 <Tooltip formatter={(v: number) => `${v} mentions`} />
-                <Legend iconType="circle" />
+                <Legend
+                  iconType="circle"
+                  layout="horizontal"
+                  verticalAlign="bottom"
+                  wrapperStyle={{ fontSize: '0.875rem' }}
+                />
               </PieChart>
             </ResponsiveContainer>
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
-              <div className="text-2xl font-bold text-emerald-600">{data.summary.mediaVehicle.online}</div>
-              <div className="text-xs text-gray-500">Online</div>
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
+              <div className="text-xl md:text-2xl lg:text-3xl font-bold text-emerald-600">
+                {data.summary.mediaVehicle.online}
+              </div>
+              <div className="text-xs md:text-sm text-gray-500">Online</div>
             </div>
           </div>
         </DataCard>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Bottom Charts - Stack on mobile */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6">
         <DataCard title="Weekly Trend on Brand Media Exposure" variant="glass" icon={<BarChart2 className="text-amber-600" />}>
-          <div className="h-80">
+          <div className="h-64 sm:h-80 md:h-96">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={weeklyTrendData}>
                 <defs>
@@ -468,10 +501,10 @@ export function ExecutiveSummaryPage() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="week" />
-                <YAxis />
+                <XAxis dataKey="week" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} />
                 <Tooltip />
-                <Legend />
+                <Legend wrapperStyle={{ fontSize: '0.875rem' }} />
                 <Area type="monotone" dataKey="onlineMedia" stroke="#4F46E5" fill="url(#onlineGrad)" name="Online" />
                 <Area type="monotone" dataKey="printMedia" stroke="#10B981" fill="url(#printGrad)" name="Print" />
               </AreaChart>
@@ -480,14 +513,14 @@ export function ExecutiveSummaryPage() {
         </DataCard>
 
         <DataCard title="Competitive Media Share" variant="glass" icon={<BarChart2 className="text-purple-600" />}>
-          <div className="h-80 p-2">
+          <div className="h-64 sm:h-80 md:h-96 p-2">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={competitiveShareData} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
-                <XAxis type="number" domain={[0, 100]} ticks={[0, 20, 40, 60, 80, 100]} unit="%" />
-                <YAxis dataKey="name" type="category" width={160} tick={{ fontSize: 12 }} />
+                <XAxis type="number" domain={[0, 100]} ticks={[0, 20, 40, 60, 80, 100]} unit="%" tick={{ fontSize: 12 }} />
+                <YAxis dataKey="name" type="category" width={140} tick={{ fontSize: 12 }} />
                 <Tooltip formatter={(value: number) => `${value.toFixed(2)}%`} />
-                <Bar dataKey="value" radius={[0, 8, 8, 0]} barSize={32}>
+                <Bar dataKey="value" radius={[0, 8, 8, 0]} barSize={28} minPointSize={4}>
                   {competitiveShareData.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
