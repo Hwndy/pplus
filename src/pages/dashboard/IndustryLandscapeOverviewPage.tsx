@@ -287,16 +287,6 @@ function IndustryLandscapeForm({
         />
       </div>
 
-      <div>
-        <label className="text-sm font-medium">Supervisor Note</label>
-        <textarea
-          rows={3}
-          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
-          value={form.supervisor_note}
-          onChange={e => setForm({ ...form, supervisor_note: e.target.value })}
-        />
-      </div>
-
       <DialogFooter>
         <Button type="submit" disabled={loading || companiesLoading}>
           {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
