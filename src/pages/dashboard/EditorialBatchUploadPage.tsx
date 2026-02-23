@@ -260,12 +260,25 @@ const EditorialBatchUploadPage = () => {
                   <div>
                     <p className="font-medium mb-2">Required Columns:</p>
                     <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                      <li>date (YYYY-MM-DD format)</li>
-                      <li>company (Company name)</li>
-                      <li>source (Publication name)</li>
-                      <li>title (Editorial title)</li>
+                      <li>date (DD-MM-YYYY format)</li>
+                      <li>source (Publication Name)</li>
+                      <li>company (Company Name)</li>
                       <li>media type (Print or Online)</li>
+                      <li>title (Editorial Title)</li>   
                       <li>sentiment (Positive, Negative, or Neutral)</li>
+                      <li>print web clips (URL)</li>
+                      <li>sentiment keyword indicator</li>
+                      <li>advert spend (Numeric)</li>
+                      <li>circulation (Numeric)</li>
+                      <li>audience reach (Numeric)</li>
+                      <li>page size (Full Page, Half Page, etc.)</li>
+                      <li>language</li>
+                      <li>placement (Headline, Front Page, etc.)</li>
+                      <li>reporter (Reporter name)</li>
+                      <li>country (Country name)</li>
+                      <li>spokesperson (Spokesperson name)</li>
+                      <li>activity (Activity type)</li>
+                      <li>online channel (For online media)</li>
                     </ul>
                   </div>
 
@@ -273,28 +286,26 @@ const EditorialBatchUploadPage = () => {
                     <p className="font-medium mb-2">Optional Columns:</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2">
                       <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                        <li>placement (Headline, Front Page, etc.)</li>
+                        {/* <li>placement (Headline, Front Page, etc.)</li>
                         <li>reporter (Reporter name)</li>
                         <li>country (Country name)</li>
                         <li>spokesperson (Spokesperson name)</li>
                         <li>activity (Activity type)</li>
-                        <li>online channel (For online media)</li>
+                        <li>online channel (For online media)</li> */}
                       </ul>
                       <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                        <li>advert spend (Numeric)</li>
+                        {/* <li>advert spend (Numeric)</li>
                         <li>circulation (Numeric)</li>
                         <li>audience reach (Numeric)</li>
-                        <li>page size (Full Page, Half Page, etc.)</li>
+                        <li>page size (Full Page, Half Page, etc.)</li> */}
                         <li>page number</li>
-                        <li>language</li>
+                        {/* <li>language</li> */}
                       </ul>
                       <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
                         <li>ceo thought leadership (Yes/No)</li>
-                        <li>print web clips (URL)</li>
-                        <li>sentiment keyword indicator</li>
+                        {/* <li>print web clips (URL)</li>
+                        <li>sentiment keyword indicator</li> */}
                         <li>analyst note</li>
-                        <li>supervisor note</li>
-                        <li>admin note</li>
                       </ul>
                     </div>
                   </div>
