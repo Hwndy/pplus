@@ -130,7 +130,7 @@ const LoginForm = ({ className }: LoginFormProps) => {
             {isSubmitting ? 'Signing in...' : 'Sign in'}
           </Button>
 
-          <Button type="button" variant="outline" className="w-full border border-input" onClick={() => {}}>
+          {/* <Button type="button" variant="outline" className="w-full border border-input" onClick={() => {}}>
             <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
               <path
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -151,7 +151,7 @@ const LoginForm = ({ className }: LoginFormProps) => {
               <path d="M1 1h22v22H1z" fill="none" />
             </svg>
             Sign in with Google
-          </Button>
+          </Button> */}
         </form>
       </CardContent>
     </Card>
