@@ -49,7 +49,11 @@ export function Header({ children }: HeaderProps) {
         )}
         {children}
         <div className="hidden md:flex items-center gap-3">
-          <h1 className="text-lg font-semibold">P+Analytics Dashboard</h1>
+          <img 
+                  src="/uploads/logo.png" 
+                  alt="Analytics illustration" 
+                  className="w-17 h-10"
+                />
           {activePair && (
             <>
               <span className="text-muted-foreground">•</span>
@@ -60,7 +64,11 @@ export function Header({ children }: HeaderProps) {
           )}
         </div>
         <div className="flex md:hidden">
-          <h1 className="text-lg font-semibold">P+</h1>
+          <img 
+                  src="/uploads/logo.png" 
+                  alt="Analytics illustration" 
+                  className="w-17 h-10"
+                />
         </div>
       </div>
 

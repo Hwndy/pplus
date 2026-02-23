@@ -47,17 +47,22 @@ const LoginForm = ({ className }: LoginFormProps) => {
 
   return (
     <Card className={cn('w-full max-w-md mx-auto border-0 shadow-none bg-transparent', className)}>
+       <img 
+                  src="/uploads/logo.png" 
+                  alt="Analytics illustration" 
+                  className="w-17 h-10"
+                />
       <CardHeader className="space-y-1 p-0 mb-6">
         <div className="flex items-center gap-2 mb-2">
-          <div className="text-primary">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          {/* <div className="text-primary"> */}
+            {/* <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
               <path d="M12 4V20M4 12H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          </div>
-          <div className="flex items-center gap-1">
-            <span className="text-lg font-semibold text-primary">P+</span>
+            </svg> */}
+          {/* </div> */}
+          {/* <div className="flex items-center gap-1">
+            <span className="text-lg font-semibold text-primary">P</span>
             <span className="text-lg font-medium">Analytics</span>
-          </div>
+          </div> */}
         </div>
         <h1 className="text-2xl font-semibold">Welcome Back</h1>
         <p className="text-sm text-muted-foreground">Welcome back! Please enter your details.</p>
