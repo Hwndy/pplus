@@ -284,7 +284,7 @@ const EditorialBatchUploadPage = () => {
 
                   <div>
                     <p className="font-medium mb-2">Optional Columns:</p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2">
+                    <div>
                       <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
                         {/* <li>placement (Headline, Front Page, etc.)</li>
                         <li>reporter (Reporter name)</li>

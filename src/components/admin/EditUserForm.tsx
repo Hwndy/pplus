@@ -417,25 +417,6 @@ export default function EditUserForm({
             )} />
           </div>
 
-          <FormField control={form.control} name="gender" render={({ field }) => (
-            <FormItem>
-              <FormLabel>Gender</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger className="bg-gray-50 border-gray-200">
-                    <SelectValue placeholder="Select gender" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="Male">Male</SelectItem>
-                  <SelectItem value="Female">Female</SelectItem>
-                  <SelectItem value="Prefer not to say">Prefer not to say</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )} />
-
           <FormField control={form.control} name="role_id" render={({ field }) => (
             <FormItem>
               <FormLabel>Role</FormLabel>
