@@ -94,7 +94,7 @@ export const SwotMentionForm: React.FC<SwotMentionFormProps> = ({
       if (!token) return;
       setLoading(true);
       try {
-        const response = await fetch('https://pplus-g19c.onrender.com/api/v1/companies', {
+        const response = await fetch('https://pplus-g19c.onrender.com/api/v1/companies/?limit=1000', {
           headers: getAuthHeaders(),
         });
         const result = await response.json();

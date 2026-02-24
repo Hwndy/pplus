@@ -81,7 +81,7 @@ const SwotAnalysisEntryPage: React.FC = () => {
     const fetchCompanies = async () => {
       try {
         setCompaniesLoading(true);
-        const response = await axios.get<ApiResponse<{ data: Company[] }>>(`${BASE_URL}/companies/`);
+        const response = await axios.get<ApiResponse<{ data: Company[] }>>(`${BASE_URL}/companies/?limit=1000`);
         setCompanies(response.data.data?.data || []);
       } catch (error: any) {
         console.error('Error fetching companies:', error);

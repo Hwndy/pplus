@@ -79,7 +79,7 @@ interface Pagination {
 }
 
 const API_BASE = 'https://pplus-g19c.onrender.com/api/v1/industry-landscape-overview';
-const COMPANIES_API = 'https://pplus-g19c.onrender.com/api/v1/companies';
+const COMPANIES_API = 'https://pplus-g19c.onrender.com/api/v1/companies/?limit=1000';
 const SECTOR_TITLE_API = 'https://pplus-g19c.onrender.com/api/v1/data-parameters/category/Industry_Landscape_Sector';
 
 /* ====================== FORM COMPONENT ====================== */

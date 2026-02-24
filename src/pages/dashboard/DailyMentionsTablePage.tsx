@@ -40,7 +40,7 @@ interface MentionDetail {
   headline: string;
   content: string | null;
   reporter: string | null;
-  publication: string | null;
+  source: string | null;
   sentiment: 'positive' | 'negative' | 'neutral';
   page: string | null;
   publication_date: string | null;
@@ -221,7 +221,7 @@ const DailyMentionsTablePage: React.FC = () => {
   // === URL Validation ===
   const isValidUrl = (url: string): boolean => {
     if (!url) return true;
-    const pattern = /^(https?:\/\/)[^\s$.?#].[^\s]*$/i;
+    const pattern = /^((https?:\/\/)|www\.)[^\s$.?#].[^\s]*$/i;
     return pattern.test(url);
   };
 
@@ -346,7 +346,7 @@ const DailyMentionsTablePage: React.FC = () => {
     const fetchSupportingData = async () => {
       try {
         const [compRes, pubRes, repRes] = await Promise.all([
-          axios.get(`${BASE_URL}/companies`),
+          axios.get(`${BASE_URL}/companies/?limit=1000`),
           axios.get(`${BASE_URL}/data-parameters/category/Publications`),
           axios.get(`${BASE_URL}/data-parameters/category/Reporter`),
         ]);
@@ -426,7 +426,7 @@ const DailyMentionsTablePage: React.FC = () => {
       headline: '',
       content: null,
       reporter: null,
-      publication: null,
+      source: null,
       sentiment: 'neutral',
       page: null,
       publication_date: null,
@@ -471,8 +471,8 @@ const DailyMentionsTablePage: React.FC = () => {
         <Label>Source</Label>
         <Combobox
           options={publications.map((p) => ({ value: p.name, label: p.name }))}
-          value={(formData[category] as MentionDetail[])[idx]?.publication || ''}
-          onChange={(v) => updateMention(category, idx, 'publication', v || null)}
+          value={(formData[category] as MentionDetail[])[idx]?.source || ''}
+          onChange={(v) => updateMention(category, idx, 'source', v || null)}
         />
       </div>
       <div>

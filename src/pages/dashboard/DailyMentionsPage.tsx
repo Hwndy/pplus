@@ -303,7 +303,7 @@ const DailyMentionsPage: React.FC = () => {
   useEffect(() => {
     const fetchCompanies = async () => {
       try {
-        const response = await axios.get(`${BASE_URL}/companies`);
+        const response = await axios.get(`${BASE_URL}/companies/?limit=1000`);
         setCompanies(response.data.data || []);
       } catch (error) {
         console.error('Error fetching companies:', error);

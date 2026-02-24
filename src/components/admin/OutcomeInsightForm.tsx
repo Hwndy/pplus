@@ -88,7 +88,7 @@ export function OutcomeInsightForm({
   const fetchCompanies = async () => {
     setLoadingCompanies(true);
     try {
-      const res = await fetch(`${BASE_URL}/companies/`, {
+      const res = await fetch(`${BASE_URL}/companies/?limit=1000`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const json = await res.json();
