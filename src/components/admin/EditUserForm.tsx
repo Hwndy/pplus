@@ -46,15 +46,14 @@ const formSchema = z
     mobile_number: z.string().min(5, 'Mobile number is required'),
     role: z.string(),
     supervisor_id: z.string().optional(),
-    expirationDate: z.date(),
-    password: z.string().min(8, 'Password must be at least 8 characters').optional().or(z.literal('')),
-    confirmPassword: z.string().optional().or(z.literal('')),
+    // password: z.string().min(8, 'Password must be at least 8 characters').optional().or(z.literal('')),
+    // confirmPassword: z.string().optional().or(z.literal('')),
     company_monitorings: z.array(companyMonitoringSchema).optional().default([]),
   })
-  .refine((d) => !d.password || d.password === d.confirmPassword, {
-    message: "Passwords don't match",
-    path: ['confirmPassword'],
-  })
+  // .refine((d) => !d.password || d.password === d.confirmPassword, {
+  //   message: "Passwords don't match",
+  //   path: ['confirmPassword'],
+  // })
   .refine((d) => d.role !== 'Analyst' || (d.supervisor_id && d.supervisor_id.trim() !== ''), {
     message: 'Supervisor is required for Analyst role',
     path: ['supervisor_id'],
@@ -94,12 +93,9 @@ export default function EditUserForm({ user, onSave, onCancel }: EditUserFormPro
       role: userRoleName,
       mobile_number: user.mobile_number?.split(' ')[1] ?? user.mobile_number ?? '',
       country_code: user.mobile_number?.split(' ')[0] ?? '+234',
-      expirationDate: user.expiration_date
-        ? new Date(user.expiration_date)
-        : new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
       supervisor_id: user.supervisor_id?.toString() ?? '',
-      password: '',
-      confirmPassword: '',
+      // password: '',
+      // confirmPassword: '',
       // Pre-populate nested structure from existing user data
       company_monitorings: (user.company_monitorings ?? []).map((cm: any) => ({
         id: cm.id,
@@ -217,13 +213,11 @@ export default function EditUserForm({ user, onSave, onCancel }: EditUserFormPro
         country_code: values.country_code,
         mobile_number: values.mobile_number,
         role: values.role,
-        expiration_date: values.expirationDate.toISOString(),
-        avatar,
       };
 
-      if (values.password) {
-        payload.password = values.password;
-      }
+      // if (values.password) {
+      //   payload.password = values.password;
+      // }
 
       if (values.role === 'Analyst' && values.supervisor_id) {
         payload.supervisor_id = values.supervisor_id;
@@ -423,29 +417,8 @@ export default function EditUserForm({ user, onSave, onCancel }: EditUserFormPro
             </div>
           )}
 
-          {/* Expiration Date */}
-          <FormField control={form.control} name="expirationDate" render={({ field }) => (
-            <FormItem className="flex flex-col">
-              <FormLabel>Expiration Date</FormLabel>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <FormControl>
-                    <Button variant="outline" className={cn('pl-3 text-left font-normal bg-gray-50 border-gray-200', !field.value && 'text-muted-foreground')}>
-                      {field.value ? format(field.value, 'dd MMM yyyy') : 'Select date'}
-                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                    </Button>
-                  </FormControl>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
-                </PopoverContent>
-              </Popover>
-              <FormMessage />
-            </FormItem>
-          )} />
-
           {/* Password (optional on edit) */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* <div className="grid grid-cols-2 gap-4">
             <FormField control={form.control} name="password" render={({ field }) => (
               <FormItem>
                 <FormLabel>New Password <span className="text-gray-400 font-normal">(leave blank to keep current)</span></FormLabel>
@@ -464,7 +437,7 @@ export default function EditUserForm({ user, onSave, onCancel }: EditUserFormPro
                 <FormMessage />
               </FormItem>
             )} />
-          </div>
+          </div> */}
 
           {/* Actions */}
           <div className="flex justify-end space-x-3 pt-6 border-t">
