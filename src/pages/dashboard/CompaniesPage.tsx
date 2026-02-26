@@ -193,7 +193,7 @@ const CompaniesPage = () => {
   const fetchCompanies = async () => {
     setLoading(true);
     try {
-      const res = await axios.get('https://pplus-g19c.onrender.com/api/v1/companies/', {
+      const res = await axios.get('https://pplus-7q0p.onrender.com/api/v1/companies/', {
         params: apiParams
       });
       const apiData = res.data?.data;
@@ -225,7 +225,7 @@ const CompaniesPage = () => {
 
     if (company) {
       // For edit or view → fetch fresh data
-      axios.get(`https://pplus-g19c.onrender.com/api/v1/companies/${company.id}`)
+      axios.get(`https://pplus-7q0p.onrender.com/api/v1/companies/${company.id}`)
         .then(res => {
           // Support both possible response shapes you showed
           const companyData = res.data?.data?.company || res.data?.company || res.data;
@@ -258,7 +258,7 @@ const CompaniesPage = () => {
 
   const handleDelete = async (id: string | number, companyName: string) => {
     try {
-      await axios.put(`https://pplus-g19c.onrender.com/api/v1/companies/delete/${id}`);
+      await axios.put(`https://pplus-7q0p.onrender.com/api/v1/companies/delete/${id}`);
       toast.success(`${companyName} deleted successfully`);
       fetchCompanies();
     } catch (err: any) {

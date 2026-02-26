@@ -29,7 +29,7 @@ type ExportType =
   | 'outcome-insights'
   | 'social-media-mentions';
 
-const API_BASE_URL = 'https://pplus-g19c.onrender.com/api/v1/export';
+const API_BASE_URL = 'https://pplus-7q0p.onrender.com/api/v1/export';
 
 export function DataExport() {
   const { token } = useAuth();

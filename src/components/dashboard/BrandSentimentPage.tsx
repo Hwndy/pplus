@@ -74,7 +74,7 @@ const BrandSentimentPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [hasData, setHasData] = useState(false);
 
-  const API_URL = 'https://pplus-g19c.onrender.com/api/v1/report/brand-media-sentiment-index';
+  const API_URL = 'https://pplus-7q0p.onrender.com/api/v1/report/brand-media-sentiment-index';
 
   const fetchData = async () => {
     if (!token || !activePair) {

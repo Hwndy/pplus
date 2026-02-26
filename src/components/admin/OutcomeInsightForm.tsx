@@ -49,7 +49,7 @@ export function OutcomeInsightForm({
   userRole = 'Analyst',
 }: OutcomeInsightFormProps) {
   const { token } = useAuth();
-  const BASE_URL = 'https://pplus-g19c.onrender.com/api/v1';
+  const BASE_URL = 'https://pplus-7q0p.onrender.com/api/v1';
 
   const isAnalyst = userRole === 'Analyst';
   const isSupervisor = userRole === 'Supervisor';

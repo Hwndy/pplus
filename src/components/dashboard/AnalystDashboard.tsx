@@ -27,7 +27,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 
 // Base URL for API
-const BASE_URL = 'https://pplus-g19c.onrender.com/api/v1';
+const BASE_URL = 'https://pplus-7q0p.onrender.com/api/v1';
 
 // Interface for normalized submission data
 interface Submission {

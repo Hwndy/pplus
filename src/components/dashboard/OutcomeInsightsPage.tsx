@@ -91,7 +91,7 @@ export default function OutcomeInsightsPage() {
         params.append('month', month);
       }
 
-      const url = `https://pplus-g19c.onrender.com/api/v1/report/outcome-insights?${params.toString()}`;
+      const url = `https://pplus-7q0p.onrender.com/api/v1/report/outcome-insights?${params.toString()}`;
       console.log('Fetching Outcome Insights →', url);
 
       const response = await fetch(url, {

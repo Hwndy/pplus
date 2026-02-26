@@ -321,7 +321,7 @@ export default function CreateCompanyForm({
     const fetchCompanies = async () => {
       setLoadingCompanies(true);
       try {
-        const res = await axios.get('https://pplus-g19c.onrender.com/api/v1/companies/?limit=1000');
+        const res = await axios.get('https://pplus-7q0p.onrender.com/api/v1/companies/?limit=1000');
         const companies = res.data?.data?.data || [];
         const valid = companies.filter((c: Company) => c.id && c.company_name);
         setApiCompanies(valid);
@@ -340,7 +340,7 @@ export default function CreateCompanyForm({
     const fetchOptions = async (category: string, setter: (opts: string[]) => void, loadingSetter: (v: boolean) => void) => {
       loadingSetter(true);
       try {
-        const res = await axios.get(`https://pplus-g19c.onrender.com/api/v1/data-parameters/category/${category}`);
+        const res = await axios.get(`https://pplus-7q0p.onrender.com/api/v1/data-parameters/category/${category}`);
         setter(extractStringOptions(res.data));
       } catch (error) {
         console.error(`Failed to fetch ${category}:`, error);
@@ -461,8 +461,8 @@ export default function CreateCompanyForm({
         }
 
         const endpoint = formData.id && initialValues
-          ? `https://pplus-g19c.onrender.com/api/v1/companies/update/${formData.id}`
-          : 'https://pplus-g19c.onrender.com/api/v1/companies/create';
+          ? `https://pplus-7q0p.onrender.com/api/v1/companies/update/${formData.id}`
+          : 'https://pplus-7q0p.onrender.com/api/v1/companies/create';
 
         const method = formData.id && initialValues ? 'put' : 'post';
         const res = await axios[method](endpoint, payload);

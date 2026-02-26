@@ -26,7 +26,7 @@ const ResetPassword = () => {
     verifyToken();
   }, [token]);
 
-  const API_BASE_URL = 'https://pplus-g19c.onrender.com/api/v1';
+  const API_BASE_URL = 'https://pplus-7q0p.onrender.com/api/v1';
 
   const verifyToken = async () => {
     if (!token) {
