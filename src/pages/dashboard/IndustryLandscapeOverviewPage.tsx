@@ -78,9 +78,9 @@ interface Pagination {
   totalPages: number;
 }
 
-const API_BASE = 'https://pplus-7q0p.onrender.com/api/v1/industry-landscape-overview';
-const COMPANIES_API = 'https://pplus-7q0p.onrender.com/api/v1/companies/?limit=1000';
-const SECTOR_TITLE_API = 'https://pplus-7q0p.onrender.com/api/v1/data-parameters/category/Industry_Landscape_Sector';
+const API_BASE = 'https://p-fw0o.onrender.com/api/v1/industry-landscape-overview';
+const COMPANIES_API = 'https://p-fw0o.onrender.com/api/v1/companies/?limit=1000';
+const SECTOR_TITLE_API = 'https://p-fw0o.onrender.com/api/v1/data-parameters/category/Industry_Landscape_Sector';
 
 /* ====================== FORM COMPONENT ====================== */
 function IndustryLandscapeForm({

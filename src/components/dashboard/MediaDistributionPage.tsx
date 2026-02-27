@@ -106,7 +106,7 @@ export function MediaDistributionPage() {
       params.append('startDate', startDate);
       params.append('endDate', endDate);
 
-      const url = `https://pplus-7q0p.onrender.com/api/v1/report/top-thematic-distribution-breakdown?${params.toString()}`;
+      const url = `https://p-fw0o.onrender.com/api/v1/report/top-thematic-distribution-breakdown?${params.toString()}`;
       console.log('Fetching Media Distribution →', url);
 
       const response = await fetch(url, {

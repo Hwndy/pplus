@@ -192,7 +192,7 @@ export function AuditLogViewer() {
     }
   };
 
-  const API_BASE_URL = 'https://pplus-7q0p.onrender.com/';
+  const API_BASE_URL = 'https://p-fw0o.onrender.com/';
 
   const handleExport = async (format: 'json' | 'csv') => {
     setIsExporting(true);

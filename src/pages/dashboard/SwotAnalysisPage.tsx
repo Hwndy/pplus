@@ -90,7 +90,7 @@ export default function SwotAnalysisPage() {
         params.append('month', month);
       }
 
-      const url = `https://pplus-7q0p.onrender.com/api/v1/report/swot-analysis?${params.toString()}`;
+      const url = `https://p-fw0o.onrender.com/api/v1/report/swot-analysis?${params.toString()}`;
       console.log('Fetching SWOT →', url);
 
       const response = await fetch(url, {

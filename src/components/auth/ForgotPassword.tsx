@@ -19,7 +19,7 @@ const ForgotPassword = () => {
     setIsSubmitting(true);
     setStatus('idle');
 
-    const API_BASE_URL = 'https://pplus-7q0p.onrender.com/api/v1';
+    const API_BASE_URL = 'https://p-fw0o.onrender.com/api/v1';
 
     try {
       const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {

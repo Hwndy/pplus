@@ -115,7 +115,7 @@ export function ExecutiveSummaryPage() {
   const [loading, setLoading] = useState(true);
   const [hasData, setHasData] = useState(false);
 
-  const API_URL = 'https://pplus-7q0p.onrender.com/api/v1/report/executive-summary';
+  const API_URL = 'https://p-fw0o.onrender.com/api/v1/report/executive-summary';
 
   const fetchData = useCallback(async () => {
     if (!token || !activePair) {

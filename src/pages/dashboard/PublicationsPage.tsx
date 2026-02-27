@@ -70,7 +70,7 @@ const PublicationsPage: React.FC = () => {
       };
 
       const response = await fetch(
-        `https://pplus-7q0p.onrender.com/api/v1/data-parameters/category/Publications`,
+        `https://p-fw0o.onrender.com/api/v1/data-parameters/category/Publications`,
         { headers }
       );
 
@@ -141,7 +141,7 @@ const PublicationsPage: React.FC = () => {
 
     try {
       setDeletingId(id);
-      const response = await fetch(`https://pplus-7q0p.onrender.com/api/v1/data-parameters-category-value/delete/${id}`, {
+      const response = await fetch(`https://p-fw0o.onrender.com/api/v1/data-parameters-category-value/delete/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -198,7 +198,7 @@ const PublicationsPage: React.FC = () => {
   // Helper function for updating
   const updatePublication = async (id: number, value: string) => {
     const response = await fetch(
-      `https://pplus-7q0p.onrender.com/api/v1/data-parameters-category-value/update/${id}`,
+      `https://p-fw0o.onrender.com/api/v1/data-parameters-category-value/update/${id}`,
       {
         method: 'PUT',
         headers: {
@@ -224,7 +224,7 @@ const PublicationsPage: React.FC = () => {
   // Helper function for creating
   const createPublication = async (value: string) => {
     // First, get the category ID
-    const paramResponse = await fetch('https://pplus-7q0p.onrender.com/api/v1/data-parameters', {
+    const paramResponse = await fetch('https://p-fw0o.onrender.com/api/v1/data-parameters', {
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
@@ -247,7 +247,7 @@ const PublicationsPage: React.FC = () => {
 
     // Now create the publication
     const createResponse = await fetch(
-      'https://pplus-7q0p.onrender.com/api/v1/data-parameters-categoryvalue/create',
+      'https://p-fw0o.onrender.com/api/v1/data-parameters-categoryvalue/create',
       {
         method: 'POST',
         headers: {
