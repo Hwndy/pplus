@@ -74,11 +74,3 @@ export function prominenceRows(sector: CompetitiveSector, companies: string[]): 
     return row;
   });
 }
-
-const SPOKESPERSON_PHOTOS = new Set(['bunmi-olarinoye', 'muyiwa-oni', 'wole-adeniyi']);
-
-/** Photo from public/assets/spokespersons when the full name matches a file exactly; otherwise null. */
-export function spokespersonPhoto(name: string): string | null {
-  const slug = name.trim().toLowerCase().replace(/\s+/g, '-');
-  return SPOKESPERSON_PHOTOS.has(slug) ? `${import.meta.env.BASE_URL}assets/spokespersons/${slug}.jpg` : null;
-}

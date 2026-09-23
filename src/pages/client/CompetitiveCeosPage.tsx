@@ -1,10 +1,9 @@
 import { SectionCard } from '@/components/common/Cards';
 import { EmptyState } from '@/components/common/States';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { formatNumber, formatPercent } from '@/lib/format';
 import { useChartColors } from '@/lib/reportThemes';
 import { CompetitiveReport, MediaShareSection, type SectorView } from './CompetitiveParts';
-import { spokespersonPhoto } from './competitive';
 import { RankedBarChart } from './ReportParts';
 import { initials, toNumber } from './reportUtils';
 
@@ -24,13 +23,11 @@ function CeoView({ view }: { view: SectorView }) {
         {ceos.length ? (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {ceos.map((c, i) => {
-              const photo = spokespersonPhoto(c.ceo);
               const pct = toNumber(c.percentage);
               return (
                 <div key={c.ceo} className="space-y-3 rounded-md border p-4">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-12 w-12">
-                      {photo && <AvatarImage src={photo} alt={c.ceo} className="object-cover" />}
                       <AvatarFallback className="font-medium">{initials(c.ceo)}</AvatarFallback>
                     </Avatar>
                     <div className="min-w-0">
