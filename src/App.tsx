@@ -1,38 +1,30 @@
-
-import { Suspense, lazy } from 'react';
-import { Toaster } from '@/components/ui/toaster';
-import { Toaster as Sonner } from '@/components/ui/sonner';
-import { TooltipProvider } from '@/components/ui/tooltip';
+import { lazy, Suspense } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { Toaster } from '@/components/ui/sonner';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { AuthProvider } from '@/components/auth/AuthContext';
-import { Layout } from '@/components/layout/Layout';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import { Spinner } from '@/components/ui/spinner';
+import { LoadingState } from '@/components/common/States';
+import { PublicOnly, RequireAuth } from '@/routes/guards';
+import { AppLayout } from '@/components/layout/AppLayout';
+import { DashboardRoutes } from '@/routes/DashboardRoutes';
+import { ApiError } from '@/lib/api-client';
 
-// Lazy load pages for better performance
-const Index = lazy(() => import('./pages/Index'));
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const NotFound = lazy(() => import('./pages/NotFound'));
-const AuditPage = lazy(() => import('./components/AuditLogViewer'));
-const FirstTimePasswordChangePage = lazy(() => import('./components/auth/FirstTimePasswordChange')); 
-const ForgotPasswordPage = lazy(() => import('./components/auth/ForgotPassword')); 
-const ResetPasswordPage = lazy(() => import('./components/auth/ResetPassword'));
-const SocialMediaMentionsPage = lazy(() => import('./pages/dashboard/SocialMediaMentionsPage')); 
-// Create a loading fallback component
-const LoadingFallback = () => (
-  <div className="flex h-full items-center justify-center">
-    <Spinner size="lg" />
-  </div>
-);
+const LoginPage = lazy(() => import('@/pages/auth/LoginPage'));
+const ForgotPasswordPage = lazy(() => import('@/pages/auth/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('@/pages/auth/ResetPasswordPage'));
+const ChangePasswordPage = lazy(() => import('@/pages/auth/ChangePasswordPage'));
+const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
 
-// Configure React Query
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
-      retry: 1,
-      staleTime: 5 * 60 * 1000, // 5 minutes
+      staleTime: 30 * 1000,
+      // Don't retry client errors (validation, permission, not found).
+      retry: (failureCount, error) =>
+        !(error instanceof ApiError && error.status >= 400 && error.status < 500) && failureCount < 1,
     },
   },
 });
@@ -40,28 +32,28 @@ const queryClient = new QueryClient({
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
+      <TooltipProvider delayDuration={200}>
+        <Toaster richColors closeButton position="top-right" />
         <BrowserRouter>
           <AuthProvider>
-            <Layout>
-              <ErrorBoundary>
-                <Suspense fallback={<LoadingFallback />}>
-                  <Routes>
-                    <Route path="/" element={<Index />} />
-                    <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                    <Route path="/reset-password" element={<ResetPasswordPage />} />
-                    <Route path="/change-password-first-time" element={<FirstTimePasswordChangePage />} />          
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/dashboard/audit-log" element={<AuditPage />} />
-                    <Route path="/dashboard/social-media-mentions" element={<SocialMediaMentionsPage />} />
-                    <Route path="/dashboard/*" element={<Dashboard />} />
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </Suspense>
-              </ErrorBoundary>
-            </Layout>
+            <Suspense fallback={<LoadingState className="h-screen" />}>
+              <Routes>
+                <Route element={<PublicOnly />}>
+                  <Route path="/" element={<LoginPage />} />
+                  <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                  <Route path="/reset-password" element={<ResetPasswordPage />} />
+                  <Route path="/change-password" element={<ChangePasswordPage />} />
+                </Route>
+                {/* Older links used this path for the first-login password change. */}
+                <Route path="/change-password-first-time" element={<Navigate to="/change-password" replace />} />
+                <Route element={<RequireAuth />}>
+                  <Route element={<AppLayout />}>
+                    <Route path="/dashboard/*" element={<DashboardRoutes />} />
+                  </Route>
+                </Route>
+                <Route path="*" element={<NotFoundPage />} />
+              </Routes>
+            </Suspense>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>

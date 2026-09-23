@@ -1,245 +1,71 @@
-# Media Monitoring Dashboard
+# P+ Media Analytics — Web app
 
-A comprehensive media monitoring and analytics dashboard for tracking media mentions, sentiment analysis, and PR performance across multiple companies and publications.
+Single-page app for the P+ media-measurement platform. Staff (admins, supervisors, analysts) capture and
+review media coverage; clients see reports on their brand and competitors.
 
-## 🌟 Features
+**Stack:** React 18, TypeScript (strict), Vite, Tailwind CSS + shadcn/ui, TanStack Query, React Router,
+React Hook Form + Zod, Recharts, Sonner.
 
-### Frontend (React + TypeScript)
-- **Modern UI**: Built with React, TypeScript, and Tailwind CSS
-- **Component Library**: Shadcn/ui components for consistent design
-- **Responsive Design**: Mobile-first responsive layout
-- **Role-Based Access**: Different interfaces for Admin, Supervisor, Analyst, and Client roles
-- **Real-time Analytics**: Interactive charts and dashboards
-- **Data Visualization**: Charts for sentiment analysis, trends, and comparisons
-
-### Backend (Node.js + Express + PostgreSQL)
-- **RESTful API**: Comprehensive REST API with OpenAPI documentation
-- **Authentication**: JWT-based authentication with role-based access control
-
-- **File Upload**: Secure file upload and management
-- **Audit Logging**: Complete audit trail of all system actions
-- **Data Analytics**: Advanced analytics and reporting endpoints
-
-### Key Modules
-- **User Management**: Multi-role user system with hierarchical permissions
-- **Company Management**: Track multiple companies and their media presence
-- **Publication Management**: Manage media publications and sources
-- **Editorial Content**: Track and analyze editorial mentions with sentiment
-- **Data Analytics**: Comprehensive analytics dashboard with trends and insights
-- **SWOT Analysis**: Structured SWOT analysis management
-- **Daily Mentions**: Daily media mention tracking and reporting
-- **File Management**: Upload and manage media assets and documents
-
-## 🛠️ Tech Stack
-
-### Frontend
-- **React 18** - UI library
-- **TypeScript** - Type safety
-- **Vite** - Build tool and dev server
-- **Tailwind CSS** - Utility-first CSS framework
-- **Shadcn/ui** - Component library
-- **Recharts** - Data visualization
-- **React Router** - Client-side routing
-- **React Hook Form** - Form management
-- **Zod** - Schema validation
-
-### Backend
-- **Node.js** - Runtime environment
-- **Express.js** - Web framework
-- **TypeScript** - Type safety
-- **PostgreSQL** - Database
-
-- **JWT** - Authentication
-- **Multer** - File upload
-- **Swagger/OpenAPI** - API documentation
-- **Joi** - Data validation
-
-## 📋 Prerequisites
-
-- **Node.js** (v18 or higher)
-- **PostgreSQL** (v13 or higher)
-- **npm** or **yarn**
-
-## 🚀 Quick Start
-
-### Automated Setup
-
-Run the setup script to automatically install dependencies and configure the application:
+## Getting started
 
 ```bash
-# Make the setup script executable and run it
-chmod +x setup.sh
-./setup.sh
+npm install
+cp .env.example .env     # set VITE_API_BASE_URL, e.g. http://localhost:4000/api/v1
+npm run dev              # http://localhost:8080
 ```
 
-### Manual Setup
+| Script | Purpose |
+| --- | --- |
+| `npm run dev` | Development server |
+| `npm run build` | Type-check and production build (`dist/`) |
+| `npm run typecheck` | TypeScript only |
+| `npm run lint` | ESLint (zero warnings allowed) |
+| `npm run preview` | Serve the production build locally |
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd media-monitoring-dashboard
-   ```
+The API base URL comes only from `VITE_API_BASE_URL`; nothing is hard-coded. The backend must list the
+app's origin in its CORS settings (`ALLOWED_ORIGINS`).
 
-2. **Install frontend dependencies**
-   ```bash
-   npm install
-   ```
+## Roles
 
-3. **Install backend dependencies**
-   ```bash
-   cd server
-   npm install
-   ```
+| Role | Sees |
+| --- | --- |
+| Admin | Users, companies, publications, sentiment indicators, parameters, audit log, all content, content review |
+| Supervisor | Review queue for their analysts' submissions; team content lists |
+| Analyst | Their own submissions across the six content types; create and rework |
+| Client | Reports for their monitored companies (company switcher in the header) |
 
-4. **Set up environment variables**
-   ```bash
-   # Frontend
-   cp .env.example .env
-   
-   # Backend
-   cd server
-   cp .env.example .env
-   ```
+Content types (editorials, daily mentions, SWOT analyses, social media, outcome & insights, industry
+landscape) follow the backend workflow: submissions start as *pending*, a supervisor approves or rejects
+them, and analyst edits resubmit them for review.
 
-5. **Configure the database**
-   Edit `server/.env` with your PostgreSQL connection string:
-   ```env
-   DATABASE_URL="postgresql://username:password@localhost:5432/media_monitoring_db"
-   ```
+## Client reports
 
-6. **Set up the database**
-   ```bash
-   cd server
-   npm run db:generate
-   npm run db:push
-   npm run db:seed
-   ```
+Each client report has its own colour theme (`src/lib/reportThemes.ts`): a gradient header, KPI tiles
+in the report's palette and charts led by its accent. Sentiment colours (green / grey / red) are the
+same everywhere. The chosen month or date range is shared by all report pages for the browser session.
 
-7. **Start the development servers**
-   
-   Backend (in server directory):
-   ```bash
-   npm run dev
-   ```
-   
-   Frontend (in root directory):
-   ```bash
-   npm run dev
-   ```
+**Download report** (in every report header) builds the full pack for the selected monitoring pair and
+period — every report, one section each — as an editable PowerPoint deck (native charts and tables) or
+an A4 PDF. The export code (`src/features/report-export/`) is loaded only when a download is requested.
 
-## 🌐 Access the Application
+## Project structure
 
-- **Frontend**: http://localhost:5173
-- **Backend API**: http://localhost:3001
-- **API Documentation**: http://localhost:3001/api/v1-docs
-
-## 📊 Dashboard Features
-
-### Executive Summary
-- Key performance indicators and metrics
-- Sentiment analysis overview
-- Media reach and engagement statistics
-- Trending topics and mentions
-
-### Analytics & Reporting
-- Interactive charts and graphs
-- Sentiment trend analysis
-- Media channel performance
-- Company comparison tools
-- Custom date range filtering
-
-### Content Management
-- Editorial content tracking
-- SWOT analysis management
-- Daily mention summaries
-- Publication and media channel management
-
-### User Management
-- Role-based access control
-- User activity monitoring
-- Audit trail and logging
-- Team collaboration features
-
-## 🔒 Security Features
-
-- **JWT Authentication**: Secure token-based authentication
-- **Role-Based Access Control**: Granular permissions system
-- **Data Validation**: Input validation and sanitization
-- **Audit Logging**: Complete activity tracking
-- **Rate Limiting**: API request throttling
-- **CORS Protection**: Cross-origin request security
-
-## 📱 Responsive Design
-
-The dashboard is fully responsive and works seamlessly across:
-- Desktop computers
-- Tablets
-- Mobile devices
-- Different screen sizes and orientations
-
-## 🚀 Deployment
-
-### Using Docker
-
-```bash
-# Build and run with Docker Compose
-cd server
-docker-compose up -d
+```
+src/
+  api/             One module per backend resource (typed requests)
+  features/        report-export/: report pack builder + PowerPoint and PDF renderers
+  components/
+    common/        Shared building blocks: PageHeader, DataTable, filters, form fields, dialogs, states
+    layout/        App shell: sidebar (generated from the route map) and header
+    ui/            shadcn/ui primitives
+    auth/          Auth provider (session, monitoring pairs)
+  hooks/           Lookup queries and the mutation-with-toast helper
+  lib/             API client, env, formatting, roles, chart palette, report themes
+  pages/           auth/, admin/, content/, review/, dashboard/, client/
+  routes/          Route map (drives routing + navigation) and guards
+  types/           API and report response types
 ```
 
-### Manual Deployment
-
-1. **Build the frontend**
-   ```bash
-   npm run build
-   ```
-
-2. **Build the backend**
-   ```bash
-   cd server
-   npm run build
-   ```
-
-3. **Set production environment variables**
-4. **Deploy to your hosting platform**
-
-## 📚 Documentation
-
-- **API Documentation**: Available at `/api-docs` when the server is running
-- **Frontend Components**: Check the `src/components` directory
-- **Backend API**: Detailed documentation in `server/README.md`
-
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🆘 Support
-
-If you encounter any issues or have questions:
-
-1. Check the documentation
-2. Search existing issues
-3. Create a new issue with detailed information
-4. Contact the development team
-
-## 🎯 Roadmap
-
-- [ ] Real-time notifications
-- [ ] Advanced analytics with AI insights
-- [ ] Mobile app development
-- [ ] Integration with social media APIs
-- [ ] Advanced reporting features
-- [ ] Multi-language support
-
----
-
-**Built with  for media monitoring and analytics**
+Conventions: data fetching through `src/api` + React Query; every list uses `DataTable`, every form uses
+`FormDialog`/`FormFields` with Zod validation, destructive actions use `ConfirmDialog`, and statuses use
+`StatusBadge`, so screens look and behave the same everywhere.
