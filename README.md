@@ -10,9 +10,11 @@ React Hook Form + Zod, Recharts, Sonner.
 
 ```bash
 npm install
-cp .env.example .env     # set VITE_API_BASE_URL, e.g. http://localhost:4000/api/v1
 npm run dev              # http://localhost:8080
 ```
+
+The app has no environment variables. The API address is set in `src/lib/env.ts`
+(`https://pplus-backend.onrender.com/api/v1`); change it there to point at another backend.
 
 | Script | Purpose |
 | --- | --- |
