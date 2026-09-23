@@ -24,7 +24,7 @@ function itemText(item: ReportSwotItem): string {
 function SwotCard({ analysis }: { analysis: Analysis }) {
   return (
     <SectionCard title={formatDate(analysis.date)} description="SWOT analysis prepared by your P+ analyst.">
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {QUADRANTS.map(({ key, title, hint, icon: Icon, accent }) => {
           const items = (analysis[key] ?? []).map(itemText).filter(Boolean);
           return (

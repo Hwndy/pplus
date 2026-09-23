@@ -144,7 +144,7 @@ function SocialFormDialog({ open, onOpenChange, record }: {
       submitLabel={record ? 'Save and resubmit' : 'Submit for review'}
       size="lg"
     >
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <ComboboxField control={form.control} name="company_id" label="Company" required numeric loading={companies.isLoading}
           options={(companies.data ?? []).map((c) => ({ value: String(c.id), label: c.company_name }))} />
         <TextField control={form.control} name="date" label="Date" type="date" required />
@@ -153,7 +153,7 @@ function SocialFormDialog({ open, onOpenChange, record }: {
       {platform ? (
         <fieldset className="space-y-3 rounded-lg border p-4">
           <legend className="px-1 text-sm font-medium">{platform} metrics</legend>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {PLATFORM_METRICS[platform].map((f) => (
               <TextField key={f.key} control={form.control} name={f.key} label={f.label} type="number" />
             ))}

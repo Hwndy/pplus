@@ -86,7 +86,7 @@ function Coverage({ data }: { data: SocialCoverageReport }) {
         <StatCard label="Head office" value={<span className="text-lg">{location || '—'}</span>} icon={MapPin} />
       </StatGrid>
 
-      <div className="grid gap-6 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <PlatformCard
           name="X"
           platform={x}
@@ -119,7 +119,7 @@ function Coverage({ data }: { data: SocialCoverageReport }) {
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <SectionCard title="Coverage by country" description="Stories per country (top 10).">
           <RankedBarChart
             data={countries.slice(0, 10).map((c) => ({ name: c.country, value: c.count }))}

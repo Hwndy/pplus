@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 /** Split-screen layout shared by sign-in and password recovery screens. */
 export function AuthLayout({ title, description, children }: { title: string; description?: ReactNode; children: ReactNode }) {
   return (
-    <div className="grid min-h-screen bg-background lg:grid-cols-2">
+    <div className="grid grid-cols-1 min-h-screen bg-background lg:grid-cols-2">
       <div className="flex flex-col justify-center px-6 py-10 sm:px-12 lg:px-20">
         <div className="mx-auto w-full max-w-sm">
           <img src="/uploads/logo.png" alt="P+ Media Analytics" className="mb-10 h-12 w-auto" />

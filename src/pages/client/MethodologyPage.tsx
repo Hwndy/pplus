@@ -18,7 +18,7 @@ export default function MethodologyPage() {
       <PageHeader title="Principles & methodology" description="The standards and process behind every P+ report." />
 
       <div className="space-y-6">
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <SectionCard title="Principles">
             <div className="flex items-start gap-4">
               <div className="rounded-md bg-primary/10 p-2 text-primary">

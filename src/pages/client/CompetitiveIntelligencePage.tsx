@@ -33,7 +33,7 @@ function Overview({ view }: { view: SectorView }) {
           hint={leader ? `${formatNumber(leader.frequency)} stories` : undefined}
         />
       </StatGrid>
-      <div className="grid gap-6 lg:grid-cols-5">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
         <div className="lg:col-span-2"><MediaShareSection view={view} /></div>
         <div className="lg:col-span-3"><ProminenceSection view={view} /></div>
       </div>

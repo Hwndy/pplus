@@ -39,7 +39,7 @@ function SentimentView({ view }: { view: SectorView }) {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <SectionCard title="Sentiment frequency" description="Positive, neutral and negative stories per company.">
           <ResponsiveContainer width="100%" height={height}>
             <BarChart data={rows} layout="vertical" margin={{ left: 8, right: 16 }}>

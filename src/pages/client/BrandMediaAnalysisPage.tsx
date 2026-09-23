@@ -51,7 +51,7 @@ function Analysis({ data }: { data: BrandMediaAnalysisReport }) {
         <StatCard label="Potential reach" value={formatNumber(reach.combined_reach)} icon={Radio} hint="Print audience plus online traffic" />
       </StatGrid>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <SectionCard title="Potential reach" description="Audience of each publication counted once, however many stories it ran.">
           <DetailGrid
             items={[
@@ -78,7 +78,7 @@ function Analysis({ data }: { data: BrandMediaAnalysisReport }) {
         </SectionCard>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <SectionCard title="Top media activities" description={`Leading themes across ${formatNumber(a.thematic_distribution.total_activities)} stories.`}>
           <RankedBarChart data={activities} seriesName="Stories" emptyTitle="No activities recorded" />
         </SectionCard>

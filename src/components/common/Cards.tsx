@@ -57,5 +57,5 @@ export function SectionCard({ title, description, actions, children, className, 
 
 /** Responsive grid for StatCards. */
 export function StatGrid({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn('stat-grid grid gap-4 sm:grid-cols-2 xl:grid-cols-4', className)}>{children}</div>;
+  return <div className={cn('stat-grid grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4', className)}>{children}</div>;
 }

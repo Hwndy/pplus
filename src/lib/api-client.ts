@@ -63,6 +63,9 @@ function toApiError(error: unknown): ApiError {
     const status = err.response?.status ?? 0;
     const body = err.response?.data;
     if (!err.response) {
+      if (err.code === 'ECONNABORTED' || err.code === 'ETIMEDOUT') {
+        return new ApiError('The server is taking longer than expected. Refresh in a moment to check whether your change was saved before trying again.', 0);
+      }
       return new ApiError('Unable to reach the server. Check your connection and try again.', 0);
     }
     const rawMessage = body?.message;
@@ -108,7 +111,8 @@ export const api = {
   put: <T>(url: string, data?: unknown) => requestData<T>({ method: 'PUT', url, data }),
   patch: <T>(url: string, data?: unknown) => requestData<T>({ method: 'PATCH', url, data }),
   delete: <T>(url: string) => requestData<T>({ method: 'DELETE', url }),
-  upload: <T>(url: string, form: FormData) => requestData<T>({ method: 'POST', url, data: form }),
+  // Imports can take a while on large files; allow up to 5 minutes.
+  upload: <T>(url: string, form: FormData) => requestData<T>({ method: 'POST', url, data: form, timeout: 300_000 }),
 };
 
 /** Downloads a file (CSV/JSON export) and hands it to the browser. */

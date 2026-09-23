@@ -37,7 +37,7 @@ function Distribution({ data }: { data: ThematicDistributionReport }) {
         />
       </StatGrid>
 
-      <div className="grid gap-6 lg:grid-cols-5">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
         <SectionCard title="Distribution of media activities" description="Stories per theme (top 10)." className="lg:col-span-3">
           <RankedBarChart data={bars} seriesName="Stories" emptyTitle="No themes recorded" colorful />
         </SectionCard>

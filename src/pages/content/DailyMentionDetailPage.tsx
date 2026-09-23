@@ -162,7 +162,7 @@ export default function DailyMentionDetailPage() {
               title={section.label}
               description={`${items.length} ${items.length === 1 ? 'mention' : 'mentions'}. ${section.description}`}
             >
-              <div className="grid gap-3 lg:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                 {items.map((item, i) => <MentionCard key={`${i}-${item.headline ?? ''}`} item={item} />)}
               </div>
             </SectionCard>
