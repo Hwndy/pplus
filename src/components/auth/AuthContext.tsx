@@ -1,397 +1,146 @@
-import { createContext, useContext, useReducer, useEffect, useCallback, useMemo, ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { authApi } from '@/api/auth';
+import { fetchMonitoringPairs } from '@/api/reports';
+import { ApiError, setUnauthorizedHandler, tokenStore } from '@/lib/api-client';
+import { roleOf } from '@/lib/roles';
+import type { MonitoringPair, User } from '@/types/api';
 
-export type UserRole = 'Admin' | 'Supervisor' | 'Analyst' | 'Client';
+const ACTIVE_PAIR_KEY = 'pplus.activePairId';
 
-export interface Role {
-  name: UserRole;
+/** Thrown by `login` when the account must set a new password before signing in. */
+export class PasswordChangeRequiredError extends Error {
+  readonly email: string;
+  constructor(email: string, message: string) {
+    super(message);
+    this.email = email;
+  }
 }
 
-export interface User {
-  id: string;
-  name?: string;
-  username: string;
-  email: string;
-  role: Role | string;
-  avatar?: string;
-  status?: string;
-  mobileContact?: string;
-  countryCode?: string;
-  supervisorId?: string;
-  expirationDate?: string;
-  lastLogin?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  role_id?: number;
-  mobile_number?: string;
-  requires_password_change?: boolean;
-}
-
-export interface MonitoringPair {
-  pair_id: number;
-  pair_number: number;
-
-  base_company: {
-    id: number;
-    company_name: string;
-    industry: string;
-    sub_industry: string;
-  };
-
-  competitors: Array<{
-    id: number;
-    company_name: string;
-  }>;
-
-  subsidiaries: Array<any>;
-
-  media_prominence: string[];
-  monitoring_date: string;
-  is_expired: boolean;
-  status: 'active' | 'expired';
-
-  summary: {
-    total_competitors: number;
-    total_subsidiaries: number;
-    total_companies_monitored: number;
-  };
-}
-
-interface AuthState {
+interface AuthContextValue {
   user: User | null;
-  token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  error: string | null;
-  isSessionValidated: boolean;
+  login: (email: string, password: string) => Promise<User>;
+  logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
+  /** Client monitoring pairs (empty for staff). */
   monitoringPairs: MonitoringPair[];
   activePair: MonitoringPair | null;
-}
-
-interface AuthContextType extends AuthState {
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
   setActivePair: (pair: MonitoringPair) => void;
-  loadMonitoringPairs: () => Promise<void>;
 }
 
-const initialState: AuthState = {
-  user: null,
-  token: null,
-  isAuthenticated: false,
-  isLoading: true,
-  error: null,
-  isSessionValidated: false,
-  monitoringPairs: [],
-  activePair: null,
-};
+const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-const authReducer = (state: AuthState, action: any): AuthState => {
-  switch (action.type) {
-    case 'AUTH_START':
-      return { ...state, isLoading: true, error: null };
-    case 'AUTH_END':
-      return { ...state, isLoading: false, isSessionValidated: action.payload?.isSessionValidated || false };
-    case 'LOG_IN':
-      return {
-        ...state,
-        isAuthenticated: true,
-        user: action.payload.user,
-        token: action.payload.token,
-        isLoading: false,
-        error: null,
-      };
-    case 'LOG_OUT':
-      return {
-        ...state,
-        isAuthenticated: false,
-        user: null,
-        token: null,
-        isLoading: false,
-        error: null,
-        monitoringPairs: [],
-        activePair: null,
-      };
-    case 'AUTH_ERROR':
-      return {
-        ...state,
-        isAuthenticated: false,
-        user: null,
-        token: null,
-        isLoading: false,
-        error: action.payload.error,
-        monitoringPairs: [],
-        activePair: null,
-      };
-    case 'SET_MONITORING_PAIRS':
-      return {
-        ...state,
-        monitoringPairs: action.payload,
-        activePair: action.payload[0] || null,
-      };
-    case 'SET_ACTIVE_PAIR':
-      return {
-        ...state,
-        activePair: action.payload,
-      };
-    default:
-      return state;
-  }
-};
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [monitoringPairs, setMonitoringPairs] = useState<MonitoringPair[]>([]);
+  const [activePair, setActivePairState] = useState<MonitoringPair | null>(null);
 
-// --- CONTEXT CREATION ---
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  token: null,
-  isAuthenticated: false,
-  isLoading: true,
-  error: null,
-  isSessionValidated: false,
-  monitoringPairs: [],
-  activePair: null,
-  login: async () => {},
-  logout: () => {},
-  setActivePair: () => {},
-  loadMonitoringPairs: async () => {},
-});
+  const clearSession = useCallback(() => {
+    tokenStore.clear();
+    setUser(null);
+    setMonitoringPairs([]);
+    setActivePairState(null);
+    queryClient.clear();
+  }, [queryClient]);
 
-// --- AUTH PROVIDER ---
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [state, dispatch] = useReducer(authReducer, initialState);
-  const navigate = useNavigate();
-  const API_BASE_URL = 'https://p-fw0o.onrender.com/api/v1';
-
-  const clearAuthData = useCallback(() => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('activePairId');
-
-    localStorage.removeItem('temp_email');
-    localStorage.removeItem('temp_password');
-    dispatch({ type: 'LOG_OUT' });
+  const loadPairs = useCallback(async (profile: User) => {
+    if (roleOf(profile) !== 'Client') return;
+    const pairs = await fetchMonitoringPairs().catch(() => []);
+    setMonitoringPairs(pairs);
+    const savedId = Number(localStorage.getItem(ACTIVE_PAIR_KEY));
+    const preferred = pairs.find((p) => p.pair_id === savedId)
+      ?? pairs.find((p) => !p.is_expired)
+      ?? pairs[0]
+      ?? null;
+    setActivePairState(preferred);
   }, []);
 
-  const loadMonitoringPairs = useCallback(async () => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
+  const loadProfile = useCallback(async () => {
+    const profile = await authApi.me();
+    setUser(profile);
+    await loadPairs(profile);
+    return profile;
+  }, [loadPairs]);
 
-    try {
-      const response = await fetch(`${API_BASE_URL}/report/monitoring-pairs`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const result = await response.json();
-
-      if (response.ok && result.success) {
-        const pairs: MonitoringPair[] = result.data.pairs.map((p: any) => ({
-          pair_id: p.pair_id,
-          pair_number: p.pair_number,
-          base_company: {
-            id: p.base_company.id,
-            company_name: p.base_company.company_name.trim(),
-            industry: p.base_company.industry.trim(),
-            sub_industry: p.base_company.sub_industry.trim(),
-          },
-          competitors: p.competitors || [],
-          subsidiaries: p.subsidiaries || [],
-          media_prominence: p.media_prominence || [],
-          monitoring_date: p.monitoring_date,
-          is_expired: p.is_expired,
-          status: p.status,
-          summary: {
-            total_competitors: p.summary.total_competitors,
-            total_subsidiaries: p.summary.total_subsidiaries,
-            total_companies_monitored: p.summary.total_companies_monitored,
-          },
-        }));
-
-        dispatch({ type: 'SET_MONITORING_PAIRS', payload: pairs });
-
-        const savedPairId = localStorage.getItem('activePairId');
-        const savedPair = pairs.find(p => p.pair_id === Number(savedPairId));
-        if (savedPair) {
-          dispatch({ type: 'SET_ACTIVE_PAIR', payload: savedPair });
-        } else if (pairs.length > 0) {
-          localStorage.setItem('activePairId', String(pairs[0].pair_id));
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load monitoring pairs:', error);
-      toast.error('Could not load your monitoring companies');
-    }
-  }, []);
-
-  const setActivePair = useCallback((pair: MonitoringPair) => {
-    dispatch({ type: 'SET_ACTIVE_PAIR', payload: pair });
-    localStorage.setItem('activePairId', String(pair.pair_id));
-    toast.success(`Switched to ${pair.base_company.company_name}`);
-  }, []);
-
-  // Validate session on mount
+  // Restore the session on first load.
   useEffect(() => {
-    const validateSession = async () => {
-      dispatch({ type: 'AUTH_START' });
-      const token = localStorage.getItem('token');
-      const userData = localStorage.getItem('user');
-
-      if (!token || !userData) {
-        dispatch({ type: 'AUTH_END', payload: { isSessionValidated: true } });
+    let cancelled = false;
+    (async () => {
+      if (!tokenStore.get()) {
+        setIsLoading(false);
         return;
       }
-
       try {
-        const response = await fetch(`${API_BASE_URL}/auth/me`, {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        const result = await response.json();
-
-        if (response.ok && result.success) {
-          const user = result.data;
-          dispatch({
-            type: 'LOG_IN',
-            payload: {
-              user,
-              token,
-            },
-          });
-          localStorage.setItem('user', JSON.stringify(user));
-          await loadMonitoringPairs();
-        } else {
-          throw new Error(result.message || 'Session validation failed');
-        }
-      } catch (error) {
-        console.error('Session validation error:', error);
-        clearAuthData();
-        dispatch({
-          type: 'AUTH_ERROR',
-          payload: { error: 'Invalid or expired session. Please sign in again.' },
-        });
-        toast.error('Session expired. Please sign in again.');
-        if (window.location.pathname !== '/login') {
-          navigate('/login', { replace: true });
-        }
+        await loadProfile();
+      } catch {
+        if (!cancelled) clearSession();
       } finally {
-        dispatch({ type: 'AUTH_END', payload: { isSessionValidated: true } });
+        if (!cancelled) setIsLoading(false);
       }
-    };
+    })();
+    return () => { cancelled = true; };
+  }, [loadProfile, clearSession]);
 
-    validateSession();
-  }, [navigate, clearAuthData, loadMonitoringPairs]);
+  // Any 401 from the API (expired/revoked token) ends the session.
+  useEffect(() => {
+    setUnauthorizedHandler(clearSession);
+    return () => setUnauthorizedHandler(null);
+  }, [clearSession]);
 
-  const login = useCallback(
-    async (email: string, password: string) => {
-      dispatch({ type: 'AUTH_START' });
-      try {
-        const response = await fetch(`${API_BASE_URL}/auth/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password }),
-        });
-
-        const result = await response.json();
-
-        if (!response.ok || !result.success) {
-          if (result.data?.requires_password_change) {
-            localStorage.setItem('temp_email', email);
-            localStorage.setItem('temp_password', password);
-            
-            dispatch({ type: 'AUTH_END' });
-            
-            toast.info('Password change required. Please set a new password.');
-            navigate('/change-password-first-time', { replace: true });
-            return;
-          }
-          
-          throw new Error(result.message || 'Login failed');
-        }
-
-        // FIXED: Token is nested inside result.data.user.token
-        const token = result.data.user?.token;
-        const userDetails = { ...result.data.user };
-
-        if (!token) {
-          throw new Error('Login successful, but no token was provided by the server.');
-        }
-
-        // Clean user object: remove token from stored user data
-        delete (userDetails as any).token;
-
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(userDetails));
-
-        dispatch({
-          type: 'LOG_IN',
-          payload: {
-            user: userDetails,
-            token,
-          },
-        });
-
-        toast.success(`Welcome back, ${userDetails.username || 'User'}!`);
-        navigate('/dashboard');
-
-        await loadMonitoringPairs();
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-        dispatch({ type: 'AUTH_ERROR', payload: { error: errorMessage } });
-        toast.error(`Login failed: ${errorMessage}`);
-        throw error;
-      } finally {
-        dispatch({ type: 'AUTH_END' });
+  const login = useCallback(async (email: string, password: string) => {
+    try {
+      const result = await authApi.login(email, password);
+      tokenStore.set(result.token);
+      return await loadProfile();
+    } catch (error) {
+      const data = error instanceof ApiError ? (error.data as { requires_password_change?: boolean; email?: string } | null) : null;
+      if (data?.requires_password_change) {
+        throw new PasswordChangeRequiredError(data.email ?? email, (error as Error).message);
       }
-    },
-    [navigate, loadMonitoringPairs]
-  );
+      throw error;
+    }
+  }, [loadProfile]);
 
   const logout = useCallback(async () => {
-    dispatch({ type: 'AUTH_START' });
-    const token = localStorage.getItem('token');
-    clearAuthData();
-    toast.info('You have been logged out.');
-    navigate('/', { replace: true });
-
-    if (token) {
-      try {
-        await fetch(`${API_BASE_URL}/auth/logout`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      } catch (error) {
-        console.error('Server logout failed, but client is logged out.', error);
-      }
+    try {
+      if (tokenStore.get()) await authApi.logout();
+    } catch {
+      // The session is cleared locally regardless.
+    } finally {
+      clearSession();
     }
-    dispatch({ type: 'AUTH_END' });
-  }, [navigate, clearAuthData]);
+  }, [clearSession]);
 
-  const contextValue = useMemo(
-    () => ({
-      ...state,
-      login,
-      logout,
-      setActivePair,
-      loadMonitoringPairs,
-    }),
-    [state, login, logout, setActivePair, loadMonitoringPairs]
-  );
+  const refreshUser = useCallback(async () => {
+    await loadProfile();
+  }, [loadProfile]);
 
-  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
-};
+  const setActivePair = useCallback((pair: MonitoringPair) => {
+    localStorage.setItem(ACTIVE_PAIR_KEY, String(pair.pair_id));
+    setActivePairState(pair);
+  }, []);
 
-// --- HOOK ---
-export const useAuth = () => {
+  const value = useMemo<AuthContextValue>(() => ({
+    user,
+    isAuthenticated: Boolean(user),
+    isLoading,
+    login,
+    logout,
+    refreshUser,
+    monitoringPairs,
+    activePair,
+    setActivePair,
+  }), [user, isLoading, login, logout, refreshUser, monitoringPairs, activePair, setActivePair]);
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth(): AuthContextValue {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
-};
+}
