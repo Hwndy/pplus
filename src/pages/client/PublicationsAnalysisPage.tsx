@@ -50,7 +50,7 @@ function Analysis({ data }: { data: PublicationsAnalysisReport }) {
         />
       </StatGrid>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <SectionCard title="Top print publications" description={`Print titles that carried your brand most often (top ${TOP}).`}>
           <RankedBarChart data={publicationBars(a.print_publications_volume)} seriesName="Stories" emptyTitle="No print coverage" />
         </SectionCard>
@@ -61,7 +61,7 @@ function Analysis({ data }: { data: PublicationsAnalysisReport }) {
 
       <SectionCard title="Top reporters overall" description="Journalists who wrote most about your brand across print and online.">
         {top3.length ? (
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             {top3.map((r, i) => (
               <div key={r.reporter} className="flex items-center gap-3 rounded-md border p-4">
                 <Avatar>
@@ -82,7 +82,7 @@ function Analysis({ data }: { data: PublicationsAnalysisReport }) {
         ) : <EmptyState title="No reporters recorded" />}
       </SectionCard>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <SectionCard title="Print reporters" description="Stories per journalist in print.">
           <ShareList rows={reporterRows(a.print_reporters)} limit={TOP} colorful={false} emptyTitle="No print reporters recorded" />
         </SectionCard>

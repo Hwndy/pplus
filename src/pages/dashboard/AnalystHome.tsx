@@ -108,7 +108,7 @@ export default function AnalystHome() {
         />
       </StatGrid>
 
-      <div className="grid gap-6 xl:grid-cols-5">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
         <SectionCard title="Your content" description="Submissions by type and review status." className="xl:col-span-3">
           <DataTable columns={typeColumns} rows={CONTENT_KEYS} getRowKey={(key) => key} />
         </SectionCard>

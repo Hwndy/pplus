@@ -35,7 +35,7 @@ function Overviews({ data }: { data: IndustryLandscapeReport }) {
           <EmptyState title="No overviews for this sector" />
         </SectionCard>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {overviews.map((o) => {
             const highlights = (o.highlights ?? []).map((h) => h.trim()).filter(Boolean);
             return (

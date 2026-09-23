@@ -165,7 +165,7 @@ export function UserFormDialog({ open, onOpenChange, user, onSaved }: Props) {
       submitLabel={isEdit ? 'Save changes' : 'Create user'}
       size={role === 'Client' ? 'xl' : 'lg'}
     >
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <TextField control={form.control} name="username" label="Username" required autoComplete="off" />
         <TextField control={form.control} name="email" label="Email" type="email" required autoComplete="off" />
         <div className="grid grid-cols-[110px_1fr] gap-2">
@@ -258,7 +258,7 @@ function MonitoringEditor({ control, index, onRemove }: { control: Control<Value
           <Trash2 /> Remove
         </Button>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <ComboboxField control={control} name={`company_monitorings.${index}.company_id`} label="Company" required numeric options={companyOptions} loading={companies.isLoading} />
         <TextField control={control} name={`company_monitorings.${index}.monitoring_date`} label="Monitoring ends on" type="date" required />
         <MultiComboboxField control={control} name={`company_monitorings.${index}.competitor_company_ids`} label="Competitors" required numeric options={companyOptions.filter((o) => Number(o.value) !== companyId)} loading={companies.isLoading} />
@@ -280,7 +280,7 @@ function MonitoringEditor({ control, index, onRemove }: { control: Control<Value
         </div>
         {!companyId && <p className="text-xs text-muted-foreground">Select the company first.</p>}
         {subs.fields.map((field, subIndex) => (
-          <div key={field.id} className="grid gap-3 rounded-md border bg-background p-3 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-start">
+          <div key={field.id} className="grid grid-cols-1 gap-3 rounded-md border bg-background p-3 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-start">
             <ComboboxField control={control} name={`company_monitorings.${index}.subsidiary_monitorings.${subIndex}.subsidiary_id`} label="Subsidiary" required numeric options={ownSubsidiaryOptions} />
             <MultiComboboxField control={control} name={`company_monitorings.${index}.subsidiary_monitorings.${subIndex}.competitor_subsidiary_ids`} label="Competitor subsidiaries" required numeric options={allSubsidiaries} loading={subsidiaries.isLoading} />
             <MultiComboboxField control={control} name={`company_monitorings.${index}.subsidiary_monitorings.${subIndex}.media_prominence`} label="Media prominence" required options={prominenceOptions} />

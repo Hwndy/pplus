@@ -86,7 +86,7 @@ export default function AdminHome() {
             />
           </StatGrid>
 
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <SectionCard title="Activity" description="Audit log entries per day over the last 7 days." className="lg:col-span-2">
               {loading ? <LoadingState /> : !hasActivity ? (
                 <EmptyState title="No activity this week" description="Recorded actions will appear here." />

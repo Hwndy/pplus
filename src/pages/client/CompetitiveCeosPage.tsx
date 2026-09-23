@@ -21,7 +21,7 @@ function CeoView({ view }: { view: SectorView }) {
           : 'Stories attributed to each company\'s chief executive.'}
       >
         {ceos.length ? (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {ceos.map((c, i) => {
               const pct = toNumber(c.percentage);
               return (
@@ -51,7 +51,7 @@ function CeoView({ view }: { view: SectorView }) {
         )}
       </SectionCard>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <SectionCard title="CEO coverage" description="Stories per chief executive.">
           <RankedBarChart data={ceos.map((c) => ({ name: c.ceo, value: c.frequency }))} seriesName="Stories" emptyTitle="No CEO coverage" colorful />
         </SectionCard>

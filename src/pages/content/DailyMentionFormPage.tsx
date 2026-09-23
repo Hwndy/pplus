@@ -170,7 +170,7 @@ function MentionSection({ control, category, label, description, open, onOpenCha
                     </Button>
                   </div>
                   <TextField control={control} name={`${category}.${index}.headline`} label="Headline" required />
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     <TextField control={control} name={`${category}.${index}.source`} label="Source" />
                     <TextField control={control} name={`${category}.${index}.reporter`} label="Reporter" />
                     <TextField control={control} name={`${category}.${index}.page`} label="Page" />
@@ -298,7 +298,7 @@ export default function DailyMentionFormPage() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} noValidate className="space-y-6">
           <SectionCard title="Details">
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <ComboboxField control={form.control} name="company_id" label="Company" required numeric loading={companies.isLoading}
                 options={(companies.data ?? []).map((c) => ({ value: String(c.id), label: c.company_name }))} />
               <ComboboxField control={form.control} name="publication" label="Publication" allowCustom loading={publications.isLoading}

@@ -224,7 +224,7 @@ function EditEditorialDialog({ record, onOpenChange }: { record: Editorial | nul
       submitLabel={isAdmin ? 'Save changes' : 'Save and resubmit'}
       size="xl"
     >
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <ComboboxField control={form.control} name="company_id" label="Company" required numeric loading={companies.isLoading}
           options={(companies.data ?? []).map((c) => ({ value: String(c.id), label: c.company_name }))} />
         <TextField control={form.control} name="date" label="Date" type="date" required />

@@ -166,7 +166,7 @@ function MentionsInbox({ data }: { data: DailyMentionsReport }) {
           <EmptyState title="No mentions match these filters" description="Try another company or category." />
         </SectionCard>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
           <SectionCard title="Inbox" description={`${formatNumber(mentions.length)} entries, newest first.`} contentClassName="px-0 pb-2">
             <div className="max-h-[70vh] overflow-y-auto">
               {groups.map((group) => (

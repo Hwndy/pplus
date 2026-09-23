@@ -155,7 +155,7 @@ export function CompanyFormDialog({ open, onOpenChange, company, onSaved }: Prop
       {!loadingDetail && !(isEdit && detail.error) && (
         <>
           <FormSection title="Company details">
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <TextField control={form.control} name="company_name" label="Company name" required className="sm:col-span-2" />
               <ComboboxField
                 control={form.control}
@@ -186,7 +186,7 @@ export function CompanyFormDialog({ open, onOpenChange, company, onSaved }: Prop
           </FormSection>
 
           <FormSection title="Contact">
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <TextField control={form.control} name="contact_person" label="Contact person" />
               <TextField control={form.control} name="email" label="Email" type="email" autoComplete="off" />
               <TextField control={form.control} name="phone_no" label="Phone number" type="tel" />
@@ -204,7 +204,7 @@ export function CompanyFormDialog({ open, onOpenChange, company, onSaved }: Prop
           </FormSection>
 
           <FormSection title="Online presence" description="Full addresses including https://. Leave blank if not applicable.">
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <TextField control={form.control} name="website" label="Website" type="url" />
               <TextField control={form.control} name="facebook_link" label="Facebook" type="url" />
               <TextField control={form.control} name="instagram_link" label="Instagram" type="url" />

@@ -19,7 +19,7 @@ function PrDrivers({ view }: { view: SectorView }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {companies.map((company) => {
           const entry = drivers[company];
           return (

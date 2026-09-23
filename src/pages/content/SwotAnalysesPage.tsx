@@ -117,12 +117,12 @@ function SwotFormDialog({ open, onOpenChange, record }: { open: boolean; onOpenC
       submitLabel={record ? 'Save and resubmit' : 'Submit for review'}
       size="xl"
     >
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <ComboboxField control={form.control} name="company_id" label="Company" required numeric loading={companies.isLoading}
           options={(companies.data ?? []).map((c) => ({ value: String(c.id), label: c.company_name }))} />
         <TextField control={form.control} name="date" label="Date" type="date" required />
       </div>
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {QUADRANTS.map((q) => <QuadrantEditor key={q.key} control={form.control} name={q.key} label={q.label} />)}
       </div>
       {form.formState.errors.strengths?.root?.message || form.formState.errors.strengths?.message ? (

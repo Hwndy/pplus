@@ -45,7 +45,7 @@ function Summary({ data }: { data: ExecutiveSummaryReport }) {
         />
       </StatGrid>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <SectionCard title="Sentiment" description="Tone of coverage mentioning your brand.">
           {sentiment.length ? (
             <ResponsiveContainer width="100%" height={260}>
@@ -92,7 +92,7 @@ function Summary({ data }: { data: ExecutiveSummaryReport }) {
         ) : <EmptyState title="No weekly data" description="No print or online stories in this period." />}
       </SectionCard>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <SectionCard title="Share of voice" description={`${formatNumber(s.competitiveMediaShare.total_mentions)} stories across your brand and competitors.`}>
           {share.length ? (
             <div className="space-y-3">

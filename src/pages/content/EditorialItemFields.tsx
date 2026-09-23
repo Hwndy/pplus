@@ -15,7 +15,7 @@ function FieldGroup({ title, children }: { title: string; children: ReactNode })
   return (
     <fieldset className="space-y-3">
       <legend className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{title}</legend>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{children}</div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">{children}</div>
     </fieldset>
   );
 }

@@ -65,7 +65,7 @@ function SentimentIndex({ data }: { data: BrandSentimentReport }) {
         <StatCard label="Negative" value={formatPercent(shareOf(tones.negative, total))} icon={ThumbsDown} hint={`${formatNumber(tones.negative)} stories`} />
       </StatGrid>
 
-      <div className="grid gap-6 lg:grid-cols-5">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
         <SectionCard title="Sentiment breakdown" description="Stories per sentiment classification." className="lg:col-span-3">
           {total > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
@@ -104,7 +104,7 @@ function SentimentIndex({ data }: { data: BrandSentimentReport }) {
       </div>
 
       <SectionCard title="Key reputational drivers" description="Headlines that shaped each sentiment classification.">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {bars.map((b) => {
             const drivers = data.key_brand_reputational_drivers[b.key];
             const headlines = Array.isArray(drivers) ? drivers : [];
