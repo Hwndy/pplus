@@ -221,8 +221,8 @@ export default function MentionsInboxPage() {
   return (
     <ReportShell<DailyMentionsReport>
       report="daily-mentions"
-      title="Daily mentions"
-      description="Daily press mentions of your brand and competitors"
+      title="Daily Mentions"
+      description="Daily press mentions of your brand and your competitors."
     >
       {(data) => <MentionsInbox data={data} />}
     </ReportShell>

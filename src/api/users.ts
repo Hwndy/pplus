@@ -13,6 +13,8 @@ export interface CompanyMonitoringInput {
   company_id: number;
   competitor_company_ids: number[];
   media_prominence: string[];
+  /** Monitoring period ("From" / "To", YYYY-MM-DD). */
+  monitoring_start_date: string;
   monitoring_date: string;
   subsidiary_monitorings: SubsidiaryMonitoringInput[];
 }

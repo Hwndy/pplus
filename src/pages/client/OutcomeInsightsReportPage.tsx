@@ -1,15 +1,13 @@
 import { useMemo, useState } from 'react';
-import { SectionCard } from '@/components/common/Cards';
-import { BulletList, DetailSection } from '@/components/common/Detail';
 import { FilterBar, FilterSelect } from '@/components/common/Filters';
 import { EmptyState } from '@/components/common/States';
-import { formatDate, formatNumber } from '@/lib/format';
+import { formatDate } from '@/lib/format';
 import type { OutcomeInsightsReport, ReportInsightItem } from '@/types/reports';
-import { AnalystNote } from './ReportParts';
+import { AnalystNote, NumberedCard, ReportHeading } from './ReportParts';
 import { ReportShell } from './ReportShell';
-import { groupBy, uniqueValues } from './reportUtils';
+import { uniqueValues } from './reportUtils';
 
-/** Insights created through the app use `insight`; seeded rows use `analysis`. */
+/** Insights created through the app use `insight`; older rows use `analysis`. */
 function insightText(item: ReportInsightItem): string {
   return (item.insight ?? item.analysis ?? '').trim();
 }
@@ -34,29 +32,29 @@ function InsightsList({ data }: { data: OutcomeInsightsReport }) {
 
   return (
     <div className="space-y-6">
-      <FilterBar className="mb-0" onReset={category ? () => setCategory('') : undefined}>
-        <FilterSelect label="Category" value={category} onChange={setCategory} options={categoryOptions} allLabel="All categories" className="sm:w-72" />
-      </FilterBar>
+      <ReportHeading
+        description="Insights, recommendations and suggestions from your P+ analyst."
+        actions={categoryOptions.length > 1 ? (
+          <FilterBar className="mb-0" onReset={category ? () => setCategory('') : undefined}>
+            <FilterSelect label="Category" value={category} onChange={setCategory} options={categoryOptions} allLabel="All categories" className="sm:w-64" />
+          </FilterBar>
+        ) : undefined}
+      >
+        Insight / Recommendation / Suggestion
+      </ReportHeading>
 
       {records.length === 0 ? (
-        <SectionCard title="Insights">
-          <EmptyState title="No insights in this category" description="Choose another category to see more." />
-        </SectionCard>
+        <EmptyState title="There were no insights in this category for the period under review." />
       ) : records.map((record) => (
-        <SectionCard
-          key={record.id}
-          title={formatDate(record.date)}
-          description={`${formatNumber(record.items.length)} ${record.items.length === 1 ? 'insight' : 'insights'}`}
-        >
-          <div className="space-y-5">
-            {groupBy(record.items, (i) => i.category.trim() || 'General').map((group) => (
-              <DetailSection key={group.key} title={group.key}>
-                <BulletList items={group.items.map(insightText)} />
-              </DetailSection>
-            ))}
-          </div>
+        <section key={record.id} className="space-y-4">
+          {records.length > 1 && <p className="text-sm font-medium text-muted-foreground">{formatDate(record.date)}</p>}
+          {record.items.map((item, i) => (
+            <NumberedCard key={`${i}-${item.category}`} index={i + 1} category={item.category.trim() || 'Insight'}>
+              <p className="whitespace-pre-line text-justify">{insightText(item)}</p>
+            </NumberedCard>
+          ))}
           <AnalystNote note={record.analyst_note} />
-        </SectionCard>
+        </section>
       ))}
     </div>
   );
@@ -66,8 +64,8 @@ export default function OutcomeInsightsReportPage() {
   return (
     <ReportShell<OutcomeInsightsReport>
       report="outcome-insights"
-      title="Outcome & insights"
-      description="Analyst insights and recommendations drawn from your coverage"
+      title="Outcome & Insights"
+      description="Analyst insights and recommendations drawn from your coverage."
     >
       {(data) => <InsightsList data={data} />}
     </ReportShell>

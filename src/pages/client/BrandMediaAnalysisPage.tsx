@@ -1,129 +1,92 @@
-import {
-  Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
-} from 'recharts';
 import { format, parse } from 'date-fns';
-import { Camera, Newspaper, Radio, Video } from 'lucide-react';
-import { SectionCard, StatCard, StatGrid } from '@/components/common/Cards';
-import { DetailGrid } from '@/components/common/Detail';
-import { EmptyState } from '@/components/common/States';
-import { chartAxisProps, chartTooltipStyle } from '@/lib/charts';
-import { useChartColors } from '@/lib/reportThemes';
-import { formatNumber, humanize } from '@/lib/format';
+import { AtSign, Camera, Globe2, Video } from 'lucide-react';
+import { SectionCard } from '@/components/common/Cards';
+import { useReportTheme } from '@/lib/reportThemes';
+import { formatDate, formatNumber, humanize } from '@/lib/format';
 import type { BrandMediaAnalysisReport } from '@/types/reports';
 import { ReportShell } from './ReportShell';
-import { RankedBarChart, ShareList } from './ReportParts';
-import { toNumber, mergeWeekly } from './reportUtils';
+import { KpiTile, PercentBars, PrintOnlineTrend } from './ReportParts';
+import { mergeWeeklyPercent, toNumber } from './reportUtils';
 
 function monthLabel(month: string): string {
   const date = parse(month, 'yyyy-MM', new Date());
-  return Number.isNaN(date.getTime()) ? month : format(date, 'MMM yyyy');
+  return Number.isNaN(date.getTime()) ? month : format(date, 'MMM');
 }
 
 function Analysis({ data }: { data: BrandMediaAnalysisReport }) {
-  const CHART_COLORS = useChartColors();
+  const { palette } = useReportTheme();
   const a = data.analysis;
   const reach = a.potential_reach;
 
-  const placements = a.brand_message_placement.placements.map((p) => ({ name: humanize(p.placement), value: p.count }));
-  const activities = a.thematic_distribution.top_10.map((t) => ({ name: t.activity, value: t.count }));
-  const subsidiaries = a.brand_subsidiary_exposure.top_10.map((s) => ({ label: s.brand, value: s.count, percentage: toNumber(s.percentage) }));
+  const activities = a.thematic_distribution.top_10.map((t) => ({
+    key: t.activity, label: t.activity, title: t.activity, count: t.count, percentage: toNumber(t.percentage),
+  }));
+  const brands = a.brand_subsidiary_exposure.top_10.map((b) => ({
+    key: b.brand, label: b.brand, title: b.brand, count: b.count, percentage: toNumber(b.percentage),
+  }));
+  const placements = a.brand_message_placement.placements.map((p) => {
+    const label = `${humanize(p.placement)} Mentions`;
+    return { key: p.placement, label, title: label, count: p.count, percentage: toNumber(p.percentage) };
+  });
 
-  const weekly = mergeWeekly(a.weekly_volume_trend);
-  const weeklyTotal = a.weekly_volume_trend.print.total + a.weekly_volume_trend.online.total;
-
+  const weekly = mergeWeeklyPercent(a.weekly_volume_trend);
   const monthly = a.monthly_volume_trend.monthly_breakdown.map((m) => ({
     month: monthLabel(m.month),
-    print: m.print.count,
-    online: m.online.count,
+    print: toNumber(m.print.percentage),
+    online: toNumber(m.online.percentage),
   }));
 
   return (
     <div className="space-y-6">
-      <StatGrid>
-        <StatCard
-          label="News mentions"
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <KpiTile
+          label="News Mentions"
           value={formatNumber(a.news_mention.total)}
-          icon={Newspaper}
-          hint={`${formatNumber(a.news_mention.breakdown.headline)} headlines · ${formatNumber(a.news_mention.breakdown.advertorial)} advertorials`}
-        />
-        <StatCard label="Photo mentions" value={formatNumber(a.photo_mention.total)} icon={Camera} hint="Visual brand appearances" />
-        <StatCard label="Video mentions" value={formatNumber(a.video_mention.total)} icon={Video} hint="Video brand mentions" />
-        <StatCard label="Potential reach" value={formatNumber(reach.combined_reach)} icon={Radio} hint="Print audience plus online traffic" />
-      </StatGrid>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <SectionCard title="Potential reach" description="Audience of each publication counted once, however many stories it ran.">
-          <DetailGrid
-            items={[
-              { label: 'Print reach', value: formatNumber(reach.print.total_reach) },
-              { label: 'Print publications', value: formatNumber(reach.print.unique_sources) },
-              { label: 'Online reach', value: formatNumber(reach.online.total_reach) },
-              { label: 'Online publications', value: formatNumber(reach.online.unique_sources) },
-            ]}
-          />
-        </SectionCard>
-
-        <SectionCard title="Message placement" description="How your brand appeared in coverage.">
-          {placements.length ? (
-            <ResponsiveContainer width="100%" height={240}>
-              <PieChart>
-                <Pie data={placements} dataKey="value" nameKey="name" innerRadius={55} outerRadius={90} paddingAngle={2}>
-                  {placements.map((p, i) => <Cell key={p.name} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
-                </Pie>
-                <Tooltip {...chartTooltipStyle} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : <EmptyState title="No placement data" />}
-        </SectionCard>
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <SectionCard title="Top media activities" description={`Leading themes across ${formatNumber(a.thematic_distribution.total_activities)} stories.`}>
-          <RankedBarChart data={activities} seriesName="Stories" emptyTitle="No activities recorded" />
-        </SectionCard>
-
-        <SectionCard
-          title="Subsidiary and brand exposure"
-          description={a.brand_subsidiary_exposure.total_brand_mentions > 0
-            ? `${formatNumber(a.brand_subsidiary_exposure.total_brand_mentions)} stories across ${formatNumber(a.brand_subsidiary_exposure.unique_brands)} brands.`
-            : 'Coverage of your subsidiaries and their competitors.'}
+          icon={AtSign}
+          color={palette[0]}
         >
-          <ShareList rows={subsidiaries} emptyTitle="No subsidiary coverage" emptyDescription={a.brand_subsidiary_exposure.note} />
+          <p className="mt-1 text-xs text-muted-foreground">
+            {formatNumber(a.news_mention.breakdown.headline)} headlines · {formatNumber(a.news_mention.breakdown.advertorial)} advertorials
+          </p>
+        </KpiTile>
+        <KpiTile label="Photo Mentions" value={formatNumber(a.photo_mention.total)} icon={Camera} color={palette[1]} />
+        <KpiTile label="Video Mentions" value={formatNumber(a.video_mention.total)} icon={Video} color={palette[2]} />
+        <KpiTile label="Potential Reach" sublabel="(Print & Online)" value={formatNumber(reach.combined_reach)} icon={Globe2} color={palette[3]}>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Print {formatNumber(reach.print.total_reach)} · Online {formatNumber(reach.online.total_reach)}
+          </p>
+        </KpiTile>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 2xl:grid-cols-3">
+        <SectionCard title="Thematic Distribution of Media Activities" description={`Share of ${formatNumber(a.thematic_distribution.total_activities)} stories by media activity.`}>
+          <PercentBars rows={activities} empty="There were no media activities recorded for the period under review." />
+        </SectionCard>
+        <SectionCard
+          title="Brand & Subsidiaries Media Exposure"
+          description={`Share of ${formatNumber(a.brand_subsidiary_exposure.total_brand_mentions)} stories across your brand and subsidiaries.`}
+        >
+          <PercentBars rows={brands} empty={a.brand_subsidiary_exposure.note || 'There was no subsidiary media exposure for the period under review.'} />
+        </SectionCard>
+        <SectionCard title="Brand Message Placement In The Media" description="How your brand's message was presented in coverage." className="lg:col-span-2 2xl:col-span-1">
+          <PercentBars rows={placements} empty="There was no message placement recorded for the period under review." />
         </SectionCard>
       </div>
 
-      <SectionCard title="Weekly volume trend" description="Stories per week, print versus online.">
-        {weekly.length && weeklyTotal > 0 ? (
-          <ResponsiveContainer width="100%" height={280}>
-            <LineChart data={weekly}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="week" {...chartAxisProps} />
-              <YAxis allowDecimals={false} {...chartAxisProps} />
-              <Tooltip {...chartTooltipStyle} />
-              <Legend />
-              <Line type="monotone" dataKey="print" name="Print" stroke={CHART_COLORS[0]} strokeWidth={2} dot={{ r: 3 }} />
-              <Line type="monotone" dataKey="online" name="Online" stroke={CHART_COLORS[1]} strokeWidth={2} dot={{ r: 3 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        ) : <EmptyState title="No stories this month" description="No print or online stories in this period." />}
-      </SectionCard>
-
-      <SectionCard title="Monthly volume trend" description="Stories per month in the selected period, print versus online.">
-        {monthly.length ? (
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={monthly}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="month" {...chartAxisProps} />
-              <YAxis allowDecimals={false} {...chartAxisProps} />
-              <Tooltip {...chartTooltipStyle} />
-              <Legend />
-              <Bar dataKey="print" name="Print" fill={CHART_COLORS[0]} radius={[4, 4, 0, 0]} />
-              <Bar dataKey="online" name="Online" fill={CHART_COLORS[1]} radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        ) : <EmptyState title="No monthly data" />}
-      </SectionCard>
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <SectionCard
+          title="Overall Weekly Volume Trend"
+          description={`${formatDate(data.period.start)} – ${formatDate(data.period.end)} · share of each medium's stories per week`}
+        >
+          <PrintOnlineTrend data={weekly} xKey="week" percent empty="There was no print or online coverage for the period under review." />
+        </SectionCard>
+        <SectionCard
+          title="Overall Monthly Volume Trend"
+          description={`January – December ${a.monthly_volume_trend.year ?? ''} · share of each medium's stories per month`}
+        >
+          <PrintOnlineTrend data={monthly} xKey="month" percent empty="There was no print or online coverage this year." />
+        </SectionCard>
+      </div>
     </div>
   );
 }
@@ -132,8 +95,8 @@ export default function BrandMediaAnalysisPage() {
   return (
     <ReportShell<BrandMediaAnalysisReport>
       report="brand-media-analysis"
-      title="Brand media analysis"
-      description="Volume, reach and placement of your brand's coverage"
+      title="Brand Media Analysis"
+      description="Volume, reach, themes and placement of your brand's coverage."
     >
       {(data) => <Analysis data={data} />}
     </ReportShell>

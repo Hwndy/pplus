@@ -11,10 +11,28 @@ import { SectionCard, StatCard, StatGrid } from '@/components/common/Cards';
 import { EmptyState, ErrorState, LoadingState } from '@/components/common/States';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { auditApi } from '@/api/audit';
+import { usersApi } from '@/api/users';
+import { useRoles } from '@/hooks/useLookups';
+import { SubscriptionBadge } from '@/pages/admin/SubscriptionBadge';
+import { EXPIRING_SOON_DAYS, formatPeriodDate, subscriptionState } from '@/pages/admin/subscription';
+import type { User } from '@/types/api';
 import { CHART_COLORS, SENTIMENT_COLORS, chartAxisProps, chartTooltipStyle } from '@/lib/charts';
 import { formatDateTime, formatNumber, humanize } from '@/lib/format';
 
 const RECENT_CRITICAL_PARAMS = { severity: 'CRITICAL' as const, limit: 5, page: 1 };
+/** Largest page the user list endpoint returns. */
+const USERS_PAGE_LIMIT = 100;
+
+/** Every client account (the user list is paginated, so walk all pages). */
+async function fetchAllClients(roleId: number): Promise<User[]> {
+  const first = await usersApi.list({ role: roleId, page: 1, limit: USERS_PAGE_LIMIT });
+  const pages = first.pagination.totalPages;
+  if (pages <= 1) return first.data;
+  const rest = await Promise.all(
+    Array.from({ length: pages - 1 }, (_, i) => usersApi.list({ role: roleId, page: i + 2, limit: USERS_PAGE_LIMIT })),
+  );
+  return [first, ...rest].flatMap((p) => p.data);
+}
 
 function dayLabel(value: string): string {
   const date = parseISO(value);
@@ -27,6 +45,24 @@ export default function AdminHome() {
     queryKey: ['audit-logs', RECENT_CRITICAL_PARAMS],
     queryFn: () => auditApi.list(RECENT_CRITICAL_PARAMS),
   });
+
+  const roles = useRoles();
+  const clientRoleId = roles.data?.find((r) => r.name === 'Client')?.id;
+  const clients = useQuery({
+    queryKey: ['users', 'all-clients', clientRoleId],
+    queryFn: () => fetchAllClients(clientRoleId as number),
+    enabled: clientRoleId !== undefined,
+  });
+  const endingSoon = (clients.data ?? [])
+    .flatMap((client) => (client.company_monitorings ?? []).map((monitoring) => ({
+      client,
+      monitoring,
+      state: subscriptionState(monitoring),
+    })))
+    .filter((row) => row.state.status === 'ending' || row.state.status === 'expiring')
+    .sort((a, b) => (a.state.daysLeft ?? 0) - (b.state.daysLeft ?? 0));
+  const subscriptionsLoading = roles.isLoading || clients.isLoading;
+  const subscriptionsError = roles.error ?? clients.error;
 
   const s = stats.data;
   const loading = stats.isLoading;
@@ -123,6 +159,40 @@ export default function AdminHome() {
           </div>
         </div>
       )}
+
+      <SectionCard
+        title="Subscriptions ending soon"
+        description={`Client monitoring periods that end within ${EXPIRING_SOON_DAYS} days.`}
+        className="mt-6"
+        actions={(
+          <Button variant="ghost" size="sm" asChild>
+            <Link to="/dashboard/users">View users <ArrowRight /></Link>
+          </Button>
+        )}
+      >
+        {subscriptionsLoading ? <LoadingState /> : subscriptionsError ? (
+          <ErrorState error={subscriptionsError} onRetry={() => (roles.error ? roles.refetch() : clients.refetch())} />
+        ) : endingSoon.length === 0 ? (
+          <EmptyState title="No subscriptions ending soon" description={`No client monitoring ends in the next ${EXPIRING_SOON_DAYS} days.`} />
+        ) : (
+          <ul className="divide-y">
+            {endingSoon.map(({ client, monitoring, state }) => (
+              <li key={monitoring.id} className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                <div className="min-w-0 space-y-1">
+                  <p className="text-sm font-medium">
+                    {client.username}
+                    <span className="font-normal text-muted-foreground"> · {monitoring.company?.company_name ?? 'Company'}</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Last day {formatPeriodDate(state.end)} · {formatNumber(state.daysLeft)} day{state.daysLeft === 1 ? '' : 's'} left
+                  </p>
+                </div>
+                <SubscriptionBadge state={state} className="self-start sm:self-center" />
+              </li>
+            ))}
+          </ul>
+        )}
+      </SectionCard>
 
       <SectionCard
         title="Recent critical events"

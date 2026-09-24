@@ -1,99 +1,96 @@
-import { Globe2, Mic, Newspaper, PenLine } from 'lucide-react';
-import { SectionCard, StatCard, StatGrid } from '@/components/common/Cards';
+import { Quote } from 'lucide-react';
+import { SectionCard } from '@/components/common/Cards';
 import { EmptyState } from '@/components/common/States';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { formatNumber, formatPercent, humanize } from '@/lib/format';
-import type { PublicationVolume, PublicationsAnalysisReport, ReporterVolume } from '@/types/reports';
+import { formatNumber } from '@/lib/format';
+import type { PublicationVolume, PublicationsAnalysisReport, ReporterVolume, SpokespersonHighlight } from '@/types/reports';
 import { ReportShell } from './ReportShell';
-import { RankedBarChart, ShareList } from './ReportParts';
-import { initials, toNumber, uniqueValues } from './reportUtils';
+import { EntityAvatar, PercentBars, ReportHeading, type PercentBarRow } from './ReportParts';
+import { toNumber } from './reportUtils';
 
 const TOP = 10;
 
-const publicationBars = (v: PublicationVolume) => v.sources.slice(0, TOP).map((s) => ({ name: s.source, value: s.count }));
-const reporterRows = (v: ReporterVolume) => v.reporters.map((r) => ({ label: r.reporter, value: r.count, percentage: toNumber(r.percentage) }));
+const publicationRows = (v: PublicationVolume): PercentBarRow[] => v.sources.slice(0, TOP).map((s) => ({
+  key: s.source, label: s.source, title: s.source, count: s.count, percentage: toNumber(s.percentage),
+}));
+
+const reporterRows = (v: ReporterVolume): PercentBarRow[] => v.reporters.slice(0, TOP).map((r) => {
+  const title = r.publication ? `${r.reporter} (${r.publication})` : r.reporter;
+  return {
+    key: r.reporter,
+    title,
+    label: (
+      <>
+        <span className="block truncate">{r.reporter}</span>
+        {r.publication && <span className="block truncate text-xs text-muted-foreground">({r.publication})</span>}
+      </>
+    ),
+    count: r.count,
+    percentage: toNumber(r.percentage),
+  };
+});
+
+function SpokespersonCard({ person }: { person: SpokespersonHighlight }) {
+  const role = [person.title, person.company].filter(Boolean).join(', ');
+  return (
+    <article className="flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-sm">
+      <div className="flex items-center gap-3">
+        <EntityAvatar name={person.spokesperson} src={person.photo_url} fit="cover" size="xl" />
+        <div className="min-w-0">
+          <p className="font-semibold leading-tight">{person.spokesperson}</p>
+          {role && <p className="text-sm font-medium leading-snug text-muted-foreground">({role})</p>}
+          <p className="mt-1 text-xs text-muted-foreground">{formatNumber(person.count)} {person.count === 1 ? 'story' : 'stories'}</p>
+        </div>
+      </div>
+      {person.statement ? (
+        <blockquote className="relative rounded-md bg-muted/50 p-3 pl-9 text-sm leading-relaxed">
+          <Quote className="absolute left-3 top-3 h-4 w-4" style={{ color: 'var(--report-accent)' }} />
+          {person.statement}
+        </blockquote>
+      ) : person.headline ? (
+        <p className="text-sm leading-relaxed">
+          Featured in “{person.headline}”{person.source && <span className="text-muted-foreground"> — {person.source}</span>}
+        </p>
+      ) : null}
+    </article>
+  );
+}
 
 function Analysis({ data }: { data: PublicationsAnalysisReport }) {
   const a = data.analysis;
-  const top3 = a.top_3_reporters_overall.reporters;
-  const spokespersons = a.spokesperson_volume.spokespersons.map((s) => ({
-    label: s.spokesperson, value: s.count, percentage: toNumber(s.percentage),
+  const highlights: SpokespersonHighlight[] = a.spokesperson_highlights ?? a.spokesperson_volume.spokespersons.map((s) => ({
+    ...s, title: null, company: null, photo_url: null, statement: null, headline: null, source: null,
   }));
 
   return (
     <div className="space-y-6">
-      <StatGrid>
-        <StatCard
-          label="Print publications"
-          value={formatNumber(a.print_publications_volume.unique_sources)}
-          icon={Newspaper}
-          hint={`${formatNumber(a.print_publications_volume.total_count)} print stories`}
-        />
-        <StatCard
-          label="Online publications"
-          value={formatNumber(a.online_publications_volume.unique_sources)}
-          icon={Globe2}
-          hint={`${formatNumber(a.online_publications_volume.total_count)} online stories`}
-        />
-        <StatCard
-          label="Reporters"
-          value={formatNumber(uniqueValues([...a.print_reporters.reporters, ...a.online_reporters.reporters].map((r) => r.reporter)).length)}
-          icon={PenLine}
-          hint={`${formatNumber(a.print_reporters.unique_reporters)} print · ${formatNumber(a.online_reporters.unique_reporters)} online`}
-        />
-        <StatCard
-          label="Spokespersons"
-          value={formatNumber(a.spokesperson_volume.unique_spokespersons)}
-          icon={Mic}
-          hint={`Quoted in ${formatNumber(a.spokesperson_volume.total_count)} stories`}
-        />
-      </StatGrid>
+      <ReportHeading>Publications / Reporters / Spokespersons Analysis</ReportHeading>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <SectionCard title="Top print publications" description={`Print titles that carried your brand most often (top ${TOP}).`}>
-          <RankedBarChart data={publicationBars(a.print_publications_volume)} seriesName="Stories" emptyTitle="No print coverage" />
-        </SectionCard>
-        <SectionCard title="Top online publications" description={`Websites that carried your brand most often (top ${TOP}).`}>
-          <RankedBarChart data={publicationBars(a.online_publications_volume)} seriesName="Stories" emptyTitle="No online coverage" />
+      <div className="grid grid-cols-1 gap-6 2xl:grid-cols-[minmax(0,1fr)_22rem]">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <SectionCard title="Print Publications (Volume)" description={`${formatNumber(a.print_publications_volume.total_count)} print stories.`}>
+            <PercentBars rows={publicationRows(a.print_publications_volume)} empty="There was no print coverage for the period under review." />
+          </SectionCard>
+          <SectionCard title="Online Publications (Volume)" description={`${formatNumber(a.online_publications_volume.total_count)} online stories.`}>
+            <PercentBars rows={publicationRows(a.online_publications_volume)} empty="There was no online coverage for the period under review." />
+          </SectionCard>
+          <SectionCard title="Print Reporters (Volume)" description="Journalists who wrote most about your brand in print.">
+            <PercentBars rows={reporterRows(a.print_reporters)} empty="There were no print reporters recorded for the period under review." />
+          </SectionCard>
+          <SectionCard title="Online Reporters (Volume)" description="Journalists who wrote most about your brand online.">
+            <PercentBars rows={reporterRows(a.online_reporters)} empty="There were no online reporters recorded for the period under review." />
+          </SectionCard>
+        </div>
+
+        <SectionCard title="Spokespersons" description="The people who spoke on behalf of your brand.">
+          {highlights.length ? (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-1">
+              {highlights.map((p) => <SpokespersonCard key={p.spokesperson} person={p} />)}
+            </div>
+          ) : (
+            <EmptyState title="There were no spokespersons recorded for the period under review." className="py-8" />
+          )}
         </SectionCard>
       </div>
-
-      <SectionCard title="Top reporters overall" description="Journalists who wrote most about your brand across print and online.">
-        {top3.length ? (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            {top3.map((r, i) => (
-              <div key={r.reporter} className="flex items-center gap-3 rounded-md border p-4">
-                <Avatar>
-                  <AvatarFallback className="text-sm font-medium">{initials(r.reporter)}</AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1 space-y-1">
-                  <p className="truncate text-sm font-semibold" title={r.reporter}>{i + 1}. {r.reporter}</p>
-                  <p className="text-xs text-muted-foreground">{formatNumber(r.count)} stories · {formatPercent(toNumber(r.percentage))}</p>
-                  <div className="flex flex-wrap gap-1">
-                    {r.media_types.filter((m): m is string => Boolean(m)).map((m) => (
-                      <Badge key={m} variant="muted" className="font-normal">{humanize(m)}</Badge>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : <EmptyState title="No reporters recorded" />}
-      </SectionCard>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <SectionCard title="Print reporters" description="Stories per journalist in print.">
-          <ShareList rows={reporterRows(a.print_reporters)} limit={TOP} colorful={false} emptyTitle="No print reporters recorded" />
-        </SectionCard>
-        <SectionCard title="Online reporters" description="Stories per journalist online.">
-          <ShareList rows={reporterRows(a.online_reporters)} limit={TOP} colorful={false} emptyTitle="No online reporters recorded" />
-        </SectionCard>
-      </div>
-
-      <SectionCard title="Spokespersons" description="People quoted on behalf of your brand.">
-        <ShareList rows={spokespersons} limit={TOP} emptyTitle="No spokespersons recorded" />
-      </SectionCard>
     </div>
   );
 }
@@ -102,8 +99,8 @@ export default function PublicationsAnalysisPage() {
   return (
     <ReportShell<PublicationsAnalysisReport>
       report="publication-reporter-spokesperson-analysis"
-      title="Publications & reporters"
-      description="Where your coverage appeared, who wrote it and who spoke for you"
+      title="Publications & Spokespersons Analysis"
+      description="Where your coverage appeared, who wrote it and who spoke for your brand."
     >
       {(data) => <Analysis data={data} />}
     </ReportShell>

@@ -40,22 +40,34 @@ Content types (editorials, daily mentions, SWOT analyses, social media, outcome 
 landscape) follow the backend workflow: submissions start as *pending*, a supervisor approves or rejects
 them, and analyst edits resubmit them for review.
 
+Everyone has a **Profile** page (account menu, top right): change username, change password (other
+devices are signed out) and permanently delete the account (password plus typing `DELETE`).
+
 ## Client reports
 
 Each client report has its own colour theme (`src/lib/reportThemes.ts`): a gradient header, KPI tiles
 in the report's palette and charts led by its accent. Sentiment colours (green / grey / red) are the
 same everywhere. The chosen month or date range is shared by all report pages for the browser session.
 
-**Download report** (in every report header) builds the full pack for the selected monitoring pair and
-period — every report, one section each — as an editable PowerPoint deck (native charts and tables) or
-an A4 PDF. The export code (`src/features/report-export/`) is loaded only when a download is requested.
+**Download report** (in every report header) produces the P+ *Media Performance Audit Report* for the
+selected monitoring pair and period, laid out like the manual deck: cover with the client's logo and cover
+image, the black "Independent PR Measurement & Performance Audit" bar, a clickable section menu on every
+slide, and one or more slides per section (long sections continue on extra slides). It downloads as an
+editable PowerPoint (native doughnut and trend charts) or a PDF with the same layout, or is e-mailed from
+**Email report…** to the client's own address and up to two others. Logos, CEO and spokesperson photos
+come from the admin screens (Companies, Spokespersons); files are stored by the backend (Cloudinary, or
+the database when Cloudinary is not configured). The export code (`src/features/report-export/`) is
+loaded only when a download is requested.
+
+A banner (amber, red in the last 7 days) and a dot on the company switcher warn clients when a
+subscription is about to end; after the end date reports are no longer available.
 
 ## Project structure
 
 ```
 src/
   api/             One module per backend resource (typed requests)
-  features/        report-export/: report pack builder + PowerPoint and PDF renderers
+  features/        report-export/: audit report deck (data → slides) + PowerPoint and PDF renderers, e-mail dialog
   components/
     common/        Shared building blocks: PageHeader, DataTable, filters, form fields, dialogs, states
     layout/        App shell: sidebar (generated from the route map) and header

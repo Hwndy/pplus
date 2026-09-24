@@ -8,13 +8,13 @@ import { Separator } from '@/components/ui/separator';
 import { FormDialog } from '@/components/common/FormDialog';
 import { ComboboxField, MultiComboboxField, SelectField, TextField, toOptions } from '@/components/common/FormFields';
 import { useCompanies, useParameterOptions, useSubsidiaries, useSupervisors } from '@/hooks/useLookups';
-import { PARAMETER_CATEGORIES } from '@/api/reference';
+import { PARAMETER_CATEGORIES, categoryLabel } from '@/api/reference';
 import { usersApi, type UserInput } from '@/api/users';
-import { toDateInput } from '@/lib/format';
 import { ALL_ROLES } from '@/lib/roles';
 import { ApiError, getErrorMessage } from '@/lib/api-client';
 import { toast } from 'sonner';
 import type { User } from '@/types/api';
+import { defaultPeriod, periodDateInput } from './subscription';
 
 const subsidiaryMonitoringSchema = z.object({
   id: z.number().optional(),
@@ -28,8 +28,12 @@ const companyMonitoringSchema = z.object({
   company_id: z.number({ required_error: 'Select a company' }),
   competitor_company_ids: z.array(z.number()).min(1, 'Select at least one competitor'),
   media_prominence: z.array(z.string()).min(1, 'Select at least one item'),
+  monitoring_start_date: z.string().min(1, 'Choose when monitoring starts'),
   monitoring_date: z.string().min(1, 'Choose when monitoring ends'),
   subsidiary_monitorings: z.array(subsidiaryMonitoringSchema),
+}).refine((m) => !m.monitoring_start_date || !m.monitoring_date || m.monitoring_start_date <= m.monitoring_date, {
+  path: ['monitoring_date'],
+  message: 'The end date must be on or after the start date',
 });
 
 function buildSchema(isEdit: boolean) {
@@ -56,13 +60,17 @@ function buildSchema(isEdit: boolean) {
 }
 type Values = z.infer<ReturnType<typeof buildSchema>>;
 
-const emptyMonitoring = (): Values['company_monitorings'][number] => ({
-  company_id: undefined as unknown as number,
-  competitor_company_ids: [],
-  media_prominence: [],
-  monitoring_date: '',
-  subsidiary_monitorings: [],
-});
+const emptyMonitoring = (): Values['company_monitorings'][number] => {
+  const period = defaultPeriod();
+  return {
+    company_id: undefined as unknown as number,
+    competitor_company_ids: [],
+    media_prominence: [],
+    monitoring_start_date: period.start,
+    monitoring_date: period.end,
+    subsidiary_monitorings: [],
+  };
+};
 
 function toValues(user: User | null): Values {
   if (!user) {
@@ -92,7 +100,8 @@ function toValues(user: User | null): Values {
       company_id: m.company_id,
       competitor_company_ids: m.competitor_company_ids ?? [],
       media_prominence: m.media_prominence ?? [],
-      monitoring_date: toDateInput(m.monitoring_date),
+      monitoring_start_date: periodDateInput(m.monitoring_start_date),
+      monitoring_date: periodDateInput(m.monitoring_date),
       subsidiary_monitorings: subsByMonitoring(m.id),
     })),
   };
@@ -215,7 +224,7 @@ export function UserFormDialog({ open, onOpenChange, user, onSaved }: Props) {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-sm font-semibold">Monitored companies</h3>
-              <p className="text-sm text-muted-foreground">Each entry defines a company, its competitors and when monitoring ends.</p>
+              <p className="text-sm text-muted-foreground">Each entry defines a company, its competitors, Competitive Metrics and the monitoring period.</p>
             </div>
             <Button type="button" variant="outline" size="sm" onClick={() => monitorings.append(emptyMonitoring())}>
               <Plus /> Add company
@@ -260,10 +269,18 @@ function MonitoringEditor({ control, index, onRemove }: { control: Control<Value
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <ComboboxField control={control} name={`company_monitorings.${index}.company_id`} label="Company" required numeric options={companyOptions} loading={companies.isLoading} />
-        <TextField control={control} name={`company_monitorings.${index}.monitoring_date`} label="Monitoring ends on" type="date" required />
         <MultiComboboxField control={control} name={`company_monitorings.${index}.competitor_company_ids`} label="Competitors" required numeric options={companyOptions.filter((o) => Number(o.value) !== companyId)} loading={companies.isLoading} />
-        <MultiComboboxField control={control} name={`company_monitorings.${index}.media_prominence`} label="Media prominence" required options={prominenceOptions} loading={prominence.isLoading} />
+        <MultiComboboxField control={control} name={`company_monitorings.${index}.media_prominence`} label={categoryLabel(PARAMETER_CATEGORIES.mediaProminence)} required options={prominenceOptions} loading={prominence.isLoading} className="sm:col-span-2" />
       </div>
+
+      <fieldset className="space-y-2">
+        <legend className="text-sm font-medium">Monitoring period</legend>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <TextField control={control} name={`company_monitorings.${index}.monitoring_start_date`} label="From" type="date" required />
+          <TextField control={control} name={`company_monitorings.${index}.monitoring_date`} label="To" type="date" required />
+        </div>
+        <p className="text-xs text-muted-foreground">Access to reports is limited to this period. Both days are included.</p>
+      </fieldset>
 
       <div className="space-y-3 rounded-md bg-muted/40 p-3">
         <div className="flex items-center justify-between">
@@ -283,7 +300,7 @@ function MonitoringEditor({ control, index, onRemove }: { control: Control<Value
           <div key={field.id} className="grid grid-cols-1 gap-3 rounded-md border bg-background p-3 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-start">
             <ComboboxField control={control} name={`company_monitorings.${index}.subsidiary_monitorings.${subIndex}.subsidiary_id`} label="Subsidiary" required numeric options={ownSubsidiaryOptions} />
             <MultiComboboxField control={control} name={`company_monitorings.${index}.subsidiary_monitorings.${subIndex}.competitor_subsidiary_ids`} label="Competitor subsidiaries" required numeric options={allSubsidiaries} loading={subsidiaries.isLoading} />
-            <MultiComboboxField control={control} name={`company_monitorings.${index}.subsidiary_monitorings.${subIndex}.media_prominence`} label="Media prominence" required options={prominenceOptions} />
+            <MultiComboboxField control={control} name={`company_monitorings.${index}.subsidiary_monitorings.${subIndex}.media_prominence`} label={categoryLabel(PARAMETER_CATEGORIES.mediaProminence)} required options={prominenceOptions} />
             <Button type="button" variant="ghost" size="icon" className="mt-7 text-destructive hover:text-destructive" onClick={() => subs.remove(subIndex)} aria-label="Remove subsidiary">
               <Trash2 />
             </Button>

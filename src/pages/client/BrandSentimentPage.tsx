@@ -1,132 +1,117 @@
+import { useQuery } from '@tanstack/react-query';
+import { SectionCard } from '@/components/common/Cards';
+import { LoadingState } from '@/components/common/States';
+import { fetchReport } from '@/api/reports';
+import { humanize } from '@/lib/format';
 import {
-  Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
-} from 'recharts';
-import { Gauge, Minus, ThumbsDown, ThumbsUp } from 'lucide-react';
-import { SectionCard, StatCard, StatGrid } from '@/components/common/Cards';
-import { BulletList } from '@/components/common/Detail';
-import { EmptyState } from '@/components/common/States';
-import { Badge } from '@/components/ui/badge';
-import { SENTIMENT_COLORS, chartAxisProps, chartTooltipStyle } from '@/lib/charts';
-import { formatNumber, formatPercent, humanize } from '@/lib/format';
-import { SENTIMENT_CLASSIFICATIONS, type BrandSentimentReport, type SentimentClassification } from '@/types/reports';
-import { ReportShell } from './ReportShell';
+  SENTIMENT_CLASSIFICATIONS,
+  type BrandSentimentReport,
+  type ExecutiveSummaryReport,
+  type SentimentClassification,
+} from '@/types/reports';
+import { ReportShell, type ReportContext } from './ReportShell';
+import { INDEX_COLORS, SentimentIndexBars } from './ReportParts';
 import { shareOf } from './reportUtils';
 
-type Tone = 'positive' | 'neutral' | 'negative';
+type Tone = 'positive' | 'negative' | 'neutral';
 
-/** Each classification is drawn in its tone's colour; intensity is shown through opacity. */
-const CLASSIFICATION_STYLE: Record<SentimentClassification, { tone: Tone; opacity: number }> = {
-  strongly_positive: { tone: 'positive', opacity: 1 },
-  positive: { tone: 'positive', opacity: 0.75 },
-  moderately_positive: { tone: 'positive', opacity: 0.5 },
-  neutral: { tone: 'neutral', opacity: 1 },
-  moderately_negative: { tone: 'negative', opacity: 0.5 },
-  negative: { tone: 'negative', opacity: 0.75 },
-  strongly_negative: { tone: 'negative', opacity: 1 },
+const TONE_OF: Record<SentimentClassification, Tone> = {
+  strongly_positive: 'positive',
+  positive: 'positive',
+  moderately_positive: 'positive',
+  neutral: 'neutral',
+  moderately_negative: 'negative',
+  negative: 'negative',
+  strongly_negative: 'negative',
 };
 
-function SentimentIndex({ data }: { data: BrandSentimentReport }) {
-  const total = data.totals.total_categorized;
-  const countOf = (key: SentimentClassification) => data.sentiment_breakdown[key]?.count ?? 0;
-  const toneCount = (tone: Tone) => SENTIMENT_CLASSIFICATIONS
-    .filter((k) => CLASSIFICATION_STYLE[k].tone === tone)
-    .reduce((sum, k) => sum + countOf(k), 0);
+/** Column order of the printed report's drivers table. */
+const COLUMNS: { tone: Tone; title: string }[] = [
+  { tone: 'positive', title: 'Positive' },
+  { tone: 'negative', title: 'Negative' },
+  { tone: 'neutral', title: 'Neutral' },
+];
 
-  const tones = {
-    positive: toneCount('positive'),
-    neutral: toneCount('neutral'),
-    negative: toneCount('negative'),
-  };
+function SentimentIndexCard({ data, context }: { data: BrandSentimentReport; context: ReportContext }) {
+  const summary = useQuery({
+    queryKey: ['report', 'executive-summary', context.filters],
+    queryFn: () => fetchReport<ExecutiveSummaryReport>('executive-summary', context.filters),
+  });
 
-  const bars = SENTIMENT_CLASSIFICATIONS.map((key) => ({
-    key,
-    name: humanize(key),
-    count: countOf(key),
-    percentage: data.sentiment_breakdown[key]?.percentage ?? 0,
-  }));
-
-  const pie = (Object.keys(tones) as Tone[])
-    .map((tone) => ({ tone, name: humanize(tone), value: tones[tone] }))
-    .filter((d) => d.value > 0);
+  let counts: Record<Tone, number>;
+  const s = summary.data?.data?.summary;
+  if (s) {
+    counts = { positive: s.positiveMediaExposure, neutral: s.neutralMediaExposure, negative: s.negativeMediaExposure };
+  } else {
+    counts = { positive: 0, neutral: 0, negative: 0 };
+    for (const key of SENTIMENT_CLASSIFICATIONS) counts[TONE_OF[key]] += data.sentiment_breakdown[key]?.count ?? 0;
+  }
+  const total = counts.positive + counts.neutral + counts.negative;
 
   return (
-    <div className="space-y-6">
-      <StatGrid>
-        <StatCard
-          label="Rated coverage"
-          value={formatNumber(total)}
-          icon={Gauge}
-          hint={data.totals.total_uncategorized > 0
-            ? `${formatNumber(data.totals.total_uncategorized)} stories without a sentiment rating`
-            : 'Stories with a sentiment rating'}
+    <SectionCard title="Brand Media Sentiment Index" description="Percentage distribution of positive, neutral and negative coverage of your brand.">
+      {summary.isLoading ? <LoadingState /> : (
+        <SentimentIndexBars
+          empty="There was no rated media coverage recorded for the period under review."
+          rows={[{
+            key: 'brand',
+            label: data.company,
+            title: data.company,
+            positive: shareOf(counts.positive, total),
+            neutral: shareOf(counts.neutral, total),
+            negative: shareOf(counts.negative, total),
+            counts,
+            highlight: true,
+          }]}
         />
-        <StatCard label="Positive" value={formatPercent(shareOf(tones.positive, total))} icon={ThumbsUp} hint={`${formatNumber(tones.positive)} stories`} />
-        <StatCard label="Neutral" value={formatPercent(shareOf(tones.neutral, total))} icon={Minus} hint={`${formatNumber(tones.neutral)} stories`} />
-        <StatCard label="Negative" value={formatPercent(shareOf(tones.negative, total))} icon={ThumbsDown} hint={`${formatNumber(tones.negative)} stories`} />
-      </StatGrid>
+      )}
+    </SectionCard>
+  );
+}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-        <SectionCard title="Sentiment breakdown" description="Stories per sentiment classification." className="lg:col-span-3">
-          {total > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={bars}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" interval={0} angle={-25} textAnchor="end" height={70} {...chartAxisProps} />
-                <YAxis allowDecimals={false} {...chartAxisProps} />
-                <Tooltip {...chartTooltipStyle} />
-                <Bar dataKey="count" name="Stories" radius={[4, 4, 0, 0]}>
-                  {bars.map((b) => (
-                    <Cell
-                      key={b.key}
-                      fill={SENTIMENT_COLORS[CLASSIFICATION_STYLE[b.key].tone]}
-                      fillOpacity={CLASSIFICATION_STYLE[b.key].opacity}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          ) : <EmptyState title="No rated coverage" description="None of the stories in this period have a sentiment rating yet." />}
-        </SectionCard>
+function DriversTable({ data }: { data: BrandSentimentReport }) {
+  const drivers = (tone: Tone) => {
+    const seen = new Set<string>();
+    const rows: { headline: string; classification: SentimentClassification }[] = [];
+    for (const key of SENTIMENT_CLASSIFICATIONS) {
+      if (TONE_OF[key] !== tone) continue;
+      const value = data.key_brand_reputational_drivers[key];
+      for (const headline of Array.isArray(value) ? value : []) {
+        const text = headline.trim();
+        if (text && !seen.has(text)) {
+          seen.add(text);
+          rows.push({ headline: text, classification: key });
+        }
+      }
+    }
+    return rows;
+  };
 
-        <SectionCard title="Overall tone" description="Positive, neutral and negative share." className="lg:col-span-2">
-          {pie.length ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie data={pie} dataKey="value" nameKey="name" innerRadius={60} outerRadius={95} paddingAngle={2}>
-                  {pie.map((d) => <Cell key={d.tone} fill={SENTIMENT_COLORS[d.tone]} />)}
-                </Pie>
-                <Tooltip {...chartTooltipStyle} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : <EmptyState title="No rated coverage" />}
-        </SectionCard>
+  return (
+    <SectionCard title="Key Brand Reputational Drivers" description="The pivotal stories that shaped your brand's reputation in the period.">
+      <div className="grid grid-cols-1 overflow-hidden rounded-lg border md:grid-cols-3 md:divide-x">
+        {COLUMNS.map(({ tone, title }) => {
+          const rows = drivers(tone);
+          return (
+            <div key={tone} className="flex flex-col border-b last:border-b-0 md:border-b-0">
+              <div className="px-4 py-2 text-center text-sm font-semibold text-white" style={{ backgroundColor: INDEX_COLORS[tone] }}>{title}</div>
+              <ul className="flex-1 list-disc space-y-3 py-4 pl-8 pr-4 text-sm leading-snug">
+                {rows.length ? rows.map((r) => (
+                  <li key={r.headline}>
+                    {r.headline}
+                    {r.classification !== tone && (
+                      <span className="ml-1.5 whitespace-nowrap text-xs text-muted-foreground">({humanize(r.classification)})</span>
+                    )}
+                  </li>
+                )) : (
+                  <li className="text-muted-foreground">There was no {tone} media coverage recorded for the period under review</li>
+                )}
+              </ul>
+            </div>
+          );
+        })}
       </div>
-
-      <SectionCard title="Key reputational drivers" description="Headlines that shaped each sentiment classification.">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {bars.map((b) => {
-            const drivers = data.key_brand_reputational_drivers[b.key];
-            const headlines = Array.isArray(drivers) ? drivers : [];
-            return (
-              <section key={b.key} className="space-y-3 rounded-md border p-4">
-                <header className="flex items-center justify-between gap-2">
-                  <h3 className="flex items-center gap-2 text-sm font-semibold">
-                    <span
-                      className="h-2.5 w-2.5 rounded-full"
-                      style={{ backgroundColor: SENTIMENT_COLORS[CLASSIFICATION_STYLE[b.key].tone], opacity: CLASSIFICATION_STYLE[b.key].opacity }}
-                    />
-                    {b.name}
-                  </h3>
-                  <Badge variant="muted" className="font-normal">{formatNumber(b.count)} · {formatPercent(b.percentage)}</Badge>
-                </header>
-                <BulletList items={headlines} empty="No coverage in this classification." />
-              </section>
-            );
-          })}
-        </div>
-      </SectionCard>
-    </div>
+    </SectionCard>
   );
 }
 
@@ -134,10 +119,15 @@ export default function BrandSentimentPage() {
   return (
     <ReportShell<BrandSentimentReport>
       report="brand-media-sentiment-index"
-      title="Brand sentiment"
-      description="How the media portrays your brand, by sentiment classification"
+      title="Brand Drivers & Sentiment Index"
+      description="How the media portrays your brand and the stories behind it."
     >
-      {(data) => <SentimentIndex data={data} />}
+      {(data, context) => (
+        <div className="space-y-6">
+          <SentimentIndexCard data={data} context={context} />
+          <DriversTable data={data} />
+        </div>
+      )}
     </ReportShell>
   );
 }

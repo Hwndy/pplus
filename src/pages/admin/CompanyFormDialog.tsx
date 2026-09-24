@@ -1,17 +1,28 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { FormDialog } from '@/components/common/FormDialog';
 import { ComboboxField, MultiComboboxField, TextareaField, TextField, toOptions } from '@/components/common/FormFields';
 import { ErrorState, LoadingState } from '@/components/common/States';
-import { useCompanies, useParameterOptions } from '@/hooks/useLookups';
+import { lookupKeys, useCompanies, useParameterOptions } from '@/hooks/useLookups';
 import { PARAMETER_CATEGORIES } from '@/api/reference';
 import { companiesApi, type CompanyInput } from '@/api/companies';
 import { ApiError, getErrorMessage } from '@/lib/api-client';
-import type { Company } from '@/types/api';
+import type { Company, CompanyImageSlot } from '@/types/api';
+import { ImagePicker } from './ImagePicker';
+
+type ImageField = 'logo_url' | 'ceo_photo_url' | 'cover_image_url';
+
+const IMAGE_SLOTS: { slot: CompanyImageSlot; field: ImageField; label: string; description: string; shape: 'square' | 'round' | 'wide' }[] = [
+  { slot: 'logo', field: 'logo_url', label: 'Logo', description: 'Shown in lists and on client reports.', shape: 'square' },
+  { slot: 'ceo-photo', field: 'ceo_photo_url', label: 'CEO photo', description: 'Shown next to CEO coverage in reports.', shape: 'round' },
+  { slot: 'cover', field: 'cover_image_url', label: 'Report cover image', description: 'Used as the cover of client reports.', shape: 'wide' },
+];
+
+const NO_PENDING: Record<CompanyImageSlot, File | null> = { logo: null, 'ceo-photo': null, cover: null };
 
 function isUrl(value: string): boolean {
   try {
@@ -94,6 +105,12 @@ export function CompanyFormDialog({ open, onOpenChange, company, onSaved }: Prop
   const isEdit = Boolean(company);
   const companyId = company?.id ?? null;
   const form = useForm<Values>({ resolver: zodResolver(schema), defaultValues: toValues(company) });
+  const queryClient = useQueryClient();
+  /** New company: files chosen before the company exists, uploaded after it is created. */
+  const [pendingImages, setPendingImages] = useState<Record<CompanyImageSlot, File | null>>(NO_PENDING);
+  /** Existing company: image URLs changed while the dialog is open. */
+  const [imageUrls, setImageUrls] = useState<Partial<Record<ImageField, string | null>>>({});
+  const [busySlot, setBusySlot] = useState<CompanyImageSlot | null>(null);
 
   const detail = useQuery({
     queryKey: ['companies', 'detail', companyId],
@@ -113,10 +130,86 @@ export function CompanyFormDialog({ open, onOpenChange, company, onSaved }: Prop
     form.reset(toValues(companyId !== null ? detail.data ?? company : null));
   }, [open, companyId, company, detail.data, form]);
 
+  useEffect(() => {
+    if (!open) return;
+    setPendingImages(NO_PENDING);
+    setImageUrls({});
+    setBusySlot(null);
+  }, [open, companyId]);
+
+  /** Refreshes company lists without refetching the detail this dialog is editing. */
+  function refreshCompanyLists() {
+    queryClient.invalidateQueries({ queryKey: ['companies'], predicate: (q) => q.queryKey[1] !== 'detail' });
+    queryClient.invalidateQueries({ queryKey: lookupKeys.companies });
+  }
+
+  function savedImageUrl(field: ImageField): string | null {
+    if (field in imageUrls) return imageUrls[field] ?? null;
+    return detail.data?.[field] ?? company?.[field] ?? null;
+  }
+
+  async function selectImage(slot: CompanyImageSlot, field: ImageField, label: string, file: File) {
+    if (companyId === null) {
+      setPendingImages((prev) => ({ ...prev, [slot]: file }));
+      return;
+    }
+    setBusySlot(slot);
+    try {
+      const result = await companiesApi.uploadImage(companyId, slot, file);
+      setImageUrls((prev) => ({ ...prev, [field]: result[field] ?? null }));
+      refreshCompanyLists();
+      toast.success(`${label} saved`);
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setBusySlot(null);
+    }
+  }
+
+  async function removeImage(slot: CompanyImageSlot, field: ImageField, label: string) {
+    if (companyId === null) {
+      setPendingImages((prev) => ({ ...prev, [slot]: null }));
+      return;
+    }
+    setBusySlot(slot);
+    try {
+      await companiesApi.removeImage(companyId, slot);
+      setImageUrls((prev) => ({ ...prev, [field]: null }));
+      refreshCompanyLists();
+      toast.success(`${label} removed`);
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setBusySlot(null);
+    }
+  }
+
+  /** Uploads the images chosen while creating; returns the labels that failed. */
+  async function uploadPendingImages(id: number): Promise<{ label: string; message: string }[]> {
+    const jobs = IMAGE_SLOTS.flatMap(({ slot, label }) => {
+      const file = pendingImages[slot];
+      return file ? [{ slot, label, file }] : [];
+    });
+    const results = await Promise.allSettled(jobs.map((job) => companiesApi.uploadImage(id, job.slot, job.file)));
+    return results.flatMap((result, i) => (
+      result.status === 'rejected' ? [{ label: jobs[i].label, message: getErrorMessage(result.reason) }] : []
+    ));
+  }
+
   async function onSubmit(values: Values) {
     try {
-      if (company) await companiesApi.update(company.id, toInput(values));
-      else await companiesApi.create(toInput(values));
+      if (company) {
+        await companiesApi.update(company.id, toInput(values));
+      } else {
+        const created = await companiesApi.create(toInput(values));
+        const failed = await uploadPendingImages(created.id);
+        if (failed.length > 0) {
+          toast.error(
+            `The company was created, but ${failed.map((f) => f.label.toLowerCase()).join(', ')} could not be uploaded: ${failed[0].message}. Edit the company to try again.`,
+            { duration: 10000 },
+          );
+        }
+      }
       onSaved();
       onOpenChange(false);
     } catch (error) {
@@ -211,6 +304,31 @@ export function CompanyFormDialog({ open, onOpenChange, company, onSaved }: Prop
               <TextField control={form.control} name="twitter_link" label="X (Twitter)" type="url" />
               <TextField control={form.control} name="linkedin_link" label="LinkedIn" type="url" />
               <TextField control={form.control} name="youtube_link" label="YouTube" type="url" />
+            </div>
+          </FormSection>
+
+          <FormSection
+            title="Images"
+            description={isEdit
+              ? 'Changes to images are saved immediately.'
+              : 'Chosen images are uploaded when you create the company.'}
+          >
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              {IMAGE_SLOTS.map(({ slot, field, label, description, shape }) => (
+                <ImagePicker
+                  key={slot}
+                  label={label}
+                  description={description}
+                  shape={shape}
+                  className={shape === 'wide' ? 'md:col-span-2' : undefined}
+                  imageUrl={isEdit ? savedImageUrl(field) : null}
+                  pendingFile={isEdit ? null : pendingImages[slot]}
+                  busy={busySlot === slot}
+                  disabled={form.formState.isSubmitting || (busySlot !== null && busySlot !== slot)}
+                  onSelect={(file) => selectImage(slot, field, label, file)}
+                  onRemove={() => removeImage(slot, field, label)}
+                />
+              ))}
             </div>
           </FormSection>
 

@@ -33,6 +33,14 @@ export interface ExecutiveSummaryReport {
       online: { total: number; weekly_breakdown: WeeklyPoint[] };
     };
     competitiveMediaShare: CompetitiveShare;
+    /** The brand's (base company + monitored subsidiaries) share of voice in each sector. */
+    brandShareBySector?: {
+      sector: string;
+      brand_companies: string[];
+      brand_mentions: number;
+      total_mentions: number;
+      percentage: string;
+    }[];
   };
 }
 
@@ -217,6 +225,8 @@ export interface BrandMediaAnalysisReport extends CompanyReportHeader {
     };
     weekly_volume_trend: WeeklyVolumeTrend;
     monthly_volume_trend: {
+      /** January–December of this year. */
+      year: number | null;
       total_months: number;
       print_total: number;
       online_total: number;
@@ -253,7 +263,21 @@ export interface PublicationVolume {
 export interface ReporterVolume {
   total_count: number;
   unique_reporters: number;
-  reporters: { reporter: string; count: number; percentage: string }[];
+  /** `publication`: where the reporter published most in the period. */
+  reporters: { reporter: string; count: number; percentage: string; publication?: string | null }[];
+}
+
+export interface SpokespersonHighlight {
+  spokesperson: string;
+  count: number;
+  percentage: ReportPercent;
+  title: string | null;
+  company: string | null;
+  photo_url: string | null;
+  /** A statement from the period's coverage (CEO thought leadership), if recorded. */
+  statement: string | null;
+  headline: string | null;
+  source: string | null;
 }
 
 export interface PublicationsAnalysisReport extends CompanyReportHeader {
@@ -264,13 +288,14 @@ export interface PublicationsAnalysisReport extends CompanyReportHeader {
     online_reporters: ReporterVolume;
     top_3_reporters_overall: {
       total_count: number;
-      reporters: { reporter: string; count: number; percentage: string; media_types: (string | null)[] }[];
+      reporters: { reporter: string; count: number; percentage: string; media_types: (string | null)[]; publication?: string | null }[];
     };
     spokesperson_volume: {
       total_count: number;
       unique_spokespersons: number;
       spokespersons: { spokesperson: string; count: number; percentage: ReportPercent }[];
     };
+    spokesperson_highlights?: SpokespersonHighlight[];
   };
 }
 
@@ -336,6 +361,8 @@ export interface CompanySentimentIndex {
 export interface CompetitiveSector {
   sub_industry: string;
   companies_in_category: string[];
+  /** Monitored companies in this sector with no coverage in the period. */
+  companies_without_coverage?: string[];
   total_editorials: number;
   analysis: {
     competitive_media_share: { total_mentions: number; shares: CompanyFrequency[] };
@@ -343,11 +370,11 @@ export interface CompetitiveSector {
     media_prominence_analysis: Record<string, { total_mentions: number; companies: CompanyFrequency[] }>;
     top_ceos_with_media_prominence: {
       total_ceo_mentions: number;
-      ceos: { ceo: string; frequency: number; percentage: ReportPercent }[];
+      ceos: { ceo: string; frequency: number; percentage: ReportPercent; company?: string | null; photo_url?: string | null }[];
     };
     /** Keyed by company name. */
     media_sentiment_index: Record<string, CompanySentimentIndex>;
-    /** Keyed by company name; the backend picks up to five titles at random, seeded by pair and period so the sample is stable. */
+    /** Keyed by company name; up to five headlines per company. */
     competitive_pr_drivers: Record<string, { total_titles_available: number; sample_titles: string[] }>;
   };
 }
@@ -361,8 +388,20 @@ export interface CompetitiveIntelligenceReport {
     base_company_id: number;
     competitor_count: number;
     media_prominences: string[];
+    /** Competitive metrics from the company and subsidiary monitorings. */
+    competitive_metrics?: string[];
     sub_industries_analyzed: number;
   };
+  /** The client's own companies (base company and monitored subsidiaries). */
+  brand_companies?: string[];
+  company_profiles?: Record<string, {
+    id: number;
+    sub_industry: string;
+    ceo: string | null;
+    logo_url: string | null;
+    ceo_photo_url: string | null;
+    is_brand: boolean;
+  }>;
   /** Keyed by sub-industry ("Uncategorized" when a company has none). */
   competitive_intelligence: Record<string, CompetitiveSector>;
 }

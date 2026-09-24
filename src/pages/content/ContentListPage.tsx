@@ -51,8 +51,6 @@ interface ContentListPageProps<K extends ContentKey> {
   rowTitle: (row: ContentTypes[K]) => string;
   showSearch?: boolean;
   searchPlaceholder?: string;
-  /** Supervisors may also create (editorials). */
-  supervisorCanCreate?: boolean;
   /** Extra content under the header (e.g. an upload panel). */
   children?: ReactNode;
 }
@@ -70,7 +68,7 @@ function submitter(row: { creator_data?: UserRef | null; created_by?: unknown })
  */
 export function ContentListPage<K extends ContentKey>({
   resource, title, description, columns, createAction, onEdit, renderDetail, rowTitle,
-  showSearch, searchPlaceholder, supervisorCanCreate, children,
+  showSearch, searchPlaceholder, children,
 }: ContentListPageProps<K>) {
   const def = CONTENT_RESOURCES[resource];
   const perms = useContentPermissions();
@@ -180,7 +178,7 @@ export function ContentListPage<K extends ContentKey>({
             {perms.role === 'Admin' && (
               <Button variant="outline" onClick={handleExport} disabled={exporting}><Download /> Export CSV</Button>
             )}
-            {(perms.canCreate || (supervisorCanCreate && perms.role === 'Supervisor')) && createAction}
+            {perms.canCreate && createAction}
           </>
         )}
       />
