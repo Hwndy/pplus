@@ -89,7 +89,7 @@ export function AppHeader() {
             <DropdownMenuLabel className="font-normal">
               <p className="truncate text-sm font-medium">{user.username}</p>
               <p className="truncate text-xs text-muted-foreground">{user.email}</p>
-              <Badge variant="secondary" className="mt-2">{user.role.name}</Badge>
+              {user.role.name !== 'Client' && <Badge variant="secondary" className="mt-2">{user.role.name}</Badge>}
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={() => navigate('/dashboard/profile')}>
