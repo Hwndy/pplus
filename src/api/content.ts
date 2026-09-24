@@ -146,6 +146,23 @@ export async function deleteContent(key: ContentKey, id: number) {
   return api.put<unknown>(`${CONTENT_RESOURCES[key].basePath}/delete/${id}`);
 }
 
+/** Largest batch the API accepts for batch review and delete. */
+export const BULK_MAX = 500;
+
+/** Approves or rejects many records at once (all or nothing). */
+export async function bulkReviewContent(key: ContentKey, ids: number[], status: 'approved' | 'rejected', supervisorNote?: string) {
+  return api.post<{ updated: number; status: 'approved' | 'rejected' }>(`${CONTENT_RESOURCES[key].basePath}/bulk/status`, {
+    ids,
+    status,
+    ...(supervisorNote ? { supervisor_note: supervisorNote } : {}),
+  });
+}
+
+/** Deletes many records at once (admins only; all or nothing). */
+export async function bulkDeleteContent(key: ContentKey, ids: number[]) {
+  return api.post<{ deleted: number }>(`${CONTENT_RESOURCES[key].basePath}/bulk/delete`, { ids });
+}
+
 export async function reviewContent(key: ContentKey, id: number, status: 'approved' | 'rejected', supervisorNote?: string) {
   return api.patch<unknown>(`${CONTENT_RESOURCES[key].basePath}/${id}/status`, {
     status,
@@ -155,10 +172,11 @@ export async function reviewContent(key: ContentKey, id: number, status: 'approv
 
 export async function getSupervisorDashboard<K extends ContentKey>(
   key: K,
-  page = 1
+  page = 1,
+  limit = 10,
 ): Promise<SupervisorDashboard<ContentTypes[K]>> {
   const def = CONTENT_RESOURCES[key];
-  const res = await api.get<Record<string, unknown>>(`${def.basePath}/supervisor-dashboard`, { page, limit: 10 });
+  const res = await api.get<Record<string, unknown>>(`${def.basePath}/supervisor-dashboard`, { page, limit });
   const recent = (res[def.recentKey] ?? { data: [], pagination: emptyPagination(page) }) as { data: ContentTypes[K][]; pagination: Pagination };
   return {
     supervisor: res.supervisor as SupervisorDashboard<ContentTypes[K]>['supervisor'],
