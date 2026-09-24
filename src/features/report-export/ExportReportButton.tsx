@@ -6,6 +6,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import type { ReportFilters } from '@/api/reports';
+import { isStaleVersionError, reloadForNewVersion } from '@/lib/appVersion';
 import { getErrorMessage, saveBlob } from '@/lib/api-client';
 import type { MonitoringPair } from '@/types/api';
 import type { ExportFormat } from './generate';
@@ -29,6 +30,10 @@ export function ExportReportButton({ pair, filters }: { pair: MonitoringPair; fi
       saveBlob(report.blob, report.fileName);
       toast.success('Report downloaded', { id: toastId });
     } catch (err) {
+      if (isStaleVersionError(err) && reloadForNewVersion()) {
+        toast.info('The app was updated. Reloading — please download again.', { id: toastId });
+        return;
+      }
       toast.error(getErrorMessage(err, 'The report could not be generated.'), { id: toastId });
     } finally {
       setBusy(null);
