@@ -74,10 +74,12 @@ function AccountDetails() {
               <Label htmlFor="profile-email">E-mail</Label>
               <Input id="profile-email" value={user.email} readOnly disabled />
             </div>
-            <div className="space-y-2">
-              <Label>Role</Label>
-              <div><Badge variant="secondary">{user.role.name}</Badge></div>
-            </div>
+            {user.role.name !== 'Client' && (
+              <div className="space-y-2">
+                <Label>Role</Label>
+                <div><Badge variant="secondary">{user.role.name}</Badge></div>
+              </div>
+            )}
           </CardContent>
           <CardFooter className="justify-end">
             <Button type="submit" disabled={submitting || !form.formState.isDirty}>
