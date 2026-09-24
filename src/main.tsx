@@ -2,6 +2,12 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
+import { reloadForNewVersion } from '@/lib/appVersion';
+
+// A file of an older deployment failed to preload: reload once to get the new version.
+window.addEventListener('vite:preloadError', (event) => {
+  if (reloadForNewVersion()) event.preventDefault();
+});
 
 const rootElement = document.getElementById('root');
 
