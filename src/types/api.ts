@@ -67,7 +67,10 @@ export interface CompanyMonitoring {
   id: number;
   company_id: number;
   competitor_company_ids: number[];
+  /** Competitive metrics (API field `media_prominence`). */
   media_prominence: string[];
+  /** Paid monitoring period ("From" / "To"). */
+  monitoring_start_date: string;
   monitoring_date: string;
   company?: CompanyRef;
   competitor_companies?: CompanyRef[];
@@ -115,7 +118,25 @@ export interface Company extends CompanyRef {
   linkedin_link: string | null;
   youtube_link: string | null;
   subsidiaries?: Subsidiary[];
+  /** Images (Cloudinary or database-backed); null when not uploaded. */
+  logo_url?: string | null;
+  ceo_photo_url?: string | null;
+  cover_image_url?: string | null;
   createdAt?: string;
+}
+
+/** Company image slots accepted by POST /companies/:id/media/:slot. */
+export type CompanyImageSlot = 'logo' | 'ceo-photo' | 'cover';
+
+/** A person quoted in coverage, shown with title and photo in client reports. */
+export interface Spokesperson {
+  id: number;
+  name: string;
+  title: string | null;
+  company_id: number | null;
+  company: { id: number; company_name: string } | null;
+  photo_url: string | null;
+  createdAt: string;
 }
 
 // ---------------------------------------------------------------- Reference data
@@ -327,20 +348,28 @@ export interface AuditStats {
 
 // ---------------------------------------------------------------- Client monitoring & reports
 
+export type MonitoringStatus = 'scheduled' | 'active' | 'expired';
+
 export interface MonitoringPair {
   pair_id: number;
   pair_number: number;
-  base_company: CompanyRef;
-  competitors: { id: number; company_name: string }[];
+  base_company: CompanyRef & { logo_url?: string | null; cover_image_url?: string | null };
+  competitors: { id: number; company_name: string; logo_url?: string | null }[];
   subsidiaries: {
     subsidiary_company: CompanyRef;
     competitor_subsidiaries: { id: number; name: string }[];
     media_prominence: string[];
   }[];
+  /** Competitive metrics chosen for this pair (API field `media_prominence`). */
   media_prominence: string[];
+  monitoring_start_date: string;
   monitoring_date: string;
   is_expired: boolean;
-  status: 'active' | 'expired';
+  status: MonitoringStatus;
+  /** Days left in the paid period (null when unknown). */
+  days_remaining: number | null;
+  /** The period ends within 30 days. */
+  expiring_soon: boolean;
   summary: { total_competitors: number; total_subsidiaries: number; total_companies_monitored: number };
 }
 

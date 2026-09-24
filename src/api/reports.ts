@@ -1,4 +1,4 @@
-import { download, request } from '@/lib/api-client';
+import { api, download, request } from '@/lib/api-client';
 import type { MonitoringPair } from '@/types/api';
 
 export type ReportName =
@@ -53,4 +53,27 @@ export async function fetchMonitoringPairs(): Promise<MonitoringPair[]> {
 /** Downloads the document attached to an approved daily mention in the client's pair. */
 export function downloadMentionDocument(id: number, pairId: number) {
   return download(`/report/daily-mentions/${id}/document`, { pair_id: pairId }, `daily-mention-${id}.docx`);
+}
+
+/** Most other addresses a client may send a report to (besides their own). */
+export const SHARE_MAX_EXTRA_RECIPIENTS = 2;
+
+/** E-mails a generated report file to the client and/or up to two other addresses. */
+export function shareReport(input: {
+  file: Blob;
+  fileName: string;
+  pairId: number;
+  periodLabel: string;
+  sendToMe: boolean;
+  emails: string[];
+  message?: string;
+}) {
+  const form = new FormData();
+  form.append('file', input.file, input.fileName);
+  form.append('pair_id', String(input.pairId));
+  form.append('period_label', input.periodLabel);
+  form.append('send_to_me', String(input.sendToMe));
+  form.append('emails', JSON.stringify(input.emails));
+  if (input.message) form.append('message', input.message);
+  return api.upload<{ delivered: string[]; failed: string[] }>('/report/share', form);
 }

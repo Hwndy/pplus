@@ -1,6 +1,6 @@
 import { useState, type CSSProperties, type ReactNode } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { BarChart3, Building2, CalendarDays, CalendarRange, Clock } from 'lucide-react';
+import { AlertTriangle, BarChart3, Building2, CalendarClock, CalendarDays, CalendarRange, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,21 +9,69 @@ import { EmptyState, ErrorState, LoadingState } from '@/components/common/States
 import { useAuth } from '@/components/auth/AuthContext';
 import { fetchReport, type ReportFilters, type ReportName } from '@/api/reports';
 import { currentMonth, formatDate } from '@/lib/format';
-import type { ReportPeriod } from '@/types/api';
+import type { MonitoringPair, ReportPeriod } from '@/types/api';
+import { cn } from '@/lib/utils';
 import { ReportThemeContext, reportTheme, type ReportThemeKey } from '@/lib/reportThemes';
 import { ExportReportButton } from '@/features/report-export/ExportReportButton';
 import { useReportPeriod, type PeriodMode } from './useReportPeriod';
+
+/** The filters and monitoring pair a report was loaded for (for pages that load a second report). */
+export interface ReportContext {
+  filters: ReportFilters;
+  pair: MonitoringPair;
+}
 
 interface ReportShellProps<T> {
   report: ReportName;
   title: string;
   description: string;
   /** Renders the report once data is available. */
-  children: (data: T) => ReactNode;
+  children: (data: T, context: ReportContext) => ReactNode;
   /** Some reports are period-independent views; hide the period picker. */
   hidePeriod?: boolean;
   /** Colour theme; defaults to the report's own theme. */
   theme?: ReportThemeKey;
+}
+
+function daysLeftLabel(days: number): string {
+  if (days <= 0) return 'today is the last day';
+  return `${days} ${days === 1 ? 'day' : 'days'} left`;
+}
+
+/** Renewal reminder for subscriptions ending within 30 days, and the start date of scheduled ones. */
+function SubscriptionNotice({ pair }: { pair: MonitoringPair }) {
+  const company = pair.base_company.company_name;
+  if (pair.status === 'scheduled') {
+    return (
+      <div role="status" className="mb-6 flex items-start gap-3 rounded-lg border border-sky-300 bg-sky-50 p-4 text-sm text-sky-900 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-100">
+        <CalendarClock className="mt-0.5 h-4 w-4 shrink-0" />
+        <p>
+          Your monitoring for <span className="font-semibold">{company}</span> starts on{' '}
+          <span className="font-semibold">{formatDate(pair.monitoring_start_date)}</span>. Reports cover coverage recorded from that date.
+        </p>
+      </div>
+    );
+  }
+  if (pair.is_expired || !pair.expiring_soon) return null;
+  const days = pair.days_remaining ?? 30;
+  const urgent = days <= 7;
+  return (
+    <div
+      role="status"
+      className={cn(
+        'mb-6 flex items-start gap-3 rounded-lg border p-4 text-sm',
+        urgent
+          ? 'border-destructive/40 bg-destructive/10 text-destructive'
+          : 'border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100',
+      )}
+    >
+      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+      <p>
+        Your monitoring for <span className="font-semibold">{company}</span> ends on{' '}
+        <span className="font-semibold">{formatDate(pair.monitoring_date)}</span> — {daysLeftLabel(days)}. Contact your P+ account manager to renew.
+      </p>
+    </div>
+  );
 }
 
 function periodOf(data: unknown): ReportPeriod | null {
@@ -72,7 +120,7 @@ export function ReportShell<T>({ report, title, description, children, hidePerio
       <EmptyState
         icon={Clock}
         title="Monitoring period has ended"
-        description={`Monitoring for ${activePair.base_company.company_name} ended on ${formatDate(activePair.monitoring_date)}. Contact your account manager to renew.`}
+        description={`Monitoring for ${activePair.base_company.company_name} ended on ${formatDate(activePair.monitoring_date)}. Contact your P+ account manager to renew your subscription and see your reports again.`}
       />
     );
   } else if (!rangeReady) {
@@ -90,7 +138,7 @@ export function ReportShell<T>({ report, title, description, children, hidePerio
       />
     );
   } else {
-    body = <div className={query.isFetching ? 'opacity-60 transition-opacity' : undefined}>{children(query.data.data)}</div>;
+    body = <div className={query.isFetching ? 'opacity-60 transition-opacity' : undefined}>{children(query.data.data, { filters, pair: activePair })}</div>;
   }
 
   const themeStyle = {
@@ -157,6 +205,7 @@ export function ReportShell<T>({ report, title, description, children, hidePerio
           )}
         </div>
       )}
+      {activePair && <SubscriptionNotice pair={activePair} />}
       {body}
     </div>
     </ReportThemeContext.Provider>

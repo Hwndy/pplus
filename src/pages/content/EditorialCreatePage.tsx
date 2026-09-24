@@ -60,8 +60,8 @@ export default function EditorialCreatePage() {
   const submitting = form.formState.isSubmitting;
 
   // Each role writes its own note field (the backend drops notes written by other roles).
-  const noteField = perms.role === 'Admin' ? 'admin_note' : perms.role === 'Supervisor' ? 'supervisor_note' : 'analyst_note';
-  const noteLabel = perms.role === 'Admin' ? 'Admin note' : perms.role === 'Supervisor' ? 'Supervisor note' : 'Note for your supervisor';
+  const noteField = perms.role === 'Admin' ? 'admin_note' : 'analyst_note';
+  const noteLabel = perms.role === 'Admin' ? 'Admin note' : 'Note for your supervisor';
 
   const toggle = (id: string) => setCollapsed((prev) => {
     const next = new Set(prev);

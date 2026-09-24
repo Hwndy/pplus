@@ -19,6 +19,7 @@ import { companiesApi } from '@/api/companies';
 import { formatDate, formatNumber } from '@/lib/format';
 import type { Company } from '@/types/api';
 import { CompanyFormDialog } from './CompanyFormDialog';
+import { EntityAvatar } from './EntityAvatar';
 
 const PAGE_SIZE = 10;
 
@@ -85,9 +86,12 @@ export default function CompaniesPage() {
       key: 'company',
       header: 'Company',
       cell: (c) => (
-        <div className="min-w-0">
-          <p className="font-medium">{c.company_name}</p>
-          <p className="truncate text-xs text-muted-foreground">{industryLine(c) || 'No industry set'}</p>
+        <div className="flex min-w-0 items-center gap-3">
+          <EntityAvatar name={c.company_name} imageUrl={c.logo_url} />
+          <div className="min-w-0">
+            <p className="font-medium">{c.company_name}</p>
+            <p className="truncate text-xs text-muted-foreground">{industryLine(c) || 'No industry set'}</p>
+          </div>
         </div>
       ),
     },

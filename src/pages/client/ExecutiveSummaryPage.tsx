@@ -1,127 +1,94 @@
-import {
-  Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
-} from 'recharts';
-import { Globe2, Languages, MapPin, Newspaper, TrendingUp } from 'lucide-react';
-import { SectionCard, StatCard, StatGrid } from '@/components/common/Cards';
-import { EmptyState } from '@/components/common/States';
-import { SENTIMENT_COLORS, chartAxisProps, chartTooltipStyle } from '@/lib/charts';
-import { useChartColors } from '@/lib/reportThemes';
-import { formatNumber, formatPercent, humanize } from '@/lib/format';
+import { Globe2, MapPin, Meh, Newspaper, PieChart, ThumbsDown, ThumbsUp } from 'lucide-react';
+import { SectionCard } from '@/components/common/Cards';
+import { useReportTheme } from '@/lib/reportThemes';
+import { formatNumber, humanize } from '@/lib/format';
 import type { ExecutiveSummaryReport } from '@/types/reports';
 import { ReportShell } from './ReportShell';
-import { mergeWeekly } from './reportUtils';
+import { DonutChart, INDEX_COLORS, KpiTile, PercentBars, PrintOnlineTrend } from './ReportParts';
+import { mergeWeekly, percentLabel, toNumber } from './reportUtils';
 
-function reputationLabel(score: number) {
-  if (score > 0.2) return 'Favourable';
-  if (score < -0.2) return 'Unfavourable';
-  return 'Balanced';
+type Summary = ExecutiveSummaryReport['summary'];
+
+/** Brand share of voice per sector ("14% Holdings · 11% Bank"), or the overall share when sectors are not available. */
+function BrandShareTile({ data, color }: { data: ExecutiveSummaryReport; color: string }) {
+  const sectors = data.summary.brandShareBySector ?? [];
+  const own = data.summary.competitiveMediaShare.shares.find((s) => s.company === data.company);
+  return (
+    <KpiTile label="Competitive media share % on brand" icon={PieChart} color={color} className="col-span-2 xl:col-span-1">
+      {sectors.length ? (
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-2">
+          {sectors.map((s) => (
+            <div
+              key={s.sector}
+              className="rounded-md px-2 py-1.5 text-center"
+              style={{ backgroundColor: `color-mix(in srgb, ${color} 10%, transparent)` }}
+              title={`${s.sector}: ${formatNumber(s.brand_mentions)} of ${formatNumber(s.total_mentions)} stories (${s.brand_companies.join(', ')})`}
+            >
+              <p className="text-lg font-semibold tabular-nums leading-tight">{percentLabel(toNumber(s.percentage))}</p>
+              <p className="truncate text-[11px] font-medium text-muted-foreground">{s.sector}</p>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-3 text-3xl font-semibold tracking-tight tabular-nums">{own ? percentLabel(toNumber(own.percentage)) : '0%'}</p>
+      )}
+    </KpiTile>
+  );
 }
 
-function Summary({ data }: { data: ExecutiveSummaryReport }) {
-  const CHART_COLORS = useChartColors();
-  const s = data.summary;
-  const sentiment = [
-    { name: 'Positive', value: s.positiveMediaExposure, color: SENTIMENT_COLORS.positive },
-    { name: 'Neutral', value: s.neutralMediaExposure, color: SENTIMENT_COLORS.neutral },
-    { name: 'Negative', value: s.negativeMediaExposure, color: SENTIMENT_COLORS.negative },
-  ].filter((d) => d.value > 0);
+function SummaryView({ data }: { data: ExecutiveSummaryReport }) {
+  const theme = useReportTheme();
+  const s: Summary = data.summary;
+  const palette = theme.palette;
 
+  const languages = Object.entries(s.language.breakdown)
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, value], i) => ({ name: humanize(name), value, color: palette[i % palette.length] }));
+  const vehicle = [
+    { name: 'Print Media', value: s.mediaVehicle.print, color: palette[3] ?? palette[1] },
+    { name: 'Online Media', value: s.mediaVehicle.online, color: palette[0] },
+  ];
   const weekly = mergeWeekly(s.weeklyTrendOnBrandMediaExposure);
-
-  const share = s.competitiveMediaShare.shares.map((x) => ({ company: x.company, mentions: x.frequency, percentage: Number(x.percentage) }));
-  const languages = Object.entries(s.language.breakdown).map(([name, value]) => ({ name: humanize(name), value }));
+  const share = s.competitiveMediaShare.shares.map((x) => ({
+    key: x.company,
+    label: x.company,
+    title: x.company,
+    count: x.frequency,
+    percentage: toNumber(x.percentage),
+    highlight: x.company === data.company,
+  }));
 
   return (
     <div className="space-y-6">
-      <StatGrid>
-        <StatCard label="Total media exposure" value={formatNumber(s.totalMediaExposure)} icon={Newspaper} hint="Stories mentioning your brand" />
-        <StatCard label="Local media" value={formatNumber(s.brandExposureInLocalMedia)} icon={MapPin} hint="Coverage in Nigerian media" />
-        <StatCard label="International media" value={formatNumber(s.brandExposureInInternationalMedia)} icon={Globe2} hint="Coverage outside Nigeria" />
-        <StatCard
-          label="Reputation score"
-          value={s.brandMediaReputationScore.toFixed(2)}
-          icon={TrendingUp}
-          hint={`${reputationLabel(s.brandMediaReputationScore)} · (positive − negative) ÷ total`}
-        />
-      </StatGrid>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7">
+        <KpiTile label="Total Media Exposure" sublabel="(Print & Online)" value={formatNumber(s.totalMediaExposure)} icon={Newspaper} color={palette[0]} />
+        <BrandShareTile data={data} color={palette[1]} />
+        <KpiTile label="Brand exposure in local media" value={formatNumber(s.brandExposureInLocalMedia)} icon={MapPin} color={palette[2]} />
+        <KpiTile label="Brand exposure in international media" value={formatNumber(s.brandExposureInInternationalMedia)} icon={Globe2} color={palette[4] ?? palette[3]} />
+        <KpiTile label="Positive media exposure" value={formatNumber(s.positiveMediaExposure)} icon={ThumbsUp} color={INDEX_COLORS.positive} />
+        <KpiTile label="Neutral media exposure" value={formatNumber(s.neutralMediaExposure)} icon={Meh} color={INDEX_COLORS.neutral} />
+        <KpiTile label="Negative media exposure" value={formatNumber(s.negativeMediaExposure)} icon={ThumbsDown} color={INDEX_COLORS.negative} />
+      </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <SectionCard title="Sentiment" description="Tone of coverage mentioning your brand.">
-          {sentiment.length ? (
-            <ResponsiveContainer width="100%" height={260}>
-              <PieChart>
-                <Pie data={sentiment} dataKey="value" nameKey="name" innerRadius={60} outerRadius={95} paddingAngle={2}>
-                  {sentiment.map((d) => <Cell key={d.name} fill={d.color} />)}
-                </Pie>
-                <Tooltip {...chartTooltipStyle} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : <EmptyState title="No sentiment recorded" />}
+        <SectionCard title="Language" description="Language of the coverage mentioning your brand.">
+          <DonutChart data={languages} empty="No language recorded for the period under review." />
         </SectionCard>
-
-        <SectionCard title="Media vehicle" description="Where your coverage appeared.">
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={[{ name: 'Print', value: s.mediaVehicle.print }, { name: 'Online', value: s.mediaVehicle.online }]}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="name" {...chartAxisProps} />
-              <YAxis allowDecimals={false} {...chartAxisProps} />
-              <Tooltip {...chartTooltipStyle} />
-              <Bar dataKey="value" name="Stories" radius={[4, 4, 0, 0]}>
-                <Cell fill={CHART_COLORS[0]} />
-                <Cell fill={CHART_COLORS[1]} />
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+        <SectionCard title="Media Vehicle" description="Share of your coverage in print and online media.">
+          <DonutChart data={vehicle} empty="No print or online coverage for the period under review." />
         </SectionCard>
       </div>
 
-      <SectionCard title="Weekly exposure trend" description="Stories per week, print versus online.">
-        {weekly.length ? (
-          <ResponsiveContainer width="100%" height={280}>
-            <LineChart data={weekly}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="week" {...chartAxisProps} />
-              <YAxis allowDecimals={false} {...chartAxisProps} />
-              <Tooltip {...chartTooltipStyle} />
-              <Legend />
-              <Line type="monotone" dataKey="print" name="Print" stroke={CHART_COLORS[0]} strokeWidth={2} dot={{ r: 3 }} />
-              <Line type="monotone" dataKey="online" name="Online" stroke={CHART_COLORS[1]} strokeWidth={2} dot={{ r: 3 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        ) : <EmptyState title="No weekly data" description="No print or online stories in this period." />}
-      </SectionCard>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <SectionCard title="Share of voice" description={`${formatNumber(s.competitiveMediaShare.total_mentions)} stories across your brand and competitors.`}>
-          {share.length ? (
-            <div className="space-y-3">
-              {share.map((row, i) => (
-                <div key={row.company} className="space-y-1">
-                  <div className="flex justify-between text-sm">
-                    <span className="font-medium">{row.company}</span>
-                    <span className="text-muted-foreground">{formatNumber(row.mentions)} · {formatPercent(row.percentage)}</span>
-                  </div>
-                  <div className="h-2 rounded-full bg-muted">
-                    <div className="h-2 rounded-full" style={{ width: `${row.percentage}%`, backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : <EmptyState title="No competitor coverage" />}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+        <SectionCard title="Weekly Trend on Brand Media Exposure" description="Stories per week, print versus online." className="lg:col-span-3">
+          <PrintOnlineTrend data={weekly} xKey="week" empty="There was no print or online coverage for the period under review." />
         </SectionCard>
-
-        <SectionCard title="Languages" description="Language of the coverage.">
-          {languages.length ? (
-            <ul className="divide-y text-sm">
-              {languages.map((l) => (
-                <li key={l.name} className="flex items-center justify-between py-2">
-                  <span className="flex items-center gap-2"><Languages className="h-4 w-4 text-muted-foreground" />{l.name}</span>
-                  <span className="font-medium">{formatNumber(l.value)}</span>
-                </li>
-              ))}
-            </ul>
-          ) : <EmptyState title="No language data" />}
+        <SectionCard
+          title="Share of Voice"
+          description={`${formatNumber(s.competitiveMediaShare.total_mentions)} rated stories across your brand and competitors.`}
+          className="lg:col-span-2"
+        >
+          <PercentBars rows={share} empty="There was no competitor coverage for the period under review." />
         </SectionCard>
       </div>
     </div>
@@ -132,10 +99,10 @@ export default function ExecutiveSummaryPage() {
   return (
     <ReportShell<ExecutiveSummaryReport>
       report="executive-summary"
-      title="Executive summary"
-      description="Headline view of your brand's media exposure"
+      title="Executive Summary"
+      description="The headline view of your brand's media exposure for the period."
     >
-      {(data) => <Summary data={data} />}
+      {(data) => <SummaryView data={data} />}
     </ReportShell>
   );
 }

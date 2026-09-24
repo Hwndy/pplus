@@ -13,6 +13,17 @@ export function shareOf(part: number, total: number): number {
   return total > 0 ? (part / total) * 100 : 0;
 }
 
+/** Whole-number percentage label, as in the printed report ("14%"); "<1%" for tiny shares. */
+export function percentLabel(value: number): string {
+  if (value > 0 && value < 1) return '<1%';
+  return `${Math.round(value)}%`;
+}
+
+/** 172000 → "172K" (the full figure goes in a tooltip). */
+export function formatCompact(value: number): string {
+  return new Intl.NumberFormat('en-GB', { notation: 'compact', maximumFractionDigits: 1 }).format(value);
+}
+
 /** "Aliko Dangote" → "AD" */
 export function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -30,6 +41,11 @@ export function isWebUrl(value: string): boolean {
   } catch {
     return false;
   }
+}
+
+/** Case- and spacing-insensitive comparison key for labels typed by analysts. */
+export function labelKey(value: string | null | undefined): string {
+  return (value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
 /** Distinct values in first-seen order, ignoring blanks. */
@@ -69,4 +85,19 @@ export function mergeWeekly(trend: WeeklyVolumeTrend): { week: string; print: nu
     weeks.set(p.week, { ...(weeks.get(p.week) ?? { week: p.week, print: 0 }), online: p.count });
   }
   return Array.from(weeks.values());
+}
+
+/** Print and online weekly shares (% of each medium's stories in the period), per week. */
+export function mergeWeeklyPercent(trend: WeeklyVolumeTrend): { week: string; print: number; online: number }[] {
+  const weeks = new Map<string, { week: string; print: number; online: number }>();
+  for (const p of trend.print.weekly_breakdown) weeks.set(p.week, { week: p.week, print: toNumber(p.percentage), online: 0 });
+  for (const p of trend.online.weekly_breakdown) {
+    weeks.set(p.week, { ...(weeks.get(p.week) ?? { week: p.week, print: 0 }), online: toNumber(p.percentage) });
+  }
+  return Array.from(weeks.values());
+}
+
+/** Empty-state wording used by the printed report for a competitive metric with no stories. */
+export function noMetricCoverage(metric: string): string {
+  return `There was no competitive metric coverage on ${metric} for the period under review.`;
 }

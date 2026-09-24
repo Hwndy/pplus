@@ -47,6 +47,19 @@ export const sentimentIndicatorsApi = {
  * Dropdown option lists (industries, placements, reporters, …) are managed as
  * data-parameter categories and looked up by category name.
  */
+/** Display names for categories whose stored name differs from what users see. */
+const CATEGORY_LABELS: Record<string, string> = {
+  Media_Prominence: 'Competitive Metrics',
+  SpokesPerson: 'Spokesperson',
+  CEO_Thought_Leadership: 'CEO Thought Leadership',
+};
+
+/** Human-readable name of a data-parameter category ("Media_Prominence" → "Competitive Metrics"). */
+export function categoryLabel(name: string | null | undefined): string {
+  if (!name) return '';
+  return CATEGORY_LABELS[name] ?? name.replace(/_+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
 export const PARAMETER_CATEGORIES = {
   industry: 'Industry',
   subIndustry: 'Sub_Industry',

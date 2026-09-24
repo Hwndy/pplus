@@ -156,7 +156,7 @@ export default function AuditLogPage() {
   return (
     <>
       <PageHeader
-        title="Audit log"
+        title="Audit Log"
         description="Every sign-in, change and export recorded by the system."
         actions={(
           <>

@@ -311,7 +311,6 @@ export default function EditorialsPage() {
         description="Press and online coverage recorded for monitored companies."
         showSearch
         searchPlaceholder="Search by company"
-        supervisorCanCreate
         columns={[
           {
             key: 'title',

@@ -5,6 +5,8 @@ export interface ProcessStep {
   title: string;
   description: string;
   icon: string;
+  /** Step colour, as in the P+ audit report process graphic. */
+  color: string;
 }
 
 export const auditProcessSteps: ProcessStep[] = [
@@ -12,31 +14,36 @@ export const auditProcessSteps: ProcessStep[] = [
     id: 'media-monitoring',
     title: 'Media Monitoring',
     description: 'This involves the use of human analyst and a media monitoring tool.',
-    icon: 'monitor'
+    icon: 'monitor',
+    color: '#06B6D4', // cyan
   },
   {
     id: 'data-gathering',
     title: 'Data Gathering',
     description: 'The process involves the use of human analyst and a tool for data collection.',
-    icon: 'database'
+    icon: 'database',
+    color: '#EF4444', // red
   },
   {
     id: 'data-verification',
     title: 'Data Verification',
     description: 'An analyst is tasked to authenticate and verify the media data collected.',
-    icon: 'shield-check'
+    icon: 'shield-check',
+    color: '#F59E0B', // amber
   },
   {
     id: 'data-analysis',
     title: 'Data Analysis',
     description: 'A human analyst and a data analysis tool are used to perform this action.',
-    icon: 'chart-bar'
+    icon: 'chart-bar',
+    color: '#F97316', // orange
   },
   {
     id: 'audit-report',
     title: 'Audit Report',
     description: 'We deploy human input to eliminate machine errors to achieve a thorough media performance report for clients.',
-    icon: 'document-report'
+    icon: 'document-report',
+    color: '#8B5CF6', // violet
   }
 ];
 

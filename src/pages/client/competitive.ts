@@ -1,5 +1,4 @@
-/** Typed selectors shared by the competitive intelligence pages (one backend report, four views). */
-import { CHART_COLORS } from '@/lib/charts';
+/** Typed selectors shared by the competitive intelligence pages (one backend report, two views). */
 import type { CompetitiveIntelligenceReport, CompetitiveSector } from '@/types/reports';
 import { toNumber } from './reportUtils';
 
@@ -13,7 +12,7 @@ export function sectorsOf(report: CompetitiveIntelligenceReport): CompetitiveSec
   });
 }
 
-/** Companies in a sector, the client's brand first, so colours stay stable across views. */
+/** Companies in a sector, the client's brand first. */
 export function companiesOf(sector: CompetitiveSector, baseName: string): string[] {
   const names = Array.from(new Set(sector.companies_in_category));
   return names.sort((a, b) => {
@@ -23,12 +22,20 @@ export function companiesOf(sector: CompetitiveSector, baseName: string): string
   });
 }
 
-export function companyLabel(company: string, baseName: string): string {
-  return company === baseName ? `${company} (your brand)` : company;
+/** Competitive metrics tracked for the client (media prominence activities). */
+export function metricsOf(report: CompetitiveIntelligenceReport): string[] {
+  return report.monitoring_summary.competitive_metrics ?? report.monitoring_summary.media_prominences;
 }
 
-export function companyColors(companies: string[]): Record<string, string> {
-  return Object.fromEntries(companies.map((c, i) => [c, CHART_COLORS[i % CHART_COLORS.length]]));
+/** True for the client's own companies (base company and monitored subsidiaries). */
+export function isBrand(report: CompetitiveIntelligenceReport, company: string): boolean {
+  const profile = report.company_profiles?.[company];
+  if (profile) return profile.is_brand;
+  return (report.brand_companies ?? [report.base_company.name]).includes(company);
+}
+
+export function logoOf(report: CompetitiveIntelligenceReport, company: string): string | null {
+  return report.company_profiles?.[company]?.logo_url ?? null;
 }
 
 export interface SentimentRow {
@@ -40,37 +47,24 @@ export interface SentimentRow {
   positivePct: number;
   neutralPct: number;
   negativePct: number;
-  /** (positive − negative) ÷ total, from −1 to +1. */
-  score: number;
 }
 
+/** Media sentiment index per company, in the order of the sector's media share. */
 export function sentimentRows(sector: CompetitiveSector, companies: string[]): SentimentRow[] {
   const index = sector.analysis.media_sentiment_index;
   return companies
-    .filter((company) => index[company])
+    .filter((company) => index[company] && index[company].total_mentions > 0)
     .map((company) => {
       const s = index[company];
-      const total = s.total_mentions;
       return {
         company,
         positive: s.positive.frequency,
         neutral: s.neutral.frequency,
         negative: s.negative.frequency,
-        total,
+        total: s.total_mentions,
         positivePct: toNumber(s.positive.percentage),
         neutralPct: toNumber(s.neutral.percentage),
         negativePct: toNumber(s.negative.percentage),
-        score: total > 0 ? (s.positive.frequency - s.negative.frequency) / total : 0,
       };
     });
-}
-
-/** One row per media prominence activity with a column per company (for grouped bar charts). */
-export function prominenceRows(sector: CompetitiveSector, companies: string[]): Record<string, string | number>[] {
-  return Object.entries(sector.analysis.media_prominence_analysis).map(([activity, entry]) => {
-    const row: Record<string, string | number> = { activity };
-    for (const company of companies) row[company] = 0;
-    for (const c of entry.companies) row[c.company] = c.frequency;
-    return row;
-  });
 }

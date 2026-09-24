@@ -175,7 +175,7 @@ export default function SentimentIndicatorsPage() {
   return (
     <>
       <PageHeader
-        title="Sentiment indicators"
+        title="Sentiment Indicators"
         description="Keywords and scores used to classify the sentiment of coverage."
         actions={<Button onClick={() => openForm(null)}><Plus /> Add indicator</Button>}
       />

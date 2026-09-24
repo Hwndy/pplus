@@ -14,8 +14,8 @@ import { SearchInput } from '@/components/common/Filters';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { EmptyState, ErrorState, LoadingState } from '@/components/common/States';
 import { useMutationWithToast } from '@/hooks/useMutationWithToast';
-import { PARAMETER_CATEGORIES, parametersApi } from '@/api/reference';
-import { formatNumber, humanize } from '@/lib/format';
+import { PARAMETER_CATEGORIES, categoryLabel, parametersApi } from '@/api/reference';
+import { formatNumber } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { ParameterCategory, ParameterValue } from '@/types/api';
 import { ParameterCategoryDialog, ParameterValueRenameDialog, ParameterValuesDialog } from './ParametersDialogs';
@@ -51,7 +51,7 @@ export default function ParametersPage() {
   });
   const removeCategory = useMutationWithToast({
     mutationFn: (c: ParameterCategory) => parametersApi.removeCategory(c.id),
-    successMessage: (_, c) => `${humanize(c.name)} was deleted`,
+    successMessage: (_, c) => `${categoryLabel(c.name)} was deleted`,
     invalidate: [QUERY_KEY, LOOKUP_KEY],
     onSuccess: (_, c) => { if (selectedId === c.id) setSelectedId(null); },
   });
@@ -62,13 +62,13 @@ export default function ParametersPage() {
   });
 
   const categories = useMemo(
-    () => [...(root.data?.categories ?? [])].sort((a, b) => humanize(a.name).localeCompare(humanize(b.name))),
+    () => [...(root.data?.categories ?? [])].sort((a, b) => categoryLabel(a.name).localeCompare(categoryLabel(b.name))),
     [root.data],
   );
   const visibleCategories = useMemo(() => {
     const term = categorySearch.trim().toLowerCase();
     if (!term) return categories;
-    return categories.filter((c) => c.name.toLowerCase().includes(term) || humanize(c.name).toLowerCase().includes(term)
+    return categories.filter((c) => c.name.toLowerCase().includes(term) || categoryLabel(c.name).toLowerCase().includes(term)
       || (c.description ?? '').toLowerCase().includes(term));
   }, [categories, categorySearch]);
   const selected = categories.find((c) => c.id === selectedId) ?? categories[0] ?? null;
@@ -172,12 +172,12 @@ export default function ParametersPage() {
                       aria-current={active ? 'true' : undefined}
                       className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
-                      <span className={cn('truncate', active && 'font-medium')}>{humanize(c.name)}</span>
+                      <span className={cn('truncate', active && 'font-medium')}>{categoryLabel(c.name)}</span>
                       <Badge variant="muted">{formatNumber(c.values?.length ?? 0)}</Badge>
                     </button>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label={`Actions for ${humanize(c.name)}`}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label={`Actions for ${categoryLabel(c.name)}`}>
                           <MoreHorizontal />
                         </Button>
                       </DropdownMenuTrigger>
@@ -200,7 +200,7 @@ export default function ParametersPage() {
 
         {selected ? (
           <SectionCard
-            title={humanize(selected.name)}
+            title={categoryLabel(selected.name)}
             description={(
               <span className="flex flex-wrap items-center gap-2">
                 <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{selected.name}</code>
@@ -267,7 +267,7 @@ export default function ParametersPage() {
         onOpenChange={(open) => !open && setDeletingCategory(null)}
         title="Delete category?"
         description={deletingCategory
-          ? `${humanize(deletingCategory.name)} and its ${formatNumber(deletingCategory.values?.length ?? 0)} value(s) will be removed.${
+          ? `${categoryLabel(deletingCategory.name)} and its ${formatNumber(deletingCategory.values?.length ?? 0)} value(s) will be removed.${
             FORM_CATEGORIES.has(deletingCategory.name) ? ' Forms that use this list will show an empty dropdown.' : ''}`
           : ''}
         confirmLabel="Delete category"
@@ -278,7 +278,7 @@ export default function ParametersPage() {
         open={Boolean(deletingValue)}
         onOpenChange={(open) => !open && setDeletingValue(null)}
         title="Delete value?"
-        description={deletingValue ? `"${deletingValue.value}" will no longer be offered in the ${humanize(selected?.name)} dropdown.` : ''}
+        description={deletingValue ? `"${deletingValue.value}" will no longer be offered in the ${categoryLabel(selected?.name)} dropdown.` : ''}
         confirmLabel="Delete value"
         destructive
         onConfirm={() => deletingValue && removeValue.mutateAsync(deletingValue)}

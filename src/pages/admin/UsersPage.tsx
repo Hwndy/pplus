@@ -21,6 +21,8 @@ import { getErrorMessage } from '@/lib/api-client';
 import { toast } from 'sonner';
 import type { User, UserStatus } from '@/types/api';
 import { UserFormDialog } from './UserFormDialog';
+import { SubscriptionBadge } from './SubscriptionBadge';
+import { formatPeriodDate, userSubscriptions } from './subscription';
 
 const STATUS_OPTIONS = [
   { value: 'active', label: 'Active' },
@@ -97,6 +99,31 @@ export default function UsersPage() {
         if (u.role?.name === 'Supervisor') return `${u.analysts_data?.length ?? 0} analyst(s)`;
         if (u.role?.name === 'Client') return `${u.company_monitorings?.length ?? 0} monitored company(ies)`;
         return '—';
+      },
+    },
+    {
+      key: 'subscription',
+      header: 'Subscription',
+      cell: (u) => {
+        if (u.role?.name !== 'Client') return <span className="text-muted-foreground">—</span>;
+        const subscriptions = userSubscriptions(u);
+        if (subscriptions.length === 0) return <span className="text-muted-foreground">None</span>;
+        const [first] = subscriptions;
+        const others = subscriptions.length - 1;
+        return (
+          <div
+            className="flex min-w-0 flex-col items-start gap-1"
+            title={subscriptions
+              .map((s) => `${s.monitoring.company?.company_name ?? 'Company'}: ${formatPeriodDate(s.state.start)} – ${formatPeriodDate(s.state.end)}`)
+              .join('\n')}
+          >
+            <SubscriptionBadge state={first.state} />
+            <p className="truncate text-xs text-muted-foreground">
+              {first.monitoring.company?.company_name ?? 'Company'}
+              {others > 0 && ` · +${others} more`}
+            </p>
+          </div>
+        );
       },
     },
     { key: 'status', header: 'Status', cell: (u) => <StatusBadge status={u.status} /> },

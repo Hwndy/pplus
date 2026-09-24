@@ -1,4 +1,4 @@
-import { Building2, Check, ChevronDown, LogOut } from 'lucide-react';
+import { Building2, Check, ChevronDown, LogOut, UserRound } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -14,8 +14,25 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useAuth } from '@/components/auth/AuthContext';
+import type { MonitoringPair } from '@/types/api';
 
 const initials = (name?: string) => (name?.trim()?.[0] ?? '?').toUpperCase();
+
+/** Red when a client's monitoring ends within a week, amber within 30 days. */
+function RenewalDot({ pairs }: { pairs: MonitoringPair[] }) {
+  const expiring = pairs.filter((p) => p.expiring_soon && !p.is_expired);
+  if (!expiring.length) return null;
+  const days = Math.min(...expiring.map((p) => p.days_remaining ?? 30));
+  const label = days <= 0 ? 'Monitoring ends today' : `Monitoring ends in ${days} ${days === 1 ? 'day' : 'days'}`;
+  return (
+    <span
+      role="img"
+      aria-label={label}
+      title={label}
+      className={`h-2 w-2 shrink-0 rounded-full ${days <= 7 ? 'bg-destructive' : 'bg-amber-500'}`}
+    />
+  );
+}
 
 export function AppHeader() {
   const { user, logout, monitoringPairs, activePair, setActivePair } = useAuth();
@@ -39,6 +56,7 @@ export function AppHeader() {
               <Building2 className="text-muted-foreground" />
               <span className="truncate font-medium">{activePair?.base_company.company_name ?? 'Select company'}</span>
               {activePair?.is_expired && <Badge variant="muted">Expired</Badge>}
+              <RenewalDot pairs={monitoringPairs} />
               <ChevronDown className="opacity-60" />
             </Button>
           </DropdownMenuTrigger>
@@ -49,6 +67,7 @@ export function AppHeader() {
                 <Check className={activePair?.pair_id === pair.pair_id ? 'opacity-100' : 'opacity-0'} />
                 <span className="flex-1 truncate">{pair.base_company.company_name}</span>
                 {pair.is_expired && <Badge variant="muted">Expired</Badge>}
+                <RenewalDot pairs={[pair]} />
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>
@@ -73,6 +92,9 @@ export function AppHeader() {
               <Badge variant="secondary" className="mt-2">{user.role.name}</Badge>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => navigate('/dashboard/profile')}>
+              <UserRound /> Profile
+            </DropdownMenuItem>
             <DropdownMenuItem onSelect={handleLogout} className="text-destructive focus:text-destructive">
               <LogOut /> Sign out
             </DropdownMenuItem>

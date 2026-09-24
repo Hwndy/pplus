@@ -1,56 +1,45 @@
-import { useMemo, useState } from 'react';
-import { SectionCard } from '@/components/common/Cards';
-import { BulletList } from '@/components/common/Detail';
-import { FilterBar, FilterSelect } from '@/components/common/Filters';
-import { EmptyState } from '@/components/common/States';
-import { formatDate, formatNumber } from '@/lib/format';
+import { Target } from 'lucide-react';
+import { formatDate } from '@/lib/format';
 import type { IndustryLandscapeReport } from '@/types/reports';
-import { AnalystNote } from './ReportParts';
+import { AnalystNote, DECK_BLUE, DECK_YELLOW, ReportHeading } from './ReportParts';
 import { ReportShell } from './ReportShell';
-import { uniqueValues } from './reportUtils';
+import { groupBy } from './reportUtils';
+
+const HEXAGON = 'polygon(25% 3%, 75% 3%, 100% 50%, 75% 97%, 25% 97%, 0% 50%)';
+
+type Overview = IndustryLandscapeReport['overviews'][number];
+
+function SectorHighlights({ sector, overviews }: { sector: string; overviews: Overview[] }) {
+  const highlights = overviews.flatMap((o) => (o.highlights ?? []).map((h) => ({ text: h.trim(), date: o.date })).filter((h) => h.text));
+  const dates = Array.from(new Set(overviews.map((o) => o.date)));
+  return (
+    <section className="space-y-4">
+      <ReportHeading description={dates.length > 1 ? `${dates.length} overviews in this period` : `Overview of ${formatDate(dates[0])}`}>
+        Industry Landscape Overview – {sector} Highlights
+      </ReportHeading>
+      {highlights.length ? highlights.map((h, i) => (
+        <article key={`${i}-${h.text.slice(0, 24)}`} className="flex flex-col gap-4 rounded-xl border bg-card p-5 shadow-sm sm:flex-row sm:items-center sm:gap-6">
+          <div className="flex h-16 w-[4.5rem] shrink-0 items-center justify-center" style={{ backgroundColor: DECK_BLUE, clipPath: HEXAGON }} aria-hidden>
+            <Target className="h-8 w-8" style={{ color: DECK_YELLOW }} />
+          </div>
+          <p className="min-w-0 flex-1 whitespace-pre-line text-justify text-sm leading-relaxed sm:text-[0.95rem]">{h.text}</p>
+        </article>
+      )) : (
+        <p className="rounded-xl border bg-card p-5 text-sm text-muted-foreground">There were no {sector} highlights for the period under review.</p>
+      )}
+      {overviews.map((o) => <AnalystNote key={o.id} note={o.analyst_note} />)}
+    </section>
+  );
+}
 
 function Overviews({ data }: { data: IndustryLandscapeReport }) {
-  const [sector, setSector] = useState('');
-
-  const sectorOptions = useMemo(
-    () => uniqueValues(data.overviews.map((o) => o.sector)).sort((a, b) => a.localeCompare(b)).map((s) => ({ value: s, label: s })),
-    [data.overviews],
+  const groups = groupBy(
+    [...data.overviews].sort((a, b) => b.date.localeCompare(a.date)),
+    (o) => o.sector.trim() || data.industry || 'Industry',
   );
-
-  const overviews = data.overviews
-    .filter((o) => !sector || o.sector.trim() === sector)
-    .sort((a, b) => b.date.localeCompare(a.date));
-
   return (
-    <div className="space-y-6">
-      <FilterBar className="mb-0" onReset={sector ? () => setSector('') : undefined}>
-        <FilterSelect label="Sector" value={sector} onChange={setSector} options={sectorOptions} allLabel="All sectors" className="sm:w-60" />
-        <p className="text-sm text-muted-foreground sm:ml-auto sm:self-center">
-          Developments across the {data.industry ? <span className="font-medium text-foreground">{data.industry}</span> : 'your'} industry
-        </p>
-      </FilterBar>
-
-      {overviews.length === 0 ? (
-        <SectionCard title="Overviews">
-          <EmptyState title="No overviews for this sector" />
-        </SectionCard>
-      ) : (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          {overviews.map((o) => {
-            const highlights = (o.highlights ?? []).map((h) => h.trim()).filter(Boolean);
-            return (
-              <SectionCard
-                key={o.id}
-                title={o.sector}
-                description={`${formatDate(o.date)} · ${formatNumber(highlights.length)} ${highlights.length === 1 ? 'highlight' : 'highlights'}`}
-              >
-                <BulletList items={highlights} empty="No highlights recorded" />
-                <AnalystNote note={o.analyst_note} />
-              </SectionCard>
-            );
-          })}
-        </div>
-      )}
+    <div className="space-y-10">
+      {groups.map((g) => <SectorHighlights key={g.key} sector={g.key} overviews={g.items} />)}
     </div>
   );
 }
@@ -59,8 +48,8 @@ export default function IndustryLandscapeReportPage() {
   return (
     <ReportShell<IndustryLandscapeReport>
       report="industry-landscape-overview"
-      title="Industry landscape"
-      description="Key developments across your industry's sectors"
+      title="Industry Landscape Overview"
+      description="Key developments across your industry's sectors."
     >
       {(data) => <Overviews data={data} />}
     </ReportShell>

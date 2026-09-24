@@ -94,7 +94,7 @@ export function ParameterCategoryDialog({ open, onOpenChange, category, usedByFo
         label="Category name"
         required
         autoComplete="off"
-        description="Exact name used by forms, e.g. Media_Prominence. Underscores are shown as spaces in lists."
+        description="Exact name used by forms, e.g. Media_Prominence (shown as Competitive Metrics). Underscores are shown as spaces in lists."
       />
       <TextareaField control={form.control} name="description" label="Description" description="Optional. Where this list is used." />
     </FormDialog>
