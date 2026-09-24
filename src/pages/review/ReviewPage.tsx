@@ -23,6 +23,7 @@ import { formatDate, formatNumber } from '@/lib/format';
 import type { Pagination, ReviewStatus } from '@/types/api';
 import { ReviewDialog } from '@/pages/content/ReviewDialog';
 import { useContentPermissions } from '@/pages/content/useContentPermissions';
+import { useBulkContentActions } from '@/pages/content/useBulkContentActions';
 import {
   CONTENT_KEYS, CONTENT_TYPE_LABELS, contentCompanyName, contentDate, contentSubmitter, contentTitle, contentViewPath,
   type AnyContent,
@@ -35,7 +36,9 @@ const STATUSES: ReviewStatus[] = ['pending', 'approved', 'rejected'];
 
 // ------------------------------------------------------------------ shared table
 
-function ReviewTable({ resource, rows, isLoading, error, onRetry, pagination, onPageChange, emptyDescription }: {
+function ReviewTable({
+  resource, rows, isLoading, error, onRetry, pagination, onPageChange, onPageSizeChange, emptyDescription,
+}: {
   resource: ContentKey;
   rows: AnyContent[] | undefined;
   isLoading: boolean;
@@ -43,11 +46,13 @@ function ReviewTable({ resource, rows, isLoading, error, onRetry, pagination, on
   onRetry: () => void;
   pagination?: Pagination;
   onPageChange: (page: number) => void;
+  onPageSizeChange: (size: number) => void;
   emptyDescription: string;
 }) {
   const perms = useContentPermissions();
   const def = CONTENT_RESOURCES[resource];
   const [reviewing, setReviewing] = useState<{ row: Reviewable; decision: Decision } | null>(null);
+  const bulk = useBulkContentActions<AnyContent>(resource, `${pagination?.page ?? 1}:${pagination?.limit ?? 10}`);
 
   const review = useMutationWithToast({
     mutationFn: ({ row, decision, note }: { row: Reviewable; decision: Decision; note: string }) =>
@@ -97,10 +102,13 @@ function ReviewTable({ resource, rows, isLoading, error, onRetry, pagination, on
 
   return (
     <>
+      {bulk.toolbar}
       <DataTable
         columns={columns}
         rows={rows}
         getRowKey={(r) => (r as Reviewable).id}
+        selection={bulk.selection}
+        onPageSizeChange={onPageSizeChange}
         isLoading={isLoading}
         error={error}
         onRetry={onRetry}
@@ -109,6 +117,7 @@ function ReviewTable({ resource, rows, isLoading, error, onRetry, pagination, on
         emptyTitle="You're all caught up"
         emptyDescription={emptyDescription}
       />
+      {bulk.dialogs}
       {reviewing && (
         <ReviewDialog
           open
@@ -156,9 +165,10 @@ function useAdminCounts() {
 
 function AdminTab({ resource, counts }: { resource: ContentKey; counts: ReturnType<typeof useAdminCounts> }) {
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
   const list = useQuery({
-    queryKey: ['review', 'pending', resource, page],
-    queryFn: () => listContent(resource, 'all', { status: 'pending', page, limit: 10 }),
+    queryKey: ['review', 'pending', resource, page, limit],
+    queryFn: () => listContent(resource, 'all', { status: 'pending', page, limit }),
     placeholderData: keepPreviousData,
   });
   const loading = counts.isLoading;
@@ -177,6 +187,7 @@ function AdminTab({ resource, counts }: { resource: ContentKey; counts: ReturnTy
         onRetry={() => list.refetch()}
         pagination={list.data?.pagination}
         onPageChange={setPage}
+        onPageSizeChange={(size) => { setLimit(size); setPage(1); }}
         emptyDescription={`No ${CONTENT_RESOURCES[resource].pluralLabel.toLowerCase()} are waiting for review.`}
       />
     </div>
@@ -231,9 +242,10 @@ const statsFor = (resource: ContentKey, stats: Record<string, number> | undefine
 
 function SupervisorTab({ resource }: { resource: ContentKey }) {
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
   const dashboard = useQuery({
-    queryKey: ['review', 'supervisor', resource, page],
-    queryFn: () => getSupervisorDashboard(resource, page),
+    queryKey: ['review', 'supervisor', resource, page, limit],
+    queryFn: () => getSupervisorDashboard(resource, page, limit),
     placeholderData: keepPreviousData,
   });
   const stats = statsFor(resource, dashboard.data?.stats);
@@ -254,6 +266,7 @@ function SupervisorTab({ resource }: { resource: ContentKey }) {
         onRetry={() => dashboard.refetch()}
         pagination={dashboard.data?.recent.pagination}
         onPageChange={setPage}
+        onPageSizeChange={(size) => { setLimit(size); setPage(1); }}
         emptyDescription={`Your analysts have not submitted any ${CONTENT_RESOURCES[resource].pluralLabel.toLowerCase()} yet.`}
       />
     </div>

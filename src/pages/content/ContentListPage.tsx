@@ -22,6 +22,7 @@ import { formatDate } from '@/lib/format';
 import type { ReviewStatus, UserRef } from '@/types/api';
 import { ReviewDialog } from './ReviewDialog';
 import { useContentPermissions } from './useContentPermissions';
+import { useBulkContentActions } from './useBulkContentActions';
 
 const EXPORT_RESOURCE: Record<ContentKey, ExportResource> = {
   editorials: 'editorials',
@@ -74,6 +75,7 @@ export function ContentListPage<K extends ContentKey>({
   const def = CONTENT_RESOURCES[resource];
   const perms = useContentPermissions();
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
   const [status, setStatus] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -95,7 +97,7 @@ export function ContentListPage<K extends ContentKey>({
   }
 
   const params = {
-    page, limit: 10, status: status as ReviewStatus | '', date_from: dateFrom, date_to: dateTo, search: showSearch ? search : undefined,
+    page, limit, status: status as ReviewStatus | '', date_from: dateFrom, date_to: dateTo, search: showSearch ? search : undefined,
   };
   const queryKey = ['content', resource, perms.scope, params];
   const list = useQuery({
@@ -105,6 +107,7 @@ export function ContentListPage<K extends ContentKey>({
   });
 
   const invalidate = [['content', resource], ['review']];
+  const bulk = useBulkContentActions<ContentTypes[K]>(resource, JSON.stringify(params));
   const remove = useMutationWithToast({
     mutationFn: (row: Row<K>) => (perms.role === 'Admin' ? deleteContent(resource, row.id) : updateContent(resource, row.id, { is_deleted: true })),
     successMessage: `${def.label} deleted`,
@@ -188,6 +191,7 @@ export function ContentListPage<K extends ContentKey>({
         <FilterDate label="From" value={dateFrom} onChange={withPageReset(setDateFrom)} max={dateTo || undefined} />
         <FilterDate label="To" value={dateTo} onChange={withPageReset(setDateTo)} min={dateFrom || undefined} />
       </FilterBar>
+      {bulk.toolbar}
       <DataTable
         columns={allColumns}
         rows={list.data?.data}
@@ -197,6 +201,8 @@ export function ContentListPage<K extends ContentKey>({
         onRetry={() => list.refetch()}
         pagination={list.data?.pagination}
         onPageChange={setPage}
+        onPageSizeChange={(size) => { setLimit(size); setPage(1); }}
+        selection={bulk.selection}
         onRowClick={setViewing}
         emptyTitle={`No ${def.pluralLabel.toLowerCase()} found`}
         emptyDescription={filtersActive ? 'Try adjusting your filters.' : undefined}
@@ -221,6 +227,7 @@ export function ContentListPage<K extends ContentKey>({
         </SheetContent>
       </Sheet>
 
+      {bulk.dialogs}
       <ConfirmDialog
         open={Boolean(deleting)}
         onOpenChange={(open) => !open && setDeleting(null)}
